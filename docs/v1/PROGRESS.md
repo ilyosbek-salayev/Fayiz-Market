@@ -8,5 +8,6 @@
 - 2026-11-22: Browser visual QA attempted; CUA browser host unavailable. Cloudflare production untouched.
 - 2026-11-22: Native Safari fallback allowed a desktop visual check of admin login, dashboard, product, and order views. Order status labels were changed to Uzbek. Narrow-screen visual QA remains open.
 - 2026-11-22: Local V1 root commit `cd8ad18` created. `git push -u origin feat/v1-complete` failed: `fatal: could not read Username for 'https://github.com': Device not configured`. Local branch and commit are preserved.
+- 2026-11-22: Follow-up admin localization/QA commit `afd8eb7` created. GitHub Desktop published `feat/v1-complete`; `git ls-remote --heads origin feat/v1-complete` confirmed the remote SHA `afd8eb7a3cd693665515648abf56c0584ad301d6`.
 
 Next action: after SDK license approval, run `JAVA_HOME=/private/tmp/fayz-toolchain/jdk/Contents/Home ANDROID_HOME=/private/tmp/fayz-toolchain/android-sdk /private/tmp/fayz-toolchain/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/private/tmp/fayz-toolchain/android-sdk 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'`, then build `apps/mobile/android` debug APK and test on device. If approval is denied, leave APK status explicitly blocked.
