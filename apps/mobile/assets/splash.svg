@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1242" height="2436" viewBox="0 0 1242 2436">
+  <rect width="1242" height="2436" fill="#F7C948"/>
+  <g transform="translate(109 650)">
+    <path d="M307 379h410l-28 396c-3 42-38 74-80 74H415c-42 0-77-32-80-74z" fill="#fff" stroke="#211D13" stroke-width="28" stroke-linejoin="round"/>
+    <path d="M405 390v-69c0-63 47-112 107-112s107 49 107 112v69" fill="none" stroke="#211D13" stroke-width="34" stroke-linecap="round"/>
+    <path d="M450 487v250m0-250h150m-150 110h124" fill="none" stroke="#211D13" stroke-width="39" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="621" y="1710" text-anchor="middle" fill="#211D13" font-family="Arial,sans-serif" font-size="108" font-weight="800" letter-spacing="-2">Fayz Market</text>
+</svg>

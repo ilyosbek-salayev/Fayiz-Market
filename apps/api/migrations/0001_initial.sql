@@ -1,0 +1,18 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, description TEXT NOT NULL DEFAULT '', category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT, price INTEGER NOT NULL CHECK(price >= 0), stock INTEGER NOT NULL CHECK(stock >= 0), active INTEGER NOT NULL DEFAULT 1, featured INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE product_images (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, url TEXT NOT NULL, position INTEGER NOT NULL);
+CREATE TABLE admins (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('owner','manager')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE sessions (token_hash TEXT PRIMARY KEY, admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE, expires_at TEXT NOT NULL);
+CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, order_number TEXT NOT NULL UNIQUE, access_hash TEXT NOT NULL UNIQUE, customer_name TEXT NOT NULL, phone TEXT NOT NULL, address TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','confirmed','preparing','shipped','delivered','cancelled')), total INTEGER NOT NULL CHECK(total >= 0), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE, product_id INTEGER NOT NULL REFERENCES products(id), name TEXT NOT NULL, price INTEGER NOT NULL CHECK(price >= 0), quantity INTEGER NOT NULL CHECK(quantity > 0));
+CREATE TRIGGER order_stock_check BEFORE INSERT ON order_items BEGIN SELECT CASE WHEN (SELECT active FROM products WHERE id = NEW.product_id) != 1 OR (SELECT stock FROM products WHERE id = NEW.product_id) < NEW.quantity THEN RAISE(ABORT, 'OUT_OF_STOCK') END; END;
+CREATE TRIGGER order_stock_decrement AFTER INSERT ON order_items BEGIN UPDATE products SET stock = stock - NEW.quantity, updated_at = CURRENT_TIMESTAMP WHERE id = NEW.product_id; END;
+CREATE TABLE inventory_adjustments (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL REFERENCES products(id), admin_id INTEGER NOT NULL REFERENCES admins(id), delta INTEGER NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL REFERENCES orders(id), amount INTEGER NOT NULL CHECK(amount > 0), method TEXT NOT NULL, reference TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', recorded_by INTEGER NOT NULL REFERENCES admins(id), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+INSERT INTO settings(key,value) VALUES ('store_name','Fayz Market'),('contact_phone',''),('delivery_info','Yetkazib berish tafsilotlarini buyurtma vaqtida aniqlaymiz');
+CREATE INDEX idx_products_category ON products(category_id,active);
+CREATE INDEX idx_orders_phone ON orders(phone);
+CREATE INDEX idx_orders_status ON orders(status,created_at);
+CREATE INDEX idx_payments_order ON payments(order_id);

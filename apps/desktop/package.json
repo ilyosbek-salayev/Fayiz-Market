@@ -1,0 +1,9 @@
+{
+  "name": "@fayz/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {"prepare:web": "node ../../scripts/copy-admin.mjs", "pack:windows": "npm run prepare:web && electron-builder --win nsis"},
+  "devDependencies": {"electron": "^36.0.0", "electron-builder": "^26.0.0"},
+  "build": {"appId": "uz.fayzmarket.admin", "productName": "Fayz Market Admin", "directories": {"output": "release"}, "files": ["main.cjs", "preload.cjs", "api-url.json", "web/**/*", "package.json"], "win": {"target": "nsis"}}
+}
