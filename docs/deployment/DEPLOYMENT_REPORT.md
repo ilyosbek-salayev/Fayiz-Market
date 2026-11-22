@@ -14,7 +14,7 @@ Batafsil hujjatlar: [CLOUDFLARE_AUDIT](CLOUDFLARE_AUDIT.md), [PRODUCTION_CONFIG]
 | Katalog, checkout, buyurtma, holat, qoldiq, hisobot, sozlamalar, rollar | ✅ API 70/71, UI 20/20 |
 | R2 (rasmlar) | ✅ **yangilanish (2026-11-22):** R2 faollashtirildi, `fayz-market-images` ulandi, yuklash productionda tasdiqlandi (74/74) |
 | Yangi APK'lar (v1.0.1, production manzili bilan) | ✅ build qilindi, imzo mos |
-| Haqiqiy telefonda sinov | ⏳ qilinmadi, telefon ulanmagan |
+| Haqiqiy telefonda sinov | ⏳ qilinmadi, telefon ulanmagan (v1.1.1 Android 14 emulyatorida sinaldi — `docs/v1-expansion/TEST_REPORT.md`) |
 
 ## 15 ta savolga javob
 
@@ -30,7 +30,7 @@ Batafsil hujjatlar: [CLOUDFLARE_AUDIT](CLOUDFLARE_AUDIT.md), [PRODUCTION_CONFIG]
    - Binding: `DB`. Worker deploy'i va jonli so‘rovlar bilan tasdiqlangan.
 
 4. **R2.**
-   - **Yaratilmadi.** Cloudflare `code 10042: Please enable R2 through the Cloudflare Dashboard` qaytaradi.
+   - **Yangilanish (2026-11-22): faollashtirilgan va ulangan.** Dastlabki deploy paytida Cloudflare `code 10042` qaytargan edi; foydalanuvchi R2 ni yoqgach bucket yaratildi.
    - Rejadagi bucket `fayz-market-images`, binding `IMAGES`.
    - Ulash bloki `wrangler.toml`da izohga olingan holda tayyor turibdi.
 

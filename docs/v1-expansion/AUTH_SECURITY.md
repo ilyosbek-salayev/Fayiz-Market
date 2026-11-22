@@ -5,9 +5,10 @@
 | Usul | Qanday ishlaydi |
 |---|---|
 | Telefon + SMS | `POST /auth/otp` → 6 xonali tasodifiy kod, faqat tuzli SHA-256 saqlanadi, 5 daqiqa, 5 urinish, bir martalik. Limit: IP 20/soat, raqam 5/soat va 60 s. Provayder sozlanmagan bo‘lsa — **503**, soxta “yuborildi” yo‘q |
-| Dev kod | Faqat `ENVIRONMENT != production` va `OTP_DEV_ECHO=1` bo‘lsa (lokal QA). Productionda kodda bloklangan (unit test) |
-| Parol | PBKDF2-SHA256 100 000 (Workers maksimumi), 32 bayt salt; login limiti raqam 5/15 daq, IP 30/15 daq |
-| Parol tiklash | SMS kod bilan; barcha qurilmalardagi sessiyalar yopiladi. Noma’lum raqam uchun javob bir xil (raqamni oshkor qilmaydi) |
+| Email + kod | `POST /auth/email/otp` (register / login / reset / link) → xuddi SMS kabi 6 xonali, tuzli hash, 5 daqiqa, 5 urinish, 60 s qayta yuborish, email 5/soat, IP 20/soat. Parolsiz kirish (`/auth/email/login`) faqat tasdiqlangan email uchun; noma’lum email uchun javob muvaffaqiyatdek, lekin xat yuborilmaydi. Ro‘yxatdan o‘tishda parol ixtiyoriy. Provayder (Resend) sozlanmagan → **503** `EMAIL_NOT_CONFIGURED` |
+| Lokal test kodi | Faqat `ENVIRONMENT=development` **va** `http://` URL **va** `OTP_DEV_ECHO=1` (izolyatsiyalangan Worker). Production’da kod javobda hech qachon qaytmaydi (unit test + production tekshiruvi). Batafsil: [TEST_MODES](TEST_MODES.md) |
+| Parol | PBKDF2-SHA256 100 000 (Workers maksimumi), 32 bayt salt; telefon **yoki tasdiqlangan email** bilan kirish; limit identifikator 5/15 daq, IP 30/15 daq |
+| Parol tiklash | SMS yoki email kod bilan; barcha qurilmalardagi sessiyalar yopiladi. Noma’lum raqam uchun javob bir xil (raqamni oshkor qilmaydi) |
 | Telegram | Rasmiy `oauth.telegram.org` redirect. Server `HMAC_SHA256(SHA256(bot_token), data_check_string)` ni tekshiradi, 10 daqiqadan eski / kelajak sanali rad etiladi, har bir imzolangan payload **bir marta** (replay jadvali) |
 | Bog‘lash | Telegram akkaunti telefonni faqat SMS kod bilan qo‘shadi; band raqam/Telegram boshqa akkauntga bog‘lanmaydi (dublikat yo‘q). Telegram telefon raqamini bermaydi deb hisoblanadi |
 | Sessiya | 30 kun, `Authorization: Customer <token>` (admin `Bearer` va buyurtma `Order` tokenlaridan alohida) |

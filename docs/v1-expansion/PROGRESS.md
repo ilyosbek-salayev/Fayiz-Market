@@ -1,6 +1,6 @@
 # V1 kengaytirish — progress (keyingi sessiya shu fayldan davom etadi)
 
-Branch: `feat/v1-premium-ui` · **Push qilinmagan** · Expo va GitHub Actions yo‘q · Oxirgi yangilanish: 2026-11-22.
+Branch: `feat/v1-premium-ui` · **Push qilinmagan** · Expo va GitHub Actions yo‘q · Oxirgi yangilanish: 2026-11-22 (v1.1.1).
 
 ## Commitlar
 
@@ -13,35 +13,24 @@ Branch: `feat/v1-premium-ui` · **Push qilinmagan** · Expo va GitHub Actions yo
 | `334a77c` | V1 regressiya testlari yangi yorliqlarga moslandi |
 | `0244762` | Android qobig‘i v1.1.0 (umumiy `apps/android/shared`) |
 | `81bf192` | Desktop: macOS dmg + Windows exe |
-| (shu commit) | `docs/v1-expansion/*` |
+| `07c6d94` | `docs/v1-expansion/*` |
+| (keyingi) | v1.1.1: MapLibre + OpenFreeMap, email OTP (0006), lokal test rejimi/mock provayderlar, emulyator QA, APK/desktop 1.1.1, hujjatlar |
 
-## Fazalar
+## Holat
 
-| Faza | Holat |
-|---|---|
-| 0 Stabilizatsiya (R2 ham) | ✅ |
-| 1 Identifikatsiya va rollar | ✅ kod; SMS/Telegram jonli — ⚙️ hisob kerak; biometrika — 📱 |
-| 2 Rasm (kamera/galereya → R2) | ✅ brauzerda; kamera — 📱 |
-| 3 Xarita va manzil | ✅ GPS + koordinata; interaktiv xarita — ⚙️ Maps kaliti |
-| 4 Kuryer operatsiyalari va kuzatuv | ✅ (foreground) |
-| 5 Bildirishnomalar | ✅ ilova ochiq/minimallashganda; yopiq — ⚙️ FCM |
-| 6 Sharhlar | ✅ |
-| 7 Integratsiyalar | ✅ |
-| 8 Desktop | ✅ macOS sinaldi; Windows — 📱 |
-| 9 QA | ✅ 20 + 129 + 48 + 39 + 74 + 8 |
-
-Production: Worker `fayz-market-api` (versiya `6f0db37f`), D1 0001–0005, R2 `fayz-market-images`. Production ma’lumoti: 1 owner, sozlamalar; sinov yozuvlari tozalangan.
+Yakuniy jadval: [FINAL_REPORT](FINAL_REPORT.md). Production: Worker `9ff0b7fb`, D1 0001–0006, R2 `fayz-market-images`. Ma’lumot: 1 owner, 10 sozlama, 0 buyurtma.
 
 ## Keyingi aniq qadam
 
-1. Telefonni USB debugging bilan ulab: `adb install -r dist/apk/v1.1.0/*.apk`, so‘ng `docs/deployment/REAL_DEVICE_QA.md` + kamera, barmoq izi, GPS, bildirishnoma.
-2. Foydalanuvchi qaroriga ko‘ra: Google Maps kaliti (billing), Eskiz SMS, Telegram bot, Firebase — `INTEGRATIONS_SETUP.md`.
-3. Windows kompyuterda `Fayz-Market-Admin-Setup.exe` sinovi.
-4. FCM sozlangach: Android’ga Firebase Messaging client + `google-services.json`, versionCode 4.
+1. Telefonni USB debugging bilan ulash: `adb install -r dist/apk/v1.1.1/*.apk`; so‘ng `node scripts/android-qa/upgrade.mjs` va `native-qa.mjs` ni telefonda (yoki qo‘lda `docs/deployment/REAL_DEVICE_QA.md`).
+2. Windows kompyuterda `dist/desktop/Fayz-Market-Admin-Setup.exe` sinovi.
+3. Foydalanuvchi qaroriga ko‘ra: Eskiz, Resend + domen, Telegram bot, Firebase, Google Maps/Routes — `INTEGRATIONS_SETUP.md`.
+4. FCM sozlangach: Android’ga Firebase Messaging client + `google-services.json`, versionCode 5.
 
 ## Eslatmalar
 
-- Lokal QA: `scripts/deploy-qa/local-worker.sh <dir>` → `node scripts/deploy-qa/expansion-verify.mjs`, `node scripts/ui-qa/expansion-ui.mjs`; V1 regress uchun `QA_BOOTSTRAP=qa-local-secret-only` + `seed.mjs` + `regress.mjs`.
-- Production tozalash: `scripts/deploy-qa/cleanup-qa.sh <r2-kalitlar>` (avval eksport).
-- Foydalanuvchining eski `:8787` lokal serveri 0005 siz: kerak bo‘lsa `npx wrangler d1 migrations apply fayz-market --local --persist-to .local-phone-db` (`apps/api` dan).
-- Toolchain `/private/tmp/fayz-toolchain` da — Mac qayta yoqilsa o‘chishi mumkin.
+- Lokal QA: `scripts/deploy-qa/local-worker.sh <dir>` (QA_PORT, QA_ENV_FILE, QA_OTP_ECHO) → `expansion-verify.mjs`, `scripts/ui-qa/expansion-ui.mjs` (`CHROME_PATH` — Chrome hozir `~/Desktop/Google Chrome.app` da); V1 regress: `QA_BOOTSTRAP=qa-local-secret-only` + `seed.mjs` + `regress.mjs`.
+- Mock provayderlar: `node scripts/deploy-qa/provider-test-mode.mjs` (o‘zi Worker’ni ko‘taradi, 8789/8790).
+- Production faqat o‘qish: `node scripts/deploy-qa/production-readonly.mjs` (+ `QA_OWNER_EMAIL/PASSWORD`).
+- Emulyator: SDK `/private/tmp/fayz-toolchain/android-sdk` (emulator + `system-images;android-34;google_apis;arm64-v8a`), AVD `fayz34` (`ANDROID_AVD_HOME=/private/tmp/fayz-toolchain/avd`, PIN 1111, virtual barmoq izi 1). Mac qayta yoqilsa `/private/tmp` o‘chishi mumkin.
+- Emulyator QA: `QA_PORT=8791 scripts/deploy-qa/local-worker.sh <dir>` → `node scripts/android-qa/native-qa.mjs`. Port 9333 ni `adb forward` band qilsa desktop smoke ishlamaydi (`adb forward --remove-all`).

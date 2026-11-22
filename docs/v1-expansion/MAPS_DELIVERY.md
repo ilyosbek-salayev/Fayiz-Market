@@ -4,7 +4,10 @@
 
 1. «Xaritadan manzil tanlash» → `LocationSheet`.
 2. «Joylashuvimni aniqlash» — WebView geolokatsiyasi; Android `ACCESS_FINE/COARSE_LOCATION` ruxsati faqat shu tugma bosilganda va faqat ilovaning o‘z origin’i uchun so‘raladi.
-3. Google Maps kaliti bo‘lsa: xarita markazidagi pin, xaritani surib aniqlash, reverse geocoding (manzil matni). Kalit bo‘lmasa — **aniq yozilgan muqobil**: GPS koordinata, aniqlik (±m), «Google Maps’da ochish» havolasi. Soxta xarita chizilmaydi.
+3. **Xarita kalitsiz ishlaydi:** MapLibre GL + OpenFreeMap vektor plitkalari (bepul, API kaliti va billing yo‘q, © OpenStreetMap). Pin markazda turadi, xaritani surib aniq nuqta tanlanadi, GPS tugmasi xaritani joriy joyga olib keladi. Nomlar `name:uz` → lotin → mahalliy tartibida. Manzil matni avtomatik aniqlanmaydi (OpenFreeMap’da geocoder yo‘q) — mijoz manzilni yozadi.
+   - Google Maps kaliti kiritilsa — Google xaritasi + reverse geocoding; kalit ishlamasa avtomatik OpenFreeMap’ga qaytadi.
+   - WebGL yo‘q yoki internet yo‘q bo‘lsa — aniq yozilgan muqobil: koordinatalar va «Google Maps’da ochish» havolalari. Soxta xarita chizilmaydi.
+   - MapLibre alohida chunk (≈1 MB), faqat xarita ochilganda yuklanadi.
 4. Ruxsat rad etilsa: xabar va matnli manzil bilan davom etish (manzil maydoni avvalgidek majburiy).
 5. Buyurtmaga `location {lat,lng,accuracy}` va `deliveryDetails` (podyezd, qavat, mo‘ljal) saqlanadi — sinovda D1 da tasdiqlandi.
 
@@ -12,7 +15,7 @@ Uzluksiz kuzatuv yo‘q — mijozdan faqat bir martalik joylashuv.
 
 ## Admin
 
-Buyurtma modali: xarita (yoki koordinata), tafsilotlar, «Google Maps’da ochish», kuryer tanlash/tayinlash/qayta tayinlash (versiya bilan), kuryerning oxirgi joylashuvi va yoshi, hodisalar tarixi.
+Buyurtma modali: OpenFreeMap xaritasi (mijoz va kuryer nuqtalari) va koordinata, tafsilotlar, «Google Maps’da ochish», kuryer tanlash/tayinlash/qayta tayinlash (versiya bilan), kuryerning oxirgi joylashuvi va yoshi, hodisalar tarixi.
 
 ## Kuryer
 

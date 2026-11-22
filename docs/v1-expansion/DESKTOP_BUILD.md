@@ -6,8 +6,8 @@
 
 | Fayl | Platforma | Hajm | SHA-256 |
 |---|---|---|---|
-| `Fayz-Market-Admin-macOS.dmg` | macOS, Apple Silicon (arm64) | 107 465 559 bayt | `06b823e0a7dbf09418274c84a2790ad030dab69d6bb3437799c9db30485c7404` |
-| `Fayz-Market-Admin-Setup.exe` | Windows 10/11 x64 (NSIS) | 91 937 564 bayt | `017ab6f0f0ab473a30d3632a0fde46d9fba87869ee34e2ba6de9f8be40dca578` |
+| `Fayz-Market-Admin-macOS.dmg` (v1.1.1) | macOS, Apple Silicon (arm64) | 107 789 050 bayt | `43fb79e0007fdcc90d2bd2c7a86071ea8bb3568071d28dcb01e76c8334d3c72b` |
+| `Fayz-Market-Admin-Setup.exe` (v1.1.1) | Windows 10/11 x64 (NSIS) | 92 180 112 bayt | `16076e540a62d804a41d6b90458cad55239e5c630491153d1b35fbf907594d68` |
 
 Build:
 ```sh
@@ -23,8 +23,8 @@ Oyna, ikonka, «Fayz Market Admin» nomi; production API (IPC orqali, yo‘l va 
 
 ## Sinov
 
-- **macOS (shu Mac, arm64):** paketlangan `.app` ishga tushirildi va CDP orqali production’ga qarshi sinaldi — 8/8 (`scripts/deploy-qa/desktop-smoke.mjs`): yuklanish, ko‘prik, login, dashboard, shifrlangan sessiya, qayta ochilganda tiklanish, faylda ochiq token yo‘q, logout tozalaydi. Yangi buyurtma bildirishnomasi productionda katalog bo‘sh bo‘lgani uchun bu yerda sinalmadi (lokal UI sinovida bildirishnoma oqimi o‘tgan).
-- **Windows:** `.exe` macOS’da cross-build qilindi, PE32+ x64, ichida production URL va yangi bundle tekshirildi. **Windows’da ishga tushirilmagan** — mijozning Windows kompyuterida sinash kerak.
+- **macOS (shu Mac, arm64) — Verified:** `.app` ad-hoc imzosi `codesign --verify --deep --strict` dan o‘tdi, `CFBundleShortVersionString` 1.1.1, `hdiutil verify` → dmg checksum VALID, `app.asar` ichida production URL va MapLibre bundle. Paketlangan `.app` production’ga qarshi ishga tushirildi — **9/9** (`scripts/deploy-qa/desktop-smoke.mjs`): yuklanish, IPC ko‘prik, login → dashboard, OpenFreeMap xaritasi ilova ichida chizildi (`file://`, sandbox, WebGL), Keychain’da shifrlangan sessiya, qayta ochilganda tiklanish, faylda ochiq token yo‘q, logout tozalaydi. Yangi buyurtma bildirishnomasi production katalogi bo‘sh bo‘lgani uchun bu yerda yaratilmadi (lokal UI sinovida o‘tgan).
+- **Windows — Partial:** `.exe` macOS’da haqiqiy NSIS build (cross-build). Tekshirilgan: installer — Nullsoft self-extracting PE; ichidagi `Fayz Market Admin.exe` — PE32+ x86-64; `app.asar` da production URL va yangi bundle. **Windows’da ishga tushirilmagan** — o‘rnatish, oyna, bildirishnoma, DPAPI sessiya Windows kompyuterda sinalishi kerak.
 
 ## Imzo va notarizatsiya
 

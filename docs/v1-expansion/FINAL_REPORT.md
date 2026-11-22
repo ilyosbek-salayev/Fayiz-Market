@@ -1,50 +1,57 @@
-# Fayz Market V1 kengaytirish — yakuniy hisobot
+# Fayz Market V1.1.1 — yakuniy hisobot
 
-**Loyiha to‘liq tugallangan deb e’lon qilinmaydi**: kod va avtomatik/emulyatsiya testlari tayyor, lekin bir qator qabul mezonlari tashqi hisob ma’lumotlari, billing tasdig‘i va qurilmalarni kutmoqda (pastda).
+**Loyiha to‘liq tugallangan deb e’lon qilinmaydi.** Kod, avtomatik testlar va Android emulyatori sinovlari tayyor; bir qator funksiyalar haqiqiy telefon, Windows kompyuter va tashqi hisob ma’lumotlarini kutmoqda.
 
-## Natija
+Belgilar: **Verified** — haqiqiy muhitda ishga tushirib tasdiqlangan (qaysi muhit ko‘rsatilgan). **Partial** — kod tayyor va qisman sinalgan, lekin yakuniy muhitda emas. **Blocked** — sizdan biror narsa kerak.
 
-**MIJOZ → ADMIN → KURYER → TASDIQ → SHARH** oqimi Cloudflare backend’da ishlaydi va UI orqali uchidan-uchigacha sinaldi (48/48), backend qoidalari 129/129, asl V1 39/39, production kontrakti 74/74.
+## Funksiyalar
 
-| Talab | Holat |
-|---|---|
-| Mavjud funksiyalar buzilmagan | ✅ (39/39, production 74/74; o‘rnatilgan v1.0.x ilovalar ishlaydi) |
-| Production backend | ✅ `https://fayz-market-api.ilyosbeksalayev240.workers.dev`, 0005 migratsiya (zaxira bilan) |
-| R2 | ✅ faol va sinalgan |
-| Ro‘yxatdan o‘tish / login | ✅ parol; SMS OTP — ⚙️ Eskiz; Telegram — ⚙️ bot |
-| Biometrika | ✅ kod (Keystore + BiometricPrompt); 📱 qurilmada sinalmagan |
-| Kamera / galereya | ✅ yuklash R2 ga; kamera 📱 |
-| Xaritadan manzil | ✅ GPS + koordinata saqlanadi; interaktiv xarita ⚙️ Maps kaliti |
-| Kuryer roli, tayinlash, ruxsatlar | ✅ |
-| Navigatsiya | ✅ Google Maps havolasi; masofa/ETA ⚙️ Routes kaliti |
-| Kuzatuv | ✅ kuryer ilovasi ochiq bo‘lganda |
-| Bildirishnomalar | ✅ ilova ochiq/minimallashgan; yopiq — ⚙️ FCM |
-| Tasdiq va tasdiqlangan sharhlar | ✅ |
-| Integratsiyalar xavfsizligi | ✅ secret qiymati hech qachon qaytmaydi |
-| Android APK’lar | ✅ v1.1.0, paket va imzo saqlangan; in-place o‘rnatish 📱 |
-| macOS installer | ✅ yaratildi va shu Mac’da sinaldi (8/8) |
-| Windows installer | ✅ yaratildi; 📱 Windows’da sinalmagan |
+| Funksiya | Holat | Dalil / nima yetishmaydi |
+|---|---|---|
+| Mavjud V1 funksiyalari buzilmagan | **Verified** | regress 39/39; production 20/20; v1.0.x ilovalar yangi backend bilan ishlaydi |
+| Production backend + D1 0001–0006 | **Verified** | Worker `9ff0b7fb`; 0006 oldin production nusxasida sinaldi, zaxira `dist/backups/fayz-market-pre-0006-*.sql`; ma’lumot o‘zgarmadi (1 owner, 10 sozlama) |
+| R2 rasm saqlash | **Verified** | production (oldingi sessiya 74/74), emulyatorda kamera → yuklash (lokal R2) |
+| Parol bilan ro‘yxat/kirish/tiklash | **Verified** | lokal 129/129, UI 54/54 |
+| SMS OTP | **Partial** | kod yo‘li mock Eskiz bilan 35/35; production → 503 (to‘g‘ri). **Blocked:** Eskiz hisobi |
+| Email OTP (yangi) | **Partial** | ro‘yxat, parolsiz kirish, tiklash, bog‘lash — mock Resend va UI’da sinalgan; production → 503. **Blocked:** Resend + o‘z domeningiz |
+| Telegram Login | **Partial** | imzo/replay/bog‘lash testlari; `getMe` mock. **Blocked:** bot token + `/setdomain` |
+| Productionda test token / dev OTP yo‘qligi | **Verified** | unit testlar + production 20/20 (devEcho=false, `qa-bootstrap` → 403); secretlar: faqat `BOOTSTRAP_SECRET` |
+| Barmoq izi (mijoz, admin) | **Verified (emulyator)** / Partial (telefon) | Android 14 emulyatori: prompt, Keystore shifrlash, noto‘g‘ri barmoq rad, to‘g‘ri barmoq ochadi. Haqiqiy telefonda sinalmagan |
+| Kamera / galereya → R2 | **Verified (emulyator)** / Partial (telefon) | tizim kamera ilovasi, preview, yuklash, galereyaga saqlanmaydi |
+| GPS (checkout, kuryer) | **Verified (emulyator)** / Partial (telefon) | ruxsat dialogi, koordinata buyurtmada, kuryer `watchPosition` va qayta yuborish |
+| Interaktiv xarita kalitsiz (MapLibre + OpenFreeMap) | **Verified** | Android WebView (emulyator), Chrome, macOS `.app` ichida chiziladi; pin surish, GPS markazlash, kuzatuv/admin markerlar |
+| Google Maps (ixtiyoriy) | **Blocked** | browser kaliti + Google billing tasdig‘i |
+| Masofa/ETA (Google Routes) | **Blocked** | `GOOGLE_ROUTES_KEY`; kalitsiz 503, masofa o‘ylab topilmaydi |
+| Kuryer roli, tayinlash, holatlar, tasdiq, e’tiroz | **Verified** | lokal 129/129, UI 54/54, emulyatorda kuryer oqimi |
+| Bildirishnomalar — ilova ochiq/fonda | **Verified (emulyator)** | Android tizim bildirishnomasi, bosilsa buyurtma ochiladi; desktop — lokal UI sinovi |
+| Bildirishnomalar — ilova yopiq (FCM) | **Partial / Blocked** | backend sender mock bilan 35/35 (JWT, yuborish, o‘lik tokenni o‘chirish). **Blocked:** Firebase loyihasi, `google-services.json`, Android client |
+| Sharhlar va kuryer bahosi (faqat tasdiqdan keyin) | **Verified** | lokal + UI |
+| Integratsiyalar sahifasi (secret qaytmaydi) | **Verified** | production 20/20 (8 ta yozuv, qiymatlar yo‘q) |
+| Android APK v1.1.1, paket va imzo saqlangan | **Verified** | aapt2/apksigner; imzo `93f0f845…f89851` |
+| In-place yangilash (ma’lumot saqlanadi) | **Verified (emulyator)** / Partial (telefon) | 1.0.1 → 1.1.1 `adb install -r` 12/12 |
+| macOS admin `.app` + `.dmg` | **Verified** | codesign, dmg VALID, `.app` production’ga qarshi 9/9 |
+| Windows `.exe` | **Partial** | haqiqiy NSIS build, x64 ilova, ichida production URL; **Windows’da ishga tushirilmagan** |
+| Kod imzosi (Apple Developer ID / Windows sertifikat) | **Blocked** | ixtiyoriy, pullik |
 
 ## Artefaktlar
 
-- `dist/apk/v1.1.0/fayz-market-customer-debug.apk`, `…/fayz-market-admin-debug.apk`
-- `dist/desktop/Fayz-Market-Admin-macOS.dmg`, `dist/desktop/Fayz-Market-Admin-Setup.exe`
-- Zaxira: `dist/backups/fayz-market-pre-0005-apply-*.sql`
+| Fayl | Hajm | SHA-256 |
+|---|---|---|
+| `dist/apk/v1.1.1/fayz-market-customer-debug.apk` | 755 157 B | `05621d25…a847` |
+| `dist/apk/v1.1.1/fayz-market-admin-debug.apk` | 657 618 B | `637a4370…7610` |
+| `dist/desktop/Fayz-Market-Admin-macOS.dmg` | 107 789 050 B | `43fb79e0…c72b` |
+| `dist/desktop/Fayz-Market-Admin-Setup.exe` | 92 180 112 B | `16076e54…4d68` |
 
-## Bloklangan (sizdan kerak)
+## Sizdan kerak
 
-1. **Google Maps** browser kaliti (Google Cloud billing — tasdig‘ingizsiz yoqilmadi). **Routes** — ixtiyoriy.
-2. **SMS**: Eskiz.uz hisobi + shablon tasdig‘i + 4 ta secret.
-3. **Telegram**: bot, `/setdomain`, token secret, username.
-4. **Firebase** (yopiq ilovaga push): loyiha, `google-services.json`, service account.
-5. **Telefon**: USB debugging bilan ulash — in-place o‘rnatish, kamera, barmoq izi, GPS, bildirishnoma sinovi.
-6. **Windows** kompyuterda `.exe` sinovi; tarqatish uchun kod imzosi (Apple Developer ID / Windows sertifikat) — ixtiyoriy.
+1. **Telefon** (USB debugging): `adb install -r dist/apk/v1.1.1/*.apk`, so‘ng kamera, barmoq izi, GPS, bildirishnoma — emulyatordagi skriptlar telefonda ham ishlaydi.
+2. **Windows kompyuter**: `Fayz-Market-Admin-Setup.exe` ni o‘rnatib sinash.
+3. **Eskiz** (SMS), **Resend + domen** (email), **Telegram bot**, **Firebase** (yopiq ilovaga push), ixtiyoriy **Google Maps/Routes** — `INTEGRATIONS_SETUP.md`.
 
 ## Ma’lum cheklovlar
 
 - Kuryer joylashuvi faqat ilova ochiq bo‘lganda yuboriladi (foreground service yo‘q).
-- Bildirishnomalar polling orqali (20–30 s); FCM sozlanmaguncha ilova yopiq bo‘lsa kelmaydi.
-- Email orqali admin parolini tiklash yo‘q — super admin tiklaydi.
+- OpenFreeMap’da manzil nomini avtomatik aniqlash yo‘q — mijoz manzilni yozadi.
 - APK’lar debug build (Play Store uchun release kalit alohida bosqich).
 
-Batafsil: `ARCHITECTURE`, `FEATURE_MATRIX`, `AUTH_SECURITY`, `MAPS_DELIVERY`, `COURIER_WORKFLOW`, `NOTIFICATIONS`, `INTEGRATIONS_SETUP`, `DESKTOP_BUILD`, `ANDROID_COMPATIBILITY`, `TEST_REPORT`, `PROGRESS`.
+Batafsil: `TEST_REPORT`, `TEST_MODES`, `ANDROID_COMPATIBILITY`, `DESKTOP_BUILD`, `MAPS_DELIVERY`, `AUTH_SECURITY`, `INTEGRATIONS_SETUP`, `NOTIFICATIONS`, `PROGRESS`.
