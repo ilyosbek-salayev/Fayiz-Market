@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z, ZodError } from 'zod';
+import { passwordHash, randomToken, safeEqual, verifyPassword } from './password';
 import { adminLoginSchema, categorySchema, checkoutSchema, paymentSchema, productSchema, statusSchema } from '@fayz/shared';
 
 type Bindings = { DB: D1Database; IMAGES: R2Bucket; APP_ORIGIN: string; PUBLIC_BASE_URL: string; BOOTSTRAP_SECRET: string };
@@ -10,13 +11,6 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const fail = (status: number, code: string, message: string): never => { throw new HTTPException(status as 400, { message: JSON.stringify({ code, message }) }); };
 const parse = async <T extends z.ZodTypeAny>(c: { req: { json: () => Promise<unknown> } }, schema: T): Promise<z.infer<T>> => schema.parse(await c.req.json());
 const sha256 = async (value: string): Promise<string> => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))).map(x => x.toString(16).padStart(2, '0')).join('');
-const randomToken = () => Array.from(crypto.getRandomValues(new Uint8Array(32))).map(x => x.toString(16).padStart(2, '0')).join('');
-const passwordHash = async (password: string, salt = randomToken()): Promise<string> => {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 310000, hash: 'SHA-256' }, key, 256);
-  return `${salt}:${Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('')}`;
-};
-const safeEqual = (a: string, b: string) => { if (a.length !== b.length) return false; let result = 0; for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i); return result === 0; };
 const idFrom = (raw: string): number => { const id = Number(raw); if (!Number.isSafeInteger(id) || id < 1) fail(400, 'INVALID_ID', 'ID notoʻgʻri'); return id; };
 const pageFrom = (raw: string | undefined) => Math.min(1000, Math.max(1, Number(raw) || 1));
 const limitFrom = (raw: string | undefined) => Math.min(50, Math.max(1, Number(raw) || 20));
@@ -157,9 +151,9 @@ app.post('/admin/login', async c => {
   const attempt = await c.env.DB.prepare("SELECT attempts FROM login_attempts WHERE email=? AND first_attempt>datetime('now','-15 minutes')").bind(normalizedEmail).first<{ attempts: number }>();
   if ((attempt?.attempts || 0) >= 5) fail(429, 'TOO_MANY_ATTEMPTS', '15 daqiqadan keyin qayta urinib koʻring');
   const admin = await c.env.DB.prepare('SELECT id,email,password_hash,role FROM admins WHERE email=?').bind(normalizedEmail).first<{ id: number; email: string; password_hash: string; role: string }>();
-  const expected = admin?.password_hash || await passwordHash('invalid-password');
-  const actual = await passwordHash(input.password, expected.split(':')[0]);
-  if (!admin || !safeEqual(actual, expected)) {
+  // An unknown email still runs one key derivation so response time does not reveal which emails exist.
+  const valid = await verifyPassword(input.password, admin?.password_hash || await passwordHash('invalid-password'));
+  if (!admin || !valid) {
     await c.env.DB.prepare("INSERT INTO login_attempts(email,attempts,first_attempt) VALUES(?,1,CURRENT_TIMESTAMP) ON CONFLICT(email) DO UPDATE SET attempts=CASE WHEN first_attempt<datetime('now','-15 minutes') THEN 1 ELSE attempts+1 END,first_attempt=CASE WHEN first_attempt<datetime('now','-15 minutes') THEN CURRENT_TIMESTAMP ELSE first_attempt END").bind(normalizedEmail).run();
     fail(401, 'INVALID_CREDENTIALS', 'Email yoki parol notoʻgʻri');
   }

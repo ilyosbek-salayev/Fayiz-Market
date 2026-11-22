@@ -101,7 +101,7 @@ public final class MainActivity extends Activity {
   }
   private void showApiDialog() {
     EditText field = new EditText(this); field.setSingleLine(true); field.setText(apiUrl());
-    new AlertDialog.Builder(this).setTitle("Lokal API manzili").setView(field).setPositiveButton("Saqlash", (d,w) -> {
+    new AlertDialog.Builder(this).setTitle("Server (API) manzili").setView(field).setPositiveButton("Saqlash", (d,w) -> {
       String value = field.getText().toString().trim();
       if (!value.matches("https?://[^/ ]+(?::[0-9]+)?/?")) { new AlertDialog.Builder(this).setMessage("Toʻliq http:// yoki https:// manzil kiriting").setPositiveButton("OK", null).show(); return; }
       getPreferences(MODE_PRIVATE).edit().putString("api_url", value).apply(); openApp();

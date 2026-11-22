@@ -14,3 +14,30 @@ database_id = "REPLACE_WITH_D1_DATABASE_ID"
 [[r2_buckets]]
 binding = "IMAGES"
 bucket_name = "fayz-market-images"
+
+# Production — Cloudflare account "Ilyosbeksalayev240@gmail.com's Account" (8c9b943e…82ca).
+# Deploy from this folder only with: npx wrangler deploy --env production
+# Secrets (BOOTSTRAP_SECRET) are set with `wrangler secret put --env production`, never in this file.
+[env.production]
+name = "fayz-market-api"
+account_id = "8c9b943ebbbb7bcff4386e624c4482ca"
+workers_dev = true
+preview_urls = false
+
+[env.production.vars]
+# The Android WebViews load the UI from <this origin>/__app/, so their API calls are same-origin.
+APP_ORIGIN = "https://fayz-market-api.ilyosbeksalayev240.workers.dev"
+PUBLIC_BASE_URL = "https://fayz-market-api.ilyosbeksalayev240.workers.dev"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "fayz-market"
+database_id = "89f6ea76-65dd-43ea-a574-6dc17aed1ddd"
+migrations_dir = "migrations"
+
+# R2 is not enabled on this account yet (API error 10042). After it is enabled in the dashboard:
+#   npx wrangler r2 bucket create fayz-market-images --env production
+# then uncomment the block below and run `npx wrangler deploy --env production` again.
+# [[env.production.r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "fayz-market-images"
