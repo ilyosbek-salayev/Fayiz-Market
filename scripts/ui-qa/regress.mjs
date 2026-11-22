@@ -79,7 +79,8 @@ const api = async (p, init) => (await fetch(API + p, init)).json();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('fayz_orders')));
   check(saved[0]?.orderNumber === number && JSON.parse(await page.evaluate(() => localStorage.getItem('fayz_cart'))) && Object.keys(JSON.parse(await page.evaluate(() => localStorage.getItem('fayz_cart')))).length === 0, 'order stored locally and cart cleared');
   await pause(800);
-  check((await text(page)).includes('Yangi'), 'order status visible (Yangi)');
+  // Since the V1 expansion the customer sees combined stages; PENDING is labelled "Qabul qilindi".
+  check((await text(page)).includes('Qabul qilindi'), 'order status visible (Qabul qilindi)');
   globalThis.__order = saved[0];
   // profile persisted & theme switching
   await click(page, 'Profil', '.tabbar button');
@@ -159,7 +160,8 @@ const api = async (p, init) => (await fetch(API + p, init)).json();
   await click(page, 'Saqlash', '.settings-form .form-actions button'); await pause(1000);
   check((await api('/settings')).settings.contact_phone === '+998 71 200 00 00', 'store settings saved');
   // add admin
-  await page.evaluate(() => { const f = document.querySelector('.add-admin'); f.querySelector('input[type=email]').setAttribute('data-q', 'ne'); f.querySelector('input[type=password]').setAttribute('data-q', 'np'); });
+  await page.evaluate(() => { const f = document.querySelector('.add-admin'); f.querySelector('select').setAttribute('data-q', 'nr'); f.querySelector('input[type=email]').setAttribute('data-q', 'ne'); f.querySelector('input[type=password]').setAttribute('data-q', 'np'); });
+  await setValue(page, '[data-q=nr]', 'manager');
   await setValue(page, '[data-q=ne]', `regress-${Date.now()}@example.invalid`); await setValue(page, '[data-q=np]', 'RegressManager123!');
   await click(page, 'Qoʻshish', '.add-admin button'); await pause(1200);
   check(await page.$$eval('.rows li', e => e.length) >= 2, 'administrator added and listed');
@@ -181,7 +183,7 @@ const api = async (p, init) => (await fetch(API + p, init)).json();
   await page.evaluate(o => localStorage.setItem('fayz_orders', JSON.stringify([o])), globalThis.__order);
   await page.reload({ waitUntil: 'networkidle0' });
   await click(page, 'Buyurtmalar', '.tabbar button'); await pause(1000);
-  check((await text(page)).includes('Tasdiqlangan'), 'customer sees admin status change');
+  check((await text(page)).includes('Tasdiqlandi'), 'customer sees admin status change (stage "Tasdiqlandi")');
   await ctx.close();
 }
 check(dialogs.length === 0, 'no native alert/confirm dialogs used', dialogs.join(' | '));

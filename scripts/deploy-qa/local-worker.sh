@@ -7,6 +7,6 @@ cd "$(dirname "$0")/../../apps/api"
 rm -rf "$DB_DIR"
 CI=1 npx wrangler d1 migrations apply fayz-market --local --persist-to "$DB_DIR" >/dev/null
 exec npx wrangler dev --local --ip 127.0.0.1 --port 8788 --persist-to "$DB_DIR" \
-  --var ENVIRONMENT:development --var OTP_DEV_ECHO:1 --var BOOTSTRAP_SECRET:qa-bootstrap \
+  --var ENVIRONMENT:development --var OTP_DEV_ECHO:1 --var BOOTSTRAP_SECRET:${QA_BOOTSTRAP:-qa-bootstrap} \
   --var TELEGRAM_BOT_TOKEN:123456789:AAH-local-qa-token \
   --var PUBLIC_BASE_URL:http://127.0.0.1:8788 --var APP_ORIGIN:http://127.0.0.1:8788
