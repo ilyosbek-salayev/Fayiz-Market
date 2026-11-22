@@ -25,6 +25,8 @@ workers_dev = true
 preview_urls = false
 
 [env.production.vars]
+# Disables every development-only shortcut (OTP echo) regardless of other variables.
+ENVIRONMENT = "production"
 # The Android WebViews load the UI from <this origin>/__app/, so their API calls are same-origin.
 APP_ORIGIN = "https://fayz-market-api.ilyosbeksalayev240.workers.dev"
 PUBLIC_BASE_URL = "https://fayz-market-api.ilyosbeksalayev240.workers.dev"
@@ -35,9 +37,8 @@ database_name = "fayz-market"
 database_id = "89f6ea76-65dd-43ea-a574-6dc17aed1ddd"
 migrations_dir = "migrations"
 
-# R2 is not enabled on this account yet (API error 10042). After it is enabled in the dashboard:
-#   npx wrangler r2 bucket create fayz-market-images --env production
-# then uncomment the block below and run `npx wrangler deploy --env production` again.
-# [[env.production.r2_buckets]]
-# binding = "IMAGES"
-# bucket_name = "fayz-market-images"
+# R2 bucket (created 2026-11-22 after R2 was enabled on the account). Images are served through the
+# Worker (GET /images/:key); the bucket itself has no public access.
+[[env.production.r2_buckets]]
+binding = "IMAGES"
+bucket_name = "fayz-market-images"
