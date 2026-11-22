@@ -4,6 +4,10 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.graphics.Color;
+import android.os.Build;
+import android.view.View;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
@@ -16,9 +20,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import java.io.InputStream;
 
 public final class MainActivity extends Activity {
@@ -29,20 +31,11 @@ public final class MainActivity extends Activity {
   @Override public void onCreate(Bundle state) {
     super.onCreate(state);
     web = new WebView(this);
-    LinearLayout root = new LinearLayout(this);
-    root.setOrientation(LinearLayout.VERTICAL);
-    LinearLayout controls = new LinearLayout(this);
-    Button address = new Button(this);
-    address.setText("API manzili");
-    address.setOnClickListener(view -> showApiDialog());
-    Button refresh = new Button(this);
-    refresh.setText("Yangilash");
-    refresh.setOnClickListener(view -> web.reload());
-    controls.addView(address, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-    controls.addView(refresh, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-    root.addView(controls);
-    root.addView(web, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
-    setContentView(root);
+    // The API address and reload controls are no longer drawn above the app. They remain available
+    // through the options menu and, in debug builds only, through the web UI's technical settings.
+    web.setBackgroundColor(Color.parseColor("#FAFAF7"));
+    setContentView(web);
+    applySystemBars("#FAFAF7", true);
     WebSettings settings = web.getSettings();
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
@@ -58,7 +51,7 @@ public final class MainActivity extends Activity {
         if (asset.contains("..") || asset.isEmpty()) return null;
         try {
           InputStream data = getAssets().open(asset);
-          String mime = asset.endsWith(".js") ? "text/javascript" : asset.endsWith(".css") ? "text/css" : asset.endsWith(".svg") ? "image/svg+xml" : asset.endsWith(".png") ? "image/png" : asset.endsWith(".webp") ? "image/webp" : "text/html";
+          String mime = asset.endsWith(".js") ? "text/javascript" : asset.endsWith(".css") ? "text/css" : asset.endsWith(".svg") ? "image/svg+xml" : asset.endsWith(".png") ? "image/png" : asset.endsWith(".webp") ? "image/webp" : asset.endsWith(".woff2") ? "font/woff2" : "text/html";
           return new WebResourceResponse(mime, "UTF-8", data);
         } catch (Exception ignored) { return null; }
       }
@@ -116,7 +109,25 @@ public final class MainActivity extends Activity {
   }
   @Override protected void onActivityResult(int request, int result, Intent data) { super.onActivityResult(request, result, data); if (request == PICK_FILE && files != null) { files.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result, data)); files = null; } }
   @Override public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
+  private boolean debuggable() { return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0; }
+  private void applySystemBars(String color, boolean light) {
+    try {
+      int value = Color.parseColor(color);
+      getWindow().setStatusBarColor(value);
+      int flags = getWindow().getDecorView().getSystemUiVisibility();
+      flags = light ? flags | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR : flags & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+      if (Build.VERSION.SDK_INT >= 26) {
+        getWindow().setNavigationBarColor(value);
+        flags = light ? flags | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : flags & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+      }
+      getWindow().getDecorView().setSystemUiVisibility(flags);
+    } catch (Exception ignored) { }
+  }
   private final class NativeBridge {
     @JavascriptInterface public void share(String text) { runOnUiThread(() -> { Intent send = new Intent(Intent.ACTION_SEND); send.setType("text/plain"); send.putExtra(Intent.EXTRA_TEXT, text); startActivity(Intent.createChooser(send, "Ulashish")); }); }
+    @JavascriptInterface public boolean isDebug() { return debuggable(); }
+    @JavascriptInterface public void openApiSettings() { if (debuggable()) runOnUiThread(MainActivity.this::showApiDialog); }
+    @JavascriptInterface public void reload() { runOnUiThread(() -> web.reload()); }
+    @JavascriptInterface public void setSystemBars(String color, boolean light) { runOnUiThread(() -> applySystemBars(color, light)); }
   }
 }

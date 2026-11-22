@@ -27,3 +27,6 @@ apps/android/admin/src/main/assets/
 apps/android/local.properties
 coverage/
 *.log
+scripts/ui-qa/shots/
+scripts/ui-qa/qa-order.json
+scripts/ui-qa/node_modules/

@@ -1,1 +1,21 @@
-<!doctype html><html lang="uz"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f6c72d"><title>Fayz Market</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#FAFAF7">
+  <title>Fayz Market</title>
+  <script>try{var t=localStorage.getItem('fayz_theme');document.documentElement.dataset.theme=/^(yellow|green|blue|black)$/.test(t)?t:'yellow'}catch(e){document.documentElement.dataset.theme='yellow'}</script>
+  <style>
+    .splash{position:fixed;inset:0;display:grid;place-items:center;align-content:center;gap:14px;font-family:system-ui,sans-serif}
+    .splash b{font-size:22px;letter-spacing:-.02em;color:#1E1E1E}
+    [data-theme=black] .splash{background:#151513}[data-theme=black] .splash b{color:#F3F3EE}
+    .splash i{width:28px;height:3px;border-radius:2px;background:currentColor;opacity:.25;animation:sp 1s ease-in-out infinite alternate}
+    @keyframes sp{to{opacity:.7;transform:scaleX(1.6)}}
+  </style>
+</head>
+<body>
+  <div id="root"><div class="splash" aria-label="Fayz Market yuklanmoqda"><svg width="72" height="72" viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="232" fill="#FFCC29"/><path d="M307 379h410l-28 396c-3 42-38 74-80 74H415c-42 0-77-32-80-74z" fill="#fff" stroke="#1E1E1E" stroke-width="36" stroke-linejoin="round"/><path d="M405 390v-69c0-63 47-112 107-112s107 49 107 112v69" fill="none" stroke="#1E1E1E" stroke-width="40" stroke-linecap="round"/><path d="M450 487v250m0-250h150m-150 110h124" fill="none" stroke="#1E1E1E" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/></svg><b>Fayz Market</b><i></i></div></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
