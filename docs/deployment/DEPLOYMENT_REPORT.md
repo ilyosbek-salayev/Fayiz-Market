@@ -12,7 +12,7 @@ Batafsil hujjatlar: [CLOUDFLARE_AUDIT](CLOUDFLARE_AUDIT.md), [PRODUCTION_CONFIG]
 | D1 | ✅ migratsiyalar qo‘llandi, yozish va o‘qish tasdiqlandi |
 | Admin login (productionda) | ✅ PBKDF2 xatosi tuzatildi va regressiya testi qo‘shildi |
 | Katalog, checkout, buyurtma, holat, qoldiq, hisobot, sozlamalar, rollar | ✅ API 70/71, UI 20/20 |
-| R2 (rasmlar) | ⛔ **bloklangan:** akkauntda R2 yoqilmagan |
+| R2 (rasmlar) | ✅ **yangilanish (2026-11-22):** R2 faollashtirildi, `fayz-market-images` ulandi, yuklash productionda tasdiqlandi (74/74) |
 | Yangi APK'lar (v1.0.1, production manzili bilan) | ✅ build qilindi, imzo mos |
 | Haqiqiy telefonda sinov | ⏳ qilinmadi, telefon ulanmagan |
 
