@@ -15,7 +15,10 @@ const results = []; let failed = 0; const dialogs = [];
 const check = (ok, label, extra = '') => { const line = `${ok ? 'PASS' : 'FAIL'} ${label}${extra ? ' — ' + extra : ''}`; results.push(line); console.log(line); if (!ok) failed++; };
 const pause = ms => new Promise(r => setTimeout(r, ms));
 const call = async (p, { method = 'GET', auth, body, headers = {} } = {}) => { const r = await fetch(API + p, { method, headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(auth ? { Authorization: auth } : {}), ...headers }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, data: await r.json().catch(() => null) }; };
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: true });
+// WebGL through SwiftShader so MapLibre can draw in headless Chrome (a phone WebView uses the GPU).
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
+// Waits until the free (keyless) OpenFreeMap map has drawn its style, then returns the marker kinds on it.
+const mapReady = async (page, scope = '') => { await page.waitForSelector(`${scope} .map-box[data-provider=openfreemap] canvas.maplibregl-canvas`, { timeout: 30000 }); await pause(1200); return page.evaluate(sc => [...document.querySelectorAll(`${sc} .map-box .map-dot`)].map(d => (d.className.match(/map-dot-(\w+)/) || [])[1]).sort().join(','), scope); };
 async function open(app, width = 390, geo) {
   const ctx = await browser.createBrowserContext();
   if (geo) await ctx.overridePermissions(API, ['geolocation', 'notifications']);
@@ -74,9 +77,18 @@ try {
   const sheetText = await text(c);
   check(!/Baholash|yulduz|Sharh/.test(sheetText.split('Buyurtmani rasmiylashtirish')[1] || ''), 'no review/rating UI during checkout');
   await click(c, 'Xaritadan manzil tanlash', '.sheet button');
-  check((await text(c)).includes('Xarita hali ulanmagan'), 'without a Maps key the map is an honest fallback');
-  await click(c, 'Joylashuvimni aniqlash', '.sheet button'); await pause(1500);
-  check((await text(c)).includes('41.365500, 69.284900'), 'device location used (permission granted)');
+  await mapReady(c, '.sheet');
+  check(await c.evaluate(() => !!document.querySelector('.sheet .maplibregl-ctrl-attrib') && /OpenStreetMap/.test(document.querySelector('.sheet .maplibregl-ctrl-attrib').textContent || '')), 'without a Google key: interactive OpenFreeMap map with OSM attribution');
+  await click(c, 'Joylashuvimni aniqlash', '.sheet button'); await pause(2500);
+  check((await text(c)).includes('41.365500, 69.284900'), 'device location used (permission granted) and the map centred on it');
+  { // Pan the map: the pin stays centred, so the picked point must move with the map.
+    const box = await c.evaluate(() => { const r = document.querySelector('.sheet .map-canvas').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+    await c.mouse.move(box.x, box.y); await c.mouse.down(); await c.mouse.move(box.x - 60, box.y - 40, { steps: 8 }); await c.mouse.up(); await pause(1500);
+    const moved = await text(c);
+    check(!moved.includes('41.365500, 69.284900') && /41\.36\d{4}, 69\.28\d{4}/.test(moved), 'dragging the map moves the delivery pin to a new point');
+    await shot(c, 'c-location-dragged-390');
+    await click(c, 'Joylashuvimni aniqlash', '.sheet button'); await pause(2500);
+  }
   await shot(c, 'c-location-390');
   await click(c, 'Shu joyni tasdiqlash', '.sheet button'); await pause(500);
   check((await text(c)).includes('41.365500') && (await text(c)).includes('Oʻzgartirish'), 'confirmed location shown in checkout');
@@ -106,6 +118,7 @@ try {
   await a.evaluate(n => [...document.querySelectorAll('.table tbody tr')].find(x => x.textContent.includes(n)).click(), placed); await pause(1500);
   let at = await text(a);
   check(at.includes('41.365500, 69.284900') && at.includes('2-podyezd, 4-qavat'), 'admin sees the customer map location and details');
+  check(await mapReady(a) === 'destination' && at.includes('Google Maps’da ochish'), 'admin order map (OpenFreeMap) with destination marker + external navigation link');
   check(at.includes('avval buyurtmani tasdiqlang'), 'assignment blocked until confirmation');
   await click(a, 'Tasdiqlangan', '.status-actions button'); await pause(1800);
   const courierOption = await a.evaluate(() => { const o = [...document.querySelectorAll('.assign-row option')].find(x => x.textContent.includes('Bekzod')); return o?.value; });
@@ -144,7 +157,8 @@ try {
   check((await text(c)).includes('Yoʻlda'), 'customer order shows ON_THE_WAY');
   await click(c, 'Kuzatish', '.order-actions button'); await pause(1500);
   const ct = await text(c);
-  check(ct.includes('Kuryer joylashuvi') && ct.includes('Bekzod') && ct.includes('41.330000, 69.250000') && ct.includes('41.365500, 69.284900'), 'tracking sheet: live position, courier name, both points without a Maps key');
+  check(ct.includes('Kuryer joylashuvi') && ct.includes('Bekzod'), 'tracking sheet: live position and courier name');
+  check(await mapReady(c, '.sheet') === 'courier,destination', 'tracking map (OpenFreeMap) shows courier and destination markers');
   await shot(c, 'c-tracking-390');
   await click(c, 'Yopish', '.sheet-head button');
 
@@ -194,6 +208,33 @@ try {
   await a.click('.modal-foot .btn-primary'); await pause(1500);
   const img = (await call('/products/klassik-soat')).data.product.images[0];
   const imgRes = await fetch(img); check(imgRes.status === 200 && imgRes.headers.get('content-type')?.startsWith('image/'), 'product image served from R2', img);
+
+  // ---------- Customer: email registration and passwordless sign-in (local test mode echoes the code) ----------
+  {
+    const { page: e, ctx: ectx } = await open('customer', 390);
+    await click(e, 'Profil', '.tabbar button'); await click(e, 'Roʻyxatdan oʻtish', '.account-cta button');
+    await click(e, 'Email', '.channel-switch button');
+    await setValue(e, '.sheet input[type=email]', 'Mijoz@Example.com');
+    await click(e, 'Emailga kod olish', '.sheet button'); await pause(800);
+    const emailCode = (await text(e)).match(/kod: (\d{6})/)?.[1];
+    check(/^\d{6}$/.test(emailCode || '') && (await text(e)).includes('Lokal sinov rejimi'), 'email: code requested; local test mode banner shows the code (never in production)');
+    await shot(e, 'c-email-code-390');
+    await setValue(e, '.sheet input.otp-single', emailCode); await setValue(e, '.sheet input[autocomplete=name]', 'Email Mijoz');
+    await click(e, 'Hisob yaratish', '.sheet button'); await pause(1200);
+    check((await text(e)).includes('Email Mijoz') && (await text(e)).includes('mijoz@example.com'), 'email: passwordless account created, email shown in profile');
+    await click(e, 'Chiqish'); await pause(1000);
+    await click(e, 'Kirish', '.account-cta button').catch(() => click(e, 'Hisobga kirish'));
+    await click(e, 'Email', '.channel-switch button');
+    await click(e, 'Parolsiz', '.sheet button');
+    await setValue(e, '.sheet input[type=email]', 'mijoz@example.com');
+    await pause(61000); // the per-address resend guard (60 s) also covers the first login code
+    await click(e, 'Emailga kod olish', '.sheet button'); await pause(800);
+    const loginCode = (await text(e)).match(/kod: (\d{6})/)?.[1];
+    await setValue(e, '.sheet input.otp-single', loginCode); await click(e, 'Kirish', '.sheet .btn-primary'); await pause(1200);
+    check((await text(e)).includes('Email Mijoz') && !(await text(e)).includes('Hisobingizga kiring'), 'email: passwordless sign-in with a code');
+    await shot(e, 'c-email-signed-in-390');
+    await ectx.close();
+  }
 
   // ---------- Responsive checks ----------
   for (const w of [320, 768]) { await a.setViewport({ width: w, height: 900, isMobile: w < 700, hasTouch: w < 700 }); await pause(500); check(!(await overflow(a)), `admin no horizontal overflow at ${w}px`); }

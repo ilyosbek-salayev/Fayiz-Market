@@ -27,12 +27,28 @@ try {
   let { proc, browser, page } = await launch(9333);
   check(!!page, 'packaged app starts and loads the bundled admin UI', page?.url().split('/').slice(-2).join('/'));
   check(await page.evaluate(() => !!window.fayzDesktop?.saveSession && !!window.fayzDesktop?.notify), 'desktop bridge exposes session + notifications');
+  await page.waitForFunction(() => /Boshqaruv paneliga kirish|Kunlik savdo/.test(document.body.innerText), { timeout: 30000 }).catch(() => undefined);
   if ((await text(page)).includes('Boshqaruv paneliga kirish')) {
     await page.type('input[type=email]', process.env.ADMIN_EMAIL); await page.type('input[type=password]', process.env.ADMIN_PASSWORD);
-    await page.click('.login-card .btn-primary'); await wait(4000);
+    await page.click('.login-card .btn-primary');
+    await page.waitForFunction(() => document.body.innerText.includes('Kunlik savdo'), { timeout: 30000 }).catch(() => undefined);
   }
   check((await text(page)).includes('Kunlik savdo'), 'login against Cloudflare production → dashboard');
   await page.screenshot({ path: path.join(SHOTS, 'desktop-dashboard.png') });
+  { // The keyless OpenFreeMap map must load inside the packaged app (file:// page, sandboxed renderer, WebGL).
+    const chunk = require('node:fs').readdirSync(path.join(ROOT, 'apps/desktop/web/assets')).find(f => /^maplibre-gl-.*\.js$/.test(f));
+    const map = await page.evaluate(async file => {
+      const mod = (await import(`./assets/${file}`)).m; const ml = mod.default || mod;
+      const el = document.createElement('div'); el.style.cssText = 'position:fixed;right:0;bottom:0;width:480px;height:320px;z-index:9999'; document.body.appendChild(el);
+      const m = new ml.Map({ container: el, style: 'https://tiles.openfreemap.org/styles/liberty', center: [69.2797, 41.3111], zoom: 13 });
+      const ok = await new Promise(r => { const t = setTimeout(() => r('timeout'), 25000); m.once('idle', () => { clearTimeout(t); r('idle'); }); m.on('error', e => { clearTimeout(t); r('error ' + (e.error?.message || '')); }); });
+      const out = { ok, tiles: m.areTilesLoaded() };
+      return out;
+    }, chunk);
+    await page.screenshot({ path: path.join(SHOTS, 'desktop-openfreemap.png') });
+    await page.evaluate(() => document.querySelector('.maplibregl-map')?.parentElement === document.body && document.querySelector('.maplibregl-map').remove());
+    check(map.ok === 'idle' && map.tiles, 'OpenFreeMap (MapLibre, no key) renders inside the packaged app', JSON.stringify(map));
+  }
   const support = path.join(os.homedir(), 'Library/Application Support/Fayz Market Admin/session.bin');
   check(existsSync(support), 'session saved encrypted (safeStorage / Keychain)');
   await wait(2000); // baseline poll
@@ -46,11 +62,14 @@ try {
   } else check(true, 'new-order notification skipped (production catalog empty — no test order created)');
   browser.disconnect(); proc.kill(); await wait(2500);
   ({ proc, browser, page } = await launch(9334));
-  await wait(3500);
+  await page.waitForFunction(() => document.body.innerText.includes('Kunlik savdo'), { timeout: 30000 }).catch(() => undefined);
   check((await text(page)).includes('Kunlik savdo'), 'after relaunch the session is restored from the keychain (no login screen)');
   check(!/[a-f0-9]{64}/.test(require('node:fs').readFileSync(support, 'latin1')), 'session file holds no plain-text token');
   // Log out through the UI so the server session is revoked and the keychain copy removed.
-  await page.evaluate(() => [...document.querySelectorAll('.side-foot button')].find(b => b.textContent.includes('Chiqish'))?.click()); await wait(2500);
+  // The button is disabled while the dashboard is still loading; wait until it can be pressed.
+  await page.waitForFunction(() => [...document.querySelectorAll('.side-foot button')].some(b => b.textContent.includes('Chiqish') && !b.disabled), { timeout: 30000 }).catch(() => undefined);
+  await page.evaluate(() => [...document.querySelectorAll('.side-foot button')].find(b => b.textContent.includes('Chiqish'))?.click());
+  await page.waitForFunction(() => document.body.innerText.includes('Boshqaruv paneliga kirish'), { timeout: 20000 }).catch(() => undefined); await wait(800);
   check((await text(page)).includes('Boshqaruv paneliga kirish') && !existsSync(support), 'logout clears the stored session');
   browser.disconnect(); proc.kill();
 } catch (e) { check(false, 'desktop smoke completed', String(e?.stack || e)); }

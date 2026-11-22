@@ -46,7 +46,7 @@ try {
   r = await call('/admin/integrations', { auth: manager }); check('manager cannot open integrations → 403', r.status === 403);
 
   // ---------- Customer registration (phone + OTP) ----------
-  r = await call('/auth/config'); check('auth config reports phone (dev) and telegram availability', r.data.phone?.enabled === true && r.data.phone?.devEcho === true && r.data.telegram?.enabled === false);
+  r = await call('/auth/config'); check('auth config reports phone + email (dev) and telegram availability', r.data.phone?.enabled === true && r.data.phone?.devEcho === true && r.data.email?.enabled === true && r.data.email?.devEcho === true && r.data.telegram?.enabled === false);
   const phone = '+99890' + String(Date.now()).slice(-7);
   r = await call('/auth/otp', { method: 'POST', body: { phone: '998901234567', purpose: 'register' } }); check('invalid phone format → 400', r.status === 400);
   r = await call('/auth/otp', { method: 'POST', body: { phone, purpose: 'register' } }); const code1 = r.data.devCode; check('OTP requested (dev echo only in development)', r.status === 200 && /^\d{6}$/.test(code1 || ''));
@@ -194,7 +194,7 @@ try {
   r = await call('/admin/password', { method: 'POST', auth: manager, body: { currentPassword: 'StaffPassword-123', password: 'ManagerNew-123' } }); check('self password change', r.status === 200);
   r = await call('/admin/integrations', { auth: owner });
   const body = JSON.stringify(r.data);
-  check('integrations list: status only, never secret values', r.status === 200 && r.data.integrations.length === 6 && !body.includes('AAH-local-qa-token') && r.data.integrations.find(i => i.key === 'telegram').secrets[0].present === true);
+  check('integrations list: status only, never secret values', r.status === 200 && r.data.integrations.length === 8 && !body.includes('AAH-local-qa-token') && r.data.integrations.find(i => i.key === 'telegram').secrets[0].present === true);
   r = await call('/admin/integrations/google_maps', { method: 'PUT', auth: owner, body: { google_maps_key: 'not-a-key' } }); check('invalid Maps key format rejected', r.status === 400);
   r = await call('/admin/integrations/google_maps', { method: 'PUT', auth: owner, body: { secret_field: 'x' } }); check('unknown integration fields rejected', r.status === 400);
   r = await call('/admin/integrations/store_location', { method: 'PUT', auth: owner, body: { store_address: 'Toshkent, Chorsu', store_lat: '41.3264', store_lng: '69.2286' } }); check('store pickup location saved', r.status === 200);
