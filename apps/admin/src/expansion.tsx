@@ -37,7 +37,7 @@ export function OrderDelivery({ order, extras, request, mapsKey, onChanged }: { 
       {order.location ? <div className="form-stack">
         <MapView apiKey={mapsKey} markers={markers} fit={markers.length > 1} />
         <div className="facts"><div><Icon name="pin" size={18} /><span className="num">{formatCoords(order.location)}</span></div>{order.location.details && <div><Icon name="note" size={18} /><span>{order.location.details}</span></div>}</div>
-        {mapsKey && <a className="btn btn-sm btn-secondary" href={mapsLink(order.location)} target="_blank" rel="noopener"><Icon name="navigation" size={16} />Google Maps’da ochish</a>}
+        <a className="btn btn-sm btn-secondary" href={mapsLink(order.location)} target="_blank" rel="noopener"><Icon name="navigation" size={16} />Google Maps’da ochish</a>
         {extras?.courierLocation && <p className="t-caption"><span className={`live-dot${extras.courierLocation.ageSeconds <= 120 ? '' : ' stale'}`} /> Kuryer joylashuvi: {agoText(extras.courierLocation.ageSeconds)}</p>}
       </div> : <p className="t-caption">Mijoz xaritada nuqta belgilamagan — faqat matnli manzil bor.</p>}
     </section>

@@ -1,8 +1,13 @@
 /* Shared styles for the V1 expansion screens (maps, timeline, rating, auth, OTP). Built on tokens.css. */
 .map-box { position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: 62vh; border-radius: var(--r-md); overflow: hidden; background: var(--surface-2); border: 1px solid var(--line); }
 .map-box.tall { aspect-ratio: auto; height: min(60vh, 520px); }
-.map-canvas { position: absolute; inset: 0; }
+/* Higher specificity than maplibre-gl.css (.maplibregl-map { position: relative }), which loads later. */
+.map-box > .map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .map-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 14px; }
+.map-dot { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); box-sizing: border-box; }
+.map-dot-courier { width: 22px; height: 22px; }
+.map-box .maplibregl-ctrl-attrib { font-size: 11px; }
+.map-box .maplibregl-ctrl-group button { width: 36px; height: 36px; }
 .map-pin { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%); pointer-events: none; filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
 .map-fallback { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 24px 18px; border-radius: var(--r-md); background: var(--surface-2); border: 1px dashed var(--line-strong); color: var(--text); }
 .map-fallback > svg { color: var(--muted); }
@@ -45,6 +50,10 @@
 .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: var(--r-sm); background: var(--surface-2); }
 .segmented button { min-height: 38px; border: 0; border-radius: 9px; background: transparent; font-weight: 600; font-size: 14px; color: var(--muted); cursor: pointer; }
 .segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
+.channel-switch { display: flex; gap: 8px; }
+.channel-switch button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border-radius: var(--r-pill); border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.channel-switch button.active { border-color: var(--text); color: var(--text); background: var(--surface); }
+.channel-switch button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 
 .divider-text { display: flex; align-items: center; gap: 12px; color: var(--subtle); font-size: 12px; }
 .divider-text::before, .divider-text::after { content: ''; flex: 1; height: 1px; background: var(--line); }

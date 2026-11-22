@@ -10,8 +10,8 @@ import { agoText, stageIndex, stageNames, stageSteps } from '../../../packages/u
 import { Field, Sheet, revealOnFocus } from './components';
 
 export type Api = <T>(path: string, init?: RequestInit) => Promise<T>;
-export type AuthConfig = { phone: { enabled: boolean; devEcho: boolean }; telegram: { enabled: boolean; botUsername: string | null; botId: string | null }; password: boolean };
-export type Customer = { id: number; name: string; phone: string | null; phoneVerified: boolean; telegram: { username: string | null } | null; hasPassword: boolean };
+export type AuthConfig = { phone: { enabled: boolean; devEcho: boolean }; email?: { enabled: boolean; devEcho: boolean }; telegram: { enabled: boolean; botUsername: string | null; botId: string | null }; password: boolean };
+export type Customer = { id: number; name: string; phone: string | null; phoneVerified: boolean; email?: string | null; emailVerified?: boolean; telegram: { username: string | null } | null; hasPassword: boolean };
 export type DeliveryLocation = LatLng & { accuracy?: number; address?: string };
 export type OrderView = {
   id: number; orderNumber: string; status: string; stage: string; total: number; createdAt: string; customerName: string; phone: string; address: string;
@@ -24,63 +24,93 @@ const PHONE = /^\+998\d{9}$/;
 
 // ---------------------------------------------------------------- Authentication
 type Mode = 'login' | 'register' | 'reset';
+type Channel = 'phone' | 'email';
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+type Session = { token: string; customer: Customer };
 export function AuthSheet({ api, config, initialMode = 'login', onDone, onClose }: { api: Api; config: AuthConfig | null; initialMode?: Mode; onDone: (token: string, customer: Customer) => void; onClose: () => void }) {
   const [mode, setMode] = useState<Mode>(initialMode);
+  const [channel, setChannel] = useState<Channel>('phone');
+  const [codeLogin, setCodeLogin] = useState(false); // email: sign in with a one-time code instead of a password
   const [step, setStep] = useState<'phone' | 'code'>('phone');
-  const [phone, setPhone] = useState('+998'); const [password, setPassword] = useState(''); const [name, setName] = useState(''); const [code, setCode] = useState('');
+  const [phone, setPhone] = useState('+998'); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [name, setName] = useState(''); const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [info, setInfo] = useState(''); const [devCode, setDevCode] = useState('');
   const [resendAt, setResendAt] = useState(0); const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
-  const smsReady = !!config?.phone.enabled;
-  const switchMode = (next: Mode) => { setMode(next); setStep('phone'); setError(''); setInfo(''); setCode(''); setDevCode(''); };
+  const isEmail = channel === 'email';
+  const emailOffered = !!config?.email; // older Workers do not report email sign-in at all
+  const codeReady = isEmail ? !!config?.email?.enabled : !!config?.phone.enabled;
+  const usesCode = mode !== 'login' || (isEmail && codeLogin);
+  const reset = () => { setStep('phone'); setError(''); setInfo(''); setCode(''); setDevCode(''); };
+  const switchMode = (next: Mode) => { setMode(next); setCodeLogin(false); reset(); };
+  const switchChannel = (next: Channel) => { setChannel(next); setCodeLogin(false); reset(); };
   const run = async (task: () => Promise<void>) => { setBusy(true); setError(''); try { await task(); } catch (e) { setError(friendlyError(e)); } finally { setBusy(false); } };
+  const checkIdentifier = () => {
+    if (isEmail && !EMAIL.test(email.trim())) throw new Error('Email manzilini toʻliq kiriting, masalan: ism@gmail.com');
+    if (!isEmail && !PHONE.test(phone)) throw new Error('Raqamni +998 va 9 ta raqam bilan kiriting');
+  };
   const requestCode = () => run(async () => {
-    if (!PHONE.test(phone)) throw new Error('Raqamni +998 va 9 ta raqam bilan kiriting');
-    const r = await api<{ resendIn: number; devCode?: string }>('/auth/otp', { method: 'POST', body: JSON.stringify({ phone, purpose: mode === 'reset' ? 'reset' : 'register' }) });
+    checkIdentifier();
+    const purpose = mode === 'reset' ? 'reset' : mode === 'login' ? 'login' : 'register';
+    const r = isEmail
+      ? await api<{ resendIn: number; devCode?: string }>('/auth/email/otp', { method: 'POST', body: JSON.stringify({ email: email.trim(), purpose }) })
+      : await api<{ resendIn: number; devCode?: string }>('/auth/otp', { method: 'POST', body: JSON.stringify({ phone, purpose }) });
     setResendAt(Date.now() + r.resendIn * 1000); setDevCode(r.devCode || ''); setStep('code');
-    setInfo(mode === 'reset' ? 'Agar bu raqam roʻyxatdan oʻtgan boʻlsa, unga SMS kod yuborildi.' : `${phone} raqamiga SMS kod yuborildi.`);
+    const to = isEmail ? email.trim() : phone;
+    setInfo(mode === 'register' ? `${to} ${isEmail ? 'manziliga' : 'raqamiga'} kod yuborildi.` : `Agar ${to} roʻyxatdan oʻtgan boʻlsa, unga kod yuborildi.`);
   });
   const finish = () => run(async () => {
-    if (!/^\d{6}$/.test(code)) throw new Error('SMS dagi 6 xonali kodni kiriting');
-    if (password.length < 10) throw new Error('Parol kamida 10 ta belgidan iborat boʻlsin');
-    const r = mode === 'register'
-      ? await api<{ token: string; customer: Customer }>('/auth/register', { method: 'POST', body: JSON.stringify({ phone, code, password, name }) })
-      : await api<{ token: string; customer: Customer }>('/auth/password/reset', { method: 'POST', body: JSON.stringify({ phone, code, password }) });
+    if (!/^\d{6}$/.test(code)) throw new Error(`${isEmail ? 'Xatdagi' : 'SMS dagi'} 6 xonali kodni kiriting`);
+    const needsPassword = mode === 'reset' || (mode === 'register' && (!isEmail || password.length > 0));
+    if (needsPassword && password.length < 10) throw new Error('Parol kamida 10 ta belgidan iborat boʻlsin');
+    const post = (path: string, body: object) => api<Session>(path, { method: 'POST', body: JSON.stringify(body) });
+    const id = isEmail ? { email: email.trim() } : { phone };
+    const r = mode === 'login' ? await post('/auth/email/login', { email: email.trim(), code })
+      : mode === 'register' ? await post(isEmail ? '/auth/email/register' : '/auth/register', { ...id, code, name, ...(password ? { password } : {}) })
+      : await post(isEmail ? '/auth/email/reset' : '/auth/password/reset', { ...id, code, password });
     onDone(r.token, r.customer);
   });
   const login = () => run(async () => {
-    if (!PHONE.test(phone)) throw new Error('Raqamni +998 va 9 ta raqam bilan kiriting');
-    const r = await api<{ token: string; customer: Customer }>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+    checkIdentifier();
+    const r = await api<Session>('/auth/login', { method: 'POST', body: JSON.stringify(isEmail ? { email: email.trim(), password } : { phone, password }) });
     onDone(r.token, r.customer);
   });
   const wait = Math.max(0, Math.ceil((resendAt - now) / 1000));
   const title = mode === 'login' ? 'Hisobga kirish' : mode === 'register' ? 'Roʻyxatdan oʻtish' : 'Parolni tiklash';
-  const phoneField = <Field label="Telefon raqami" hint="Masalan: +998901234567"><input className="input num" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/[^\d+]/g, ''))} onFocus={revealOnFocus} disabled={step === 'code'} /></Field>;
+  const codeName = isEmail ? 'Email kod' : 'SMS kod';
+  const identifierField = isEmail
+    ? <Field label="Email"><input className="input" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" spellCheck={false} value={email} onChange={e => setEmail(e.target.value)} onFocus={revealOnFocus} disabled={step === 'code'} /></Field>
+    : <Field label="Telefon raqami" hint="Masalan: +998901234567"><input className="input num" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/[^\d+]/g, ''))} onFocus={revealOnFocus} disabled={step === 'code'} /></Field>;
   return <Sheet title={title} onClose={onClose}>
     <div className="form-stack auth-form">
       {mode !== 'reset' && <div className="segmented" role="tablist"><button role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? 'active' : ''} onClick={() => switchMode('login')}>Kirish</button><button role="tab" aria-selected={mode === 'register'} className={mode === 'register' ? 'active' : ''} onClick={() => switchMode('register')}>Roʻyxatdan oʻtish</button></div>}
+      {emailOffered && <div className="channel-switch" role="radiogroup" aria-label="Kirish usuli">
+        <button role="radio" aria-checked={!isEmail} className={!isEmail ? 'active' : ''} onClick={() => switchChannel('phone')}><Icon name="phone" size={16} />Telefon</button>
+        <button role="radio" aria-checked={isEmail} className={isEmail ? 'active' : ''} onClick={() => switchChannel('email')}><Icon name="mail" size={16} />Email</button>
+      </div>}
       {error && <div className="banner banner-error" role="alert"><Icon name="alert" size={20} /><div>{error}</div></div>}
-      {info && !error && <div className="banner banner-info" role="status"><Icon name="phone" size={20} /><div>{info}</div></div>}
-      {devCode && <div className="banner banner-warning" role="status"><Icon name="key" size={20} /><div><strong>Sinov serveri</strong>SMS yuborilmadi, kod: <span className="num">{devCode}</span>. Productionda bu koʻrinmaydi.</div></div>}
-      {mode === 'login' && <>
-        {phoneField}
+      {info && !error && <div className="banner banner-info" role="status"><Icon name={isEmail ? 'mail' : 'phone'} size={20} /><div>{info}</div></div>}
+      {devCode && <div className="banner banner-warning" role="status"><Icon name="key" size={20} /><div><strong>Lokal sinov rejimi</strong>{isEmail ? 'Xat' : 'SMS'} yuborilmadi, kod: <span className="num">{devCode}</span>. Productionda bu koʻrinmaydi.</div></div>}
+      {mode === 'login' && !usesCode && <>
+        {identifierField}
         <Field label="Parol"><input className="input" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} onFocus={revealOnFocus} /></Field>
         <button className="btn btn-primary btn-lg btn-block" onClick={login} disabled={busy}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : 'Kirish'}</button>
+        {isEmail && <button className="btn btn-secondary btn-block" onClick={() => { setCodeLogin(true); reset(); }}><Icon name="key" size={18} />Parolsiz — emailga kod olish</button>}
         <button className="link-btn" onClick={() => switchMode('reset')}>Parolni unutdingizmi?</button>
       </>}
-      {mode !== 'login' && !smsReady && <div className="banner banner-warning"><Icon name="alert" size={20} /><div><strong>SMS tasdiqlash hozircha ishlamaydi</strong>Doʻkon SMS xizmatini ulagach, telefon orqali roʻyxatdan oʻtish mumkin boʻladi.{config?.telegram.enabled ? ' Hozir Telegram orqali kirishingiz mumkin.' : ''}</div></div>}
-      {mode !== 'login' && smsReady && step === 'phone' && <>
-        {phoneField}
-        <button className="btn btn-primary btn-lg btn-block" onClick={requestCode} disabled={busy}>{busy ? <><span className="spinner" />Yuborilmoqda...</> : 'SMS kod olish'}</button>
+      {usesCode && !codeReady && <div className="banner banner-warning"><Icon name="alert" size={20} /><div><strong>{isEmail ? 'Email tasdiqlash hozircha ishlamaydi' : 'SMS tasdiqlash hozircha ishlamaydi'}</strong>{isEmail ? 'Doʻkon email xizmatini ulagach, email orqali kod olish mumkin boʻladi.' : 'Doʻkon SMS xizmatini ulagach, telefon orqali roʻyxatdan oʻtish mumkin boʻladi.'}{config?.telegram.enabled ? ' Hozir Telegram orqali kirishingiz mumkin.' : ''}</div></div>}
+      {usesCode && codeReady && step === 'phone' && <>
+        {identifierField}
+        <button className="btn btn-primary btn-lg btn-block" onClick={requestCode} disabled={busy}>{busy ? <><span className="spinner" />Yuborilmoqda...</> : isEmail ? 'Emailga kod olish' : 'SMS kod olish'}</button>
       </>}
-      {mode !== 'login' && smsReady && step === 'code' && <>
-        {phoneField}
-        <Field label="SMS kod"><input className="input num otp-single" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} onFocus={revealOnFocus} placeholder="••••••" /></Field>
-        <div className="resend"><button className="link-btn plain" onClick={() => { setStep('phone'); setInfo(''); }}>Raqamni oʻzgartirish</button>{wait > 0 ? <span className="num">Qayta yuborish: {wait} s</span> : <button className="link-btn plain" onClick={requestCode} disabled={busy}>Kodni qayta yuborish</button>}</div>
+      {usesCode && codeReady && step === 'code' && <>
+        {identifierField}
+        <Field label={codeName}><input className="input num otp-single" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} onFocus={revealOnFocus} placeholder="••••••" /></Field>
+        <div className="resend"><button className="link-btn plain" onClick={() => { setStep('phone'); setInfo(''); }}>{isEmail ? 'Emailni oʻzgartirish' : 'Raqamni oʻzgartirish'}</button>{wait > 0 ? <span className="num">Qayta yuborish: {wait} s</span> : <button className="link-btn plain" onClick={requestCode} disabled={busy}>Kodni qayta yuborish</button>}</div>
         {mode === 'register' && <Field label="Ismingiz"><input className="input" autoComplete="name" value={name} onChange={e => setName(e.target.value)} onFocus={revealOnFocus} /></Field>}
-        <Field label={mode === 'register' ? 'Parol' : 'Yangi parol'} hint="Kamida 10 ta belgi"><input className="input" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} onFocus={revealOnFocus} /></Field>
-        <button className="btn btn-primary btn-lg btn-block" onClick={finish} disabled={busy || (mode === 'register' && name.trim().length < 2)}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : mode === 'register' ? 'Hisob yaratish' : 'Parolni saqlash'}</button>
+        {mode !== 'login' && <Field label={mode === 'register' ? (isEmail ? 'Parol (ixtiyoriy)' : 'Parol') : 'Yangi parol'} hint={mode === 'register' && isEmail ? 'Kamida 10 ta belgi. Boʻsh qoldirsangiz, har safar emailga kelgan kod bilan kirasiz' : 'Kamida 10 ta belgi'}><input className="input" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} onFocus={revealOnFocus} /></Field>}
+        <button className="btn btn-primary btn-lg btn-block" onClick={finish} disabled={busy || (mode === 'register' && name.trim().length < 2)}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : mode === 'register' ? 'Hisob yaratish' : mode === 'login' ? 'Kirish' : 'Parolni saqlash'}</button>
       </>}
+      {mode === 'login' && usesCode && <button className="link-btn" onClick={() => { setCodeLogin(false); reset(); }}>Parol bilan kirish</button>}
       {mode === 'reset' && <button className="link-btn" onClick={() => switchMode('login')}>Kirish sahifasiga qaytish</button>}
       {config?.telegram.enabled && mode !== 'reset' && <>
         <div className="divider-text">yoki</div>
@@ -137,10 +167,9 @@ export function LocationSheet({ apiKey, initial, onConfirm, onClose }: { apiKey?
     try { const p = await currentPosition(); setCenter({ lat: p.lat, lng: p.lng }); setPicked(p); setAccuracy(p.accuracy); }
     catch (e) { setError(friendlyError(e)); } finally { setLocating(false); }
   };
-  const mapOn = !!apiKey;
   return <Sheet title="Yetkazish joyi" onClose={onClose} footer={<><button className="btn btn-primary btn-lg btn-block" disabled={!picked} onClick={() => picked && onConfirm({ lat: picked.lat, lng: picked.lng, accuracy: picked.accuracy ?? accuracy, address })}><Icon name="check" size={20} />Shu joyni tasdiqlash</button><button className="btn btn-quiet btn-block" onClick={onClose}>Bekor qilish</button></>}>
     <div className="form-stack">
-      <p className="t-caption">{mapOn ? 'Xaritani suring — qizil pin yetkazish nuqtasini koʻrsatadi. GPS aniqligi har doim ham toʻliq emas, pinni toʻgʻrilab qoʻying.' : 'Joriy joylashuvingizni aniqlang. Xarita ulangach, pinni qoʻlda ham surish mumkin boʻladi.'}</p>
+      <p className="t-caption">Xaritani suring — qizil pin yetkazish nuqtasini koʻrsatadi. GPS aniqligi har doim ham toʻliq emas, pinni toʻgʻrilab qoʻying.</p>
       <MapView apiKey={apiKey} center={center} picker onPick={onPick} onAddress={setAddress} className="tall" />
       <button className="btn btn-secondary btn-block" onClick={locate} disabled={locating}>{locating ? <><span className="spinner" />Aniqlanmoqda...</> : <><Icon name="target" size={18} />Joylashuvimni aniqlash</>}</button>
       {error && <div className="banner banner-warning" role="alert"><Icon name="alert" size={20} /><div>{error}</div></div>}
