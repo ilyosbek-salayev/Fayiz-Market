@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'uz.fayzmarket.admin'
     compileSdk 35
-    defaultConfig { applicationId 'uz.fayzmarket.admin'; minSdk 23; targetSdk 28; versionCode 2; versionName '1.0.1'; resValue 'string', 'default_api_url', (project.findProperty('fayzApiUrl') ?: 'https://fayz-market-api.ilyosbeksalayev240.workers.dev').toString() }
+    defaultConfig { applicationId 'uz.fayzmarket.admin'; minSdk 23; targetSdk 28; versionCode 3; versionName '1.1.0'; resValue 'string', 'default_api_url', (project.findProperty('fayzApiUrl') ?: 'https://fayz-market-api.ilyosbeksalayev240.workers.dev').toString() }
     buildTypes { release { minifyEnabled false } }
-    sourceSets { main { assets.srcDirs = ['src/main/assets'] } }
+    sourceSets { main { assets.srcDirs = ['src/main/assets']; java.srcDirs += ['../shared/java']; res.srcDirs += ['../shared/res'] } }
 }
