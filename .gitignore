@@ -31,4 +31,5 @@ scripts/ui-qa/shots/
 scripts/ui-qa/qa-order.json
 scripts/ui-qa/node_modules/
 scripts/deploy-qa/shots/
+scripts/android-qa/shots/
 scripts/deploy-qa/created.json

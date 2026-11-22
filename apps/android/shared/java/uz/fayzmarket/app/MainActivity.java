@@ -73,7 +73,7 @@ public final class MainActivity extends Activity {
         if (asset.contains("..") || asset.isEmpty()) return null;
         try {
           InputStream data = getAssets().open(asset);
-          String mime = asset.endsWith(".js") ? "text/javascript" : asset.endsWith(".css") ? "text/css" : asset.endsWith(".svg") ? "image/svg+xml" : asset.endsWith(".png") ? "image/png" : asset.endsWith(".webp") ? "image/webp" : asset.endsWith(".woff2") ? "font/woff2" : "text/html";
+          String mime = asset.endsWith(".js") ? "text/javascript" : asset.endsWith(".css") ? "text/css" : asset.endsWith(".svg") ? "image/svg+xml" : asset.endsWith(".png") ? "image/png" : asset.endsWith(".webp") ? "image/webp" : asset.endsWith(".woff2") ? "font/woff2" : asset.endsWith(".json") ? "application/json" : asset.endsWith(".wasm") ? "application/wasm" : asset.endsWith(".html") ? "text/html" : "application/octet-stream";
           return new WebResourceResponse(mime, "UTF-8", data);
         } catch (Exception ignored) { return null; }
       }
