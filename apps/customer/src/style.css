@@ -250,3 +250,46 @@
   .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   .order-list, .cart-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ---------- V1 expansion: account, location, tracking, confirmation, reviews ---------- */
+.center { text-align: center; }
+.auth-form .link-btn { justify-self: center; padding: 6px 8px; }
+.otp-single { font-size: 24px; font-weight: 700; letter-spacing: .45em; text-align: center; }
+.account-panel, .account-cta { display: grid; gap: 12px; }
+.account-row { display: flex; align-items: center; gap: 14px; }
+.account-row > div { display: grid; min-width: 0; gap: 2px; }
+.account-row strong { font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.empty-icon.small { width: 52px; height: 52px; border-radius: 16px; margin: 0; flex: none; }
+.verified { display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; color: var(--success); font-weight: 600; }
+.cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.toggle-row input { width: 22px; height: 22px; accent-color: var(--accent-strong); flex: none; }
+.loc-btn { min-height: 52px; border-style: dashed; }
+.loc-summary { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--text); }
+.loc-summary > svg { flex: none; color: var(--accent-ink); }
+.loc-summary > div { display: grid; min-width: 0; flex: 1; }
+.loc-summary strong { font-size: 14px; overflow-wrap: anywhere; }
+.loc-summary .link-btn { flex: none; }
+.order-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.confirm-card { display: grid; gap: 12px; padding: 14px; border-radius: var(--r-md); background: var(--success-soft); border: 1px solid color-mix(in srgb, var(--success) 25%, transparent); }
+.confirm-card.compact { margin-bottom: 4px; }
+.confirm-head { display: flex; gap: 12px; align-items: flex-start; }
+.confirm-head > div { display: grid; gap: 2px; min-width: 0; }
+.confirm-head strong { color: var(--success); font-size: 15px; }
+.confirm-icon { flex: none; width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: var(--success); color: #fff; }
+.confirm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.confirm-actions .btn { flex: 1 1 140px; }
+.track-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.track-age { display: inline-flex; align-items: center; gap: 8px; }
+.courier-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-sm); background: var(--surface-2); }
+.courier-card > div { display: grid; flex: 1; min-width: 0; }
+.avatar-sm { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-ink); }
+.review-item { display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.review-item:last-child { border-bottom: 0; }
+.detail-reviews { display: grid; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); width: 100%; }
+.reviews-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.reviews-avg { display: inline-flex; align-items: center; gap: 6px; }
+.review-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.review-list li { display: grid; gap: 4px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-2); }
+.review-meta { display: flex; align-items: center; gap: 8px; }
+.lock-screen { position: fixed; inset: 0; z-index: 80; display: grid; align-content: center; justify-items: center; gap: 14px; padding: 32px 24px calc(32px + env(safe-area-inset-bottom)); background: var(--bg); text-align: center; }
+.lock-screen .btn { max-width: 360px; }
