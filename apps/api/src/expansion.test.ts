@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { dataCheckString, telegramSignature, verifyTelegramLogin } from './telegram';
 import { ACTIVE, FINISHED, REASSIGNABLE, TRACKABLE, courierTransitions, haversine, nextDeliveryStatus, stageOf, stepsToShipped } from './lifecycle';
 import { generateCode, hashCode, smsStatus } from './otp';
+import { emailStatus, codeEmail } from './email';
+import { isDevelopment, providerBase } from './lib';
 
 const BOT = '123456789:AAH-test-token-for-unit-tests-only';
 const now = 1_800_000_000;
@@ -87,8 +89,42 @@ describe('one-time codes', () => {
   });
   it('never enables the development echo in production', () => {
     expect(smsStatus({ ENVIRONMENT: 'production', OTP_DEV_ECHO: '1' } as never).devEcho).toBe(false);
-    expect(smsStatus({ ENVIRONMENT: 'development', OTP_DEV_ECHO: '1' } as never).devEcho).toBe(true);
+    expect(smsStatus({ ENVIRONMENT: 'development', OTP_DEV_ECHO: '1', PUBLIC_BASE_URL: 'http://127.0.0.1:8788' } as never).devEcho).toBe(true);
+    // A missing ENVIRONMENT, or "development" on an https (deployed) URL, is not local test mode either.
+    expect(smsStatus({ OTP_DEV_ECHO: '1', PUBLIC_BASE_URL: 'http://127.0.0.1:8788' } as never).devEcho).toBe(false);
+    expect(smsStatus({ ENVIRONMENT: 'development', OTP_DEV_ECHO: '1', PUBLIC_BASE_URL: 'https://fayz-market-api.example.workers.dev' } as never).devEcho).toBe(false);
+    expect(emailStatus({ ENVIRONMENT: 'production', OTP_DEV_ECHO: '1', PUBLIC_BASE_URL: 'http://127.0.0.1:8788' } as never).devEcho).toBe(false);
     expect(smsStatus({ SMS_PROVIDER: 'eskiz', ESKIZ_EMAIL: 'a', ESKIZ_PASSWORD: 'b' } as never).configured).toBe(true);
     expect(smsStatus({} as never).configured).toBe(false);
+  });
+});
+
+describe('local test mode isolation', () => {
+  const local = { ENVIRONMENT: 'development', PUBLIC_BASE_URL: 'http://127.0.0.1:8789', DEV_MOCK_PROVIDERS: 'http://127.0.0.1:8790' };
+  it('routes providers to the local mock only in local development', () => {
+    expect(isDevelopment(local as never)).toBe(true);
+    expect(providerBase(local as never, 'fcm', 'https://fcm.googleapis.com')).toBe('http://127.0.0.1:8790/fcm');
+  });
+  it('ignores the mock override in production or on a deployed URL', () => {
+    expect(providerBase({ ...local, ENVIRONMENT: 'production' } as never, 'fcm', 'https://fcm.googleapis.com')).toBe('https://fcm.googleapis.com');
+    expect(providerBase({ ...local, PUBLIC_BASE_URL: 'https://x.workers.dev' } as never, 'resend', 'https://api.resend.com')).toBe('https://api.resend.com');
+    expect(providerBase({ ...local, ENVIRONMENT: undefined } as never, 'eskiz', 'https://notify.eskiz.uz')).toBe('https://notify.eskiz.uz');
+  });
+  it('accepts only a loopback http origin as the mock', () => {
+    expect(providerBase({ ...local, DEV_MOCK_PROVIDERS: 'https://evil.example' } as never, 'telegram', 'https://api.telegram.org')).toBe('https://api.telegram.org');
+    expect(providerBase({ ...local, DEV_MOCK_PROVIDERS: 'http://10.0.0.5:8790' } as never, 'telegram', 'https://api.telegram.org')).toBe('https://api.telegram.org');
+  });
+});
+
+describe('email codes', () => {
+  it('needs a real provider configuration', () => {
+    expect(emailStatus({} as never).configured).toBe(false);
+    expect(emailStatus({ EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 'k' } as never).configured).toBe(false);
+    expect(emailStatus({ EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 'k', EMAIL_FROM: 'Fayz <kod@fayz.uz>' } as never).configured).toBe(true);
+  });
+  it('puts the code in the message and escapes HTML', () => {
+    const m = codeEmail('482913', 'login');
+    expect(m.subject).toContain('482913'); expect(m.text).toContain('482913'); expect(m.html).toContain('482913');
+    expect(codeEmail('<b>', 'register').html).not.toContain('<b>');
   });
 });

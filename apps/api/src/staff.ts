@@ -1,7 +1,8 @@
 // Staff management, password changes, notification feed, review moderation, audit log and integrations.
 import { z } from 'zod';
 import type { App, Bindings } from './lib';
-import { audit, fail, idFrom, limitOr429, parse, sha256, strongPassword } from './lib';
+import { audit, fail, idFrom, limitOr429, parse, providerBase, sha256, strongPassword } from './lib';
+import { emailStatus, testEmail } from './email';
 import { passwordHash, verifyPassword } from './password';
 import { smsStatus, testSms } from './otp';
 import { googleAccessToken } from './push';
@@ -21,7 +22,18 @@ export const integrations: IntegrationDef[] = [
     configured: (_e, s) => !!s.store_lat && !!s.store_lng,
   },
   {
-    key: 'google_maps', name: 'Google Maps', purpose: 'Mijoz checkoutda manzilni xaritadan tanlaydi; admin va kuryer buyurtma joyini koʻradi', billing: 'Google Cloud billing hisobi talab qilinadi (oylik bepul limit bor). Faollashtirishdan oldin tasdiqlang.',
+    key: 'openfreemap', name: 'Xarita (OpenFreeMap)', purpose: 'Asosiy interaktiv xarita: checkoutda pin, kuzatuv, admin va kuryer xaritasi. Kalit va hisob talab qilinmaydi.', billing: 'Bepul (OpenFreeMap, © OpenStreetMap hissadorlari). Manzil nomini avtomatik aniqlash yoʻq.',
+    publicFields: [], secrets: [], setup: ['Sozlash shart emas — Google Maps kaliti kiritilmagan boʻlsa ilovalar shu xaritani ishlatadi.', '«Tekshirish» xarita uslubi serverdan yuklanishini tekshiradi.'],
+    configured: () => true,
+    test: async () => {
+      const res = await fetch('https://tiles.openfreemap.org/styles/liberty');
+      const style = await res.json<any>().catch(() => null);
+      if (!res.ok || !style?.sources) throw new Error(`OpenFreeMap javobi: HTTP ${res.status}`);
+      return 'Xarita uslubi va plitkalar manbai mavjud';
+    },
+  },
+  {
+    key: 'google_maps', name: 'Google Maps (ixtiyoriy)', purpose: 'Kalit kiritilsa ilovalardagi xarita Google’ga almashadi va pin qoʻyilganda manzil nomi avtomatik yoziladi. Kalit ishlamasa, OpenFreeMap’ga qaytadi.', billing: 'Google Cloud billing hisobi talab qilinadi (oylik bepul limit bor). Faollashtirishdan oldin tasdiqlang.',
     publicFields: [{ key: 'google_maps_key', label: 'Browser API kaliti', placeholder: 'AIza…', hint: 'Faqat Maps JavaScript API va Geocoding API, HTTP referrer cheklovi bilan' }],
     secrets: [], setup: ['Google Cloud Console → yangi loyiha → Billing ulang (faqat tasdiqlangach).', 'Maps JavaScript API va Geocoding API ni yoqing.', 'Credentials → API key → Application restrictions: Websites → `<worker manzili>/*` qoʻshing.', 'API restrictions: faqat Maps JavaScript API va Geocoding API.', 'Kalitni shu yerga kiriting va «Tekshirish»ni bosing.'],
     configured: (_e, s) => !!s.google_maps_key,
@@ -38,7 +50,7 @@ export const integrations: IntegrationDef[] = [
     setup: ['Google Cloud → Routes API ni yoqing.', 'Server uchun alohida API key yarating (API restrictions: faqat Routes API).', 'Terminalda (apps/api): `npx wrangler secret put GOOGLE_ROUTES_KEY --env production`'],
     configured: e => !!e.GOOGLE_ROUTES_KEY,
     test: async e => {
-      const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': e.GOOGLE_ROUTES_KEY!, 'X-Goog-FieldMask': 'routes.distanceMeters' }, body: JSON.stringify({ origin: { location: { latLng: { latitude: 41.3111, longitude: 69.2797 } } }, destination: { location: { latLng: { latitude: 41.3275, longitude: 69.2817 } } }, travelMode: 'DRIVE' }) });
+      const res = await fetch(`${providerBase(e, 'routes', 'https://routes.googleapis.com')}/directions/v2:computeRoutes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': e.GOOGLE_ROUTES_KEY!, 'X-Goog-FieldMask': 'routes.distanceMeters' }, body: JSON.stringify({ origin: { location: { latLng: { latitude: 41.3111, longitude: 69.2797 } } }, destination: { location: { latLng: { latitude: 41.3275, longitude: 69.2817 } } }, travelMode: 'DRIVE' }) });
       if (!res.ok) throw new Error(`Routes API: HTTP ${res.status}`);
       return 'Marshrut hisoblandi';
     },
@@ -49,7 +61,7 @@ export const integrations: IntegrationDef[] = [
     setup: ['@BotFather → /newbot → bot yarating.', '@BotFather → /setdomain → worker domenini kiriting (masalan fayz-market-api.….workers.dev).', 'Terminalda (apps/api): `npx wrangler secret put TELEGRAM_BOT_TOKEN --env production`', 'Bot username’ni shu yerga kiriting va «Tekshirish»ni bosing.'],
     configured: (e, s) => !!e.TELEGRAM_BOT_TOKEN && !!s.telegram_bot_username,
     test: async (e, s) => {
-      const res = await fetch(`https://api.telegram.org/bot${e.TELEGRAM_BOT_TOKEN}/getMe`);
+      const res = await fetch(`${providerBase(e, 'telegram', 'https://api.telegram.org')}/bot${e.TELEGRAM_BOT_TOKEN}/getMe`);
       const data = await res.json<any>().catch(() => ({}));
       if (!data.ok) throw new Error('Bot tokeni qabul qilinmadi');
       if (s.telegram_bot_username && data.result.username.toLowerCase() !== s.telegram_bot_username.replace(/^@/, '').toLowerCase()) throw new Error(`Token @${data.result.username} botiga tegishli, sozlamada @${s.telegram_bot_username}`);
@@ -64,11 +76,18 @@ export const integrations: IntegrationDef[] = [
     test: async e => testSms(e),
   },
   {
+    key: 'email', name: 'Email tasdiqlash (Resend)', purpose: 'Email orqali roʻyxatdan oʻtish, parolsiz kirish kodi va parolni tiklash', billing: 'Resend bepul tarifida oyiga 3 000 ta xat; oʻz domeningiz (DNS yozuvlari) talab qilinadi.',
+    publicFields: [], secrets: ['EMAIL_PROVIDER', 'RESEND_API_KEY', 'EMAIL_FROM'],
+    setup: ['resend.com da hisob oching va oʻz domeningizni qoʻshing (SPF/DKIM DNS yozuvlari) — workers.dev domenidan xat yuborib boʻlmaydi.', 'API Keys → «Sending access» kalit yarating.', 'Terminalda (apps/api): `npx wrangler secret put EMAIL_PROVIDER --env production` (qiymati: resend), `RESEND_API_KEY`, `EMAIL_FROM` (masalan: Fayz Market <kod@sizning-domen.uz>).'],
+    configured: e => emailStatus(e).configured,
+    test: async e => testEmail(e),
+  },
+  {
     key: 'fcm', name: 'Push bildirishnomalar (FCM)', purpose: 'Ilova yopiq boʻlsa ham telefonga bildirishnoma yetkazish', billing: 'Bepul (Firebase Cloud Messaging)',
     publicFields: [], secrets: ['FCM_SERVICE_ACCOUNT'],
     setup: ['Firebase Console → loyiha → Android ilovalar qoʻshing: uz.fayzmarket.customer va uz.fayzmarket.admin.', 'google-services.json fayllarini dasturchiga bering (Android build uchun).', 'Project settings → Service accounts → yangi kalit (JSON).', 'Terminalda (apps/api): `npx wrangler secret put FCM_SERVICE_ACCOUNT --env production` va JSON matnini joylang.'],
     configured: e => !!e.FCM_SERVICE_ACCOUNT,
-    test: async e => { const account = JSON.parse(e.FCM_SERVICE_ACCOUNT!); await googleAccessToken(account); return `Firebase loyihasi: ${account.project_id}`; },
+    test: async e => { const account = JSON.parse(e.FCM_SERVICE_ACCOUNT!); await googleAccessToken(account, e); return `Firebase loyihasi: ${account.project_id}`; },
   },
 ];
 

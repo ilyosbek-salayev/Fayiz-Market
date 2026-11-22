@@ -1,17 +1,18 @@
-// Customer accounts: phone + SMS code registration, password login/reset, Telegram login and linking,
-// sessions. Customer sessions use "Authorization: Customer <token>" so they can never be confused with
+// Customer accounts: phone + SMS code or email + email code registration, password and email-code login,
+// password reset, Telegram login and linking, sessions. Customer sessions use "Authorization: Customer <token>" so they can never be confused with
 // staff bearer tokens or per-order access tokens.
 import { z } from 'zod';
 import type { App, Customer } from './lib';
 import { clientIp, fail, isProduction, limitOr429, parse, sha256, strongPassword, uzPhone } from './lib';
 import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS, generateCode, hashCode, sendSms, smsStatus } from './otp';
+import { codeEmail, emailStatus, sendEmail } from './email';
 import { passwordHash, randomToken, verifyPassword } from './password';
 import { botIdFromToken, verifyTelegramLogin } from './telegram';
 import { customerOrderView } from './delivery';
 
 const SESSION_DAYS = 30;
-type CustomerRow = { id: number; phone: string | null; phone_verified_at: string | null; name: string; password_hash: string | null; telegram_id: string | null; telegram_username: string };
-const view = (row: CustomerRow) => ({ id: row.id, name: row.name, phone: row.phone, phoneVerified: !!row.phone_verified_at, telegram: row.telegram_id ? { username: row.telegram_username || null } : null, hasPassword: !!row.password_hash });
+type CustomerRow = { id: number; phone: string | null; phone_verified_at: string | null; email: string | null; email_verified_at: string | null; name: string; password_hash: string | null; telegram_id: string | null; telegram_username: string };
+const view = (row: CustomerRow) => ({ id: row.id, name: row.name, phone: row.phone, phoneVerified: !!row.phone_verified_at, email: row.email ?? null, emailVerified: !!row.email_verified_at, telegram: row.telegram_id ? { username: row.telegram_username || null } : null, hasPassword: !!row.password_hash });
 
 async function startSession(db: D1Database, customerId: number) {
   const token = randomToken();
@@ -31,14 +32,18 @@ export async function customerSession(c: any, next: () => Promise<void>) {
 }
 const requireCustomer = (c: any): Customer => { const customer = c.get('customer'); if (!customer) fail(401, 'UNAUTHORIZED', 'Avval tizimga kiring'); return customer; };
 
-async function consumeOtp(db: D1Database, phone: string, purpose: string, code: string) {
-  const row = await db.prepare("SELECT id,code_hash,attempts FROM otp_codes WHERE phone=? AND purpose=? AND consumed_at IS NULL AND expires_at>CURRENT_TIMESTAMP ORDER BY id DESC LIMIT 1").bind(phone, purpose).first<{ id: number; code_hash: string; attempts: number }>();
+const emailSchema = z.string().trim().toLowerCase().max(254).email('Email manzili notoʻgʻri');
+type CodeStore = { table: 'otp_codes'; column: 'phone' } | { table: 'email_codes'; column: 'email' };
+const SMS: CodeStore = { table: 'otp_codes', column: 'phone' }, EMAIL: CodeStore = { table: 'email_codes', column: 'email' };
+
+async function consumeOtp(db: D1Database, phone: string, purpose: string, code: string, store: CodeStore = SMS) {
+  const row = await db.prepare(`SELECT id,code_hash,attempts FROM ${store.table} WHERE ${store.column}=? AND purpose=? AND consumed_at IS NULL AND expires_at>CURRENT_TIMESTAMP ORDER BY id DESC LIMIT 1`).bind(phone, purpose).first<{ id: number; code_hash: string; attempts: number }>();
   if (!row) fail(400, 'CODE_EXPIRED', 'Kod muddati tugagan yoki soʻralmagan. Yangi kod oling');
   if (row!.attempts >= OTP_MAX_ATTEMPTS) fail(429, 'TOO_MANY_ATTEMPTS', 'Urinishlar tugadi. Yangi kod oling');
-  await db.prepare('UPDATE otp_codes SET attempts=attempts+1 WHERE id=?').bind(row!.id).run();
+  await db.prepare(`UPDATE ${store.table} SET attempts=attempts+1 WHERE id=?`).bind(row!.id).run();
   const [salt, hash] = row!.code_hash.split(':');
   if (!/^\d{6}$/.test(code) || (await hashCode(code, phone, salt)) !== hash) fail(400, 'INVALID_CODE', `Kod notoʻgʻri. Qolgan urinish: ${Math.max(0, OTP_MAX_ATTEMPTS - row!.attempts - 1)}`);
-  const used = await db.prepare('UPDATE otp_codes SET consumed_at=CURRENT_TIMESTAMP WHERE id=? AND consumed_at IS NULL').bind(row!.id).run();
+  const used = await db.prepare(`UPDATE ${store.table} SET consumed_at=CURRENT_TIMESTAMP WHERE id=? AND consumed_at IS NULL`).bind(row!.id).run();
   if (!used.meta.changes) fail(400, 'CODE_EXPIRED', 'Kod allaqachon ishlatilgan');
 }
 
@@ -50,7 +55,8 @@ export function registerCustomers(app: App) {
   app.get('/auth/config', async c => {
     const sms = smsStatus(c.env);
     const username = (await c.env.DB.prepare("SELECT value FROM settings WHERE key='telegram_bot_username'").first<{ value: string }>())?.value || '';
-    return c.json({ phone: { enabled: sms.configured || sms.devEcho, devEcho: sms.devEcho }, telegram: { enabled: !!c.env.TELEGRAM_BOT_TOKEN && !!username, botUsername: username || null, botId: c.env.TELEGRAM_BOT_TOKEN ? botIdFromToken(c.env.TELEGRAM_BOT_TOKEN) : null }, password: true });
+    const email = emailStatus(c.env);
+    return c.json({ phone: { enabled: sms.configured || sms.devEcho, devEcho: sms.devEcho }, email: { enabled: email.configured || email.devEcho, devEcho: email.devEcho }, telegram: { enabled: !!c.env.TELEGRAM_BOT_TOKEN && !!username, botUsername: username || null, botId: c.env.TELEGRAM_BOT_TOKEN ? botIdFromToken(c.env.TELEGRAM_BOT_TOKEN) : null }, password: true });
   });
 
   app.post('/auth/otp', async c => {
@@ -79,6 +85,70 @@ export function registerCustomers(app: App) {
     return c.json({ ok: true, expiresIn: OTP_TTL_SECONDS, resendIn: 60, ...(sms.devEcho && !isProduction(c.env) && send ? { devCode: code } : {}) });
   });
 
+  // ---------- Email codes ----------
+  app.post('/auth/email/otp', async c => {
+    const { email, purpose } = await parse(c, z.object({ email: emailSchema, purpose: z.enum(['register', 'login', 'reset', 'link']) }));
+    const status = emailStatus(c.env);
+    if (!status.configured && !status.devEcho) fail(503, 'EMAIL_NOT_CONFIGURED', 'Email orqali tasdiqlash hozircha ishlamaydi. Telefon yoki Telegram orqali kiring');
+    if (purpose === 'link') requireCustomer(c);
+    await limitOr429(c.env.DB, `otp-ip:${clientIp(c)}`, 20, 3600);
+    const existing = await c.env.DB.prepare('SELECT id,password_hash FROM customers WHERE email=?').bind(email).first<{ id: number; password_hash: string | null }>();
+    if (purpose === 'register' && existing) fail(409, 'EMAIL_TAKEN', 'Bu email roʻyxatdan oʻtgan. Kiring yoki parolni tiklang');
+    if (purpose === 'link' && existing) fail(409, 'EMAIL_TAKEN', 'Bu email boshqa hisobga bogʻlangan');
+    const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM email_codes WHERE email=? AND created_at>datetime('now','-60 seconds')").bind(email).first<{ n: number }>();
+    if (recent?.n) fail(429, 'RESEND_TOO_SOON', 'Yangi kodni 60 soniyadan keyin soʻrang');
+    await limitOr429(c.env.DB, `otp-email-hour:${email}`, 5, 3600, 'Bu emailga juda koʻp kod soʻraldi. 1 soatdan keyin urinib koʻring');
+    // Login and reset for an unknown address answer like a success so the endpoint does not reveal who is registered.
+    const send = purpose === 'register' || purpose === 'link' || !!existing;
+    const code = generateCode(), salt = randomToken().slice(0, 16);
+    if (send) {
+      await c.env.DB.prepare(`INSERT INTO email_codes(email,purpose,code_hash,expires_at) VALUES(?,?,?,datetime('now','+${OTP_TTL_SECONDS} seconds'))`).bind(email, purpose, `${salt}:${await hashCode(code, email, salt)}`).run();
+      if (status.configured) {
+        try { await sendEmail(c.env, email, codeEmail(code, purpose)); }
+        catch (error) { console.error(JSON.stringify({ event: 'email_failed', error: String(error) })); fail(502, 'EMAIL_FAILED', 'Xat yuborilmadi. Birozdan keyin qayta urinib koʻring'); }
+      }
+    }
+    return c.json({ ok: true, expiresIn: OTP_TTL_SECONDS, resendIn: 60, ...(status.devEcho && !isProduction(c.env) && send ? { devCode: code } : {}) });
+  });
+
+  app.post('/auth/email/register', async c => {
+    const input = await parse(c, z.object({ email: emailSchema, code: z.string(), name: z.string().trim().min(2).max(120), password: strongPassword.optional() }));
+    await limitOr429(c.env.DB, `verify-ip:${clientIp(c)}`, 30, 3600);
+    await consumeOtp(c.env.DB, input.email, 'register', input.code, EMAIL);
+    if (await c.env.DB.prepare('SELECT id FROM customers WHERE email=?').bind(input.email).first()) fail(409, 'EMAIL_TAKEN', 'Bu email roʻyxatdan oʻtgan');
+    const row = await c.env.DB.prepare('INSERT INTO customers(email,email_verified_at,name,password_hash) VALUES(?,CURRENT_TIMESTAMP,?,?) RETURNING *').bind(input.email, input.name, input.password ? await passwordHash(input.password) : null).first<CustomerRow>();
+    return c.json({ token: await startSession(c.env.DB, row!.id), customer: view(row!) }, 201);
+  });
+
+  /** Passwordless sign-in with a code sent to a verified email address. */
+  app.post('/auth/email/login', async c => {
+    const input = await parse(c, z.object({ email: emailSchema, code: z.string() }));
+    await limitOr429(c.env.DB, `verify-ip:${clientIp(c)}`, 30, 3600);
+    await consumeOtp(c.env.DB, input.email, 'login', input.code, EMAIL);
+    const row = await c.env.DB.prepare('SELECT * FROM customers WHERE email=? AND email_verified_at IS NOT NULL').bind(input.email).first<CustomerRow>();
+    if (!row) fail(400, 'INVALID_CODE', 'Kod notoʻgʻri');
+    return c.json({ token: await startSession(c.env.DB, row!.id), customer: view(row!) });
+  });
+
+  app.post('/auth/email/reset', async c => {
+    const input = await parse(c, z.object({ email: emailSchema, code: z.string(), password: strongPassword }));
+    await limitOr429(c.env.DB, `verify-ip:${clientIp(c)}`, 30, 3600);
+    await consumeOtp(c.env.DB, input.email, 'reset', input.code, EMAIL);
+    const row = await c.env.DB.prepare('UPDATE customers SET password_hash=?,updated_at=CURRENT_TIMESTAMP WHERE email=? RETURNING *').bind(await passwordHash(input.password), input.email).first<CustomerRow>();
+    if (!row) fail(400, 'INVALID_CODE', 'Kod notoʻgʻri');
+    await c.env.DB.prepare('DELETE FROM customer_sessions WHERE customer_id=?').bind(row!.id).run(); // log out every device
+    return c.json({ token: await startSession(c.env.DB, row!.id), customer: view(row!) });
+  });
+
+  app.post('/auth/email/link', async c => {
+    const me = requireCustomer(c);
+    const input = await parse(c, z.object({ email: emailSchema, code: z.string() }));
+    await consumeOtp(c.env.DB, input.email, 'link', input.code, EMAIL);
+    if (await c.env.DB.prepare('SELECT id FROM customers WHERE email=? AND id!=?').bind(input.email, me.id).first()) fail(409, 'EMAIL_TAKEN', 'Bu email boshqa hisobga bogʻlangan');
+    const row = await c.env.DB.prepare('UPDATE customers SET email=?,email_verified_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? RETURNING *').bind(input.email, me.id).first<CustomerRow>();
+    return c.json({ customer: view(row!) });
+  });
+
   app.post('/auth/register', async c => {
     const input = await parse(c, z.object({ phone: uzPhone, code: z.string(), password: strongPassword, name: z.string().trim().min(2).max(120) }));
     await limitOr429(c.env.DB, `verify-ip:${clientIp(c)}`, 30, 3600);
@@ -88,13 +158,16 @@ export function registerCustomers(app: App) {
   });
 
   app.post('/auth/login', async c => {
-    const input = await parse(c, z.object({ phone: uzPhone, password: z.string().min(1).max(200) }));
+    const input = await parse(c, z.union([z.object({ phone: uzPhone, password: z.string().min(1).max(200) }), z.object({ email: emailSchema, password: z.string().min(1).max(200) })]));
+    const id = 'phone' in input ? input.phone : input.email;
     await limitOr429(c.env.DB, `cust-login-ip:${clientIp(c)}`, 30, 900);
-    await limitOr429(c.env.DB, `cust-login:${input.phone}`, 5, 900, '15 daqiqadan keyin qayta urinib koʻring');
-    const row = await c.env.DB.prepare('SELECT * FROM customers WHERE phone=?').bind(input.phone).first<CustomerRow>();
+    await limitOr429(c.env.DB, `cust-login:${id}`, 5, 900, '15 daqiqadan keyin qayta urinib koʻring');
+    const row = 'phone' in input
+      ? await c.env.DB.prepare('SELECT * FROM customers WHERE phone=?').bind(input.phone).first<CustomerRow>()
+      : await c.env.DB.prepare('SELECT * FROM customers WHERE email=? AND email_verified_at IS NOT NULL').bind(input.email).first<CustomerRow>();
     const valid = await verifyPassword(input.password, row?.password_hash || await passwordHash('invalid-password'));
-    if (!row || !row.password_hash || !valid) fail(401, 'INVALID_CREDENTIALS', 'Telefon yoki parol notoʻgʻri');
-    await c.env.DB.prepare('DELETE FROM rate_limits WHERE key=?').bind(`cust-login:${input.phone}`).run();
+    if (!row || !row.password_hash || !valid) fail(401, 'INVALID_CREDENTIALS', 'phone' in input ? 'Telefon yoki parol notoʻgʻri' : 'Email yoki parol notoʻgʻri');
+    await c.env.DB.prepare('DELETE FROM rate_limits WHERE key=?').bind(`cust-login:${id}`).run();
     return c.json({ token: await startSession(c.env.DB, row!.id), customer: view(row!) });
   });
 
@@ -157,7 +230,7 @@ export function registerCustomers(app: App) {
     const input = await parse(c, z.object({ currentPassword: z.string().max(200).optional(), password: strongPassword }));
     const row = (await c.env.DB.prepare('SELECT * FROM customers WHERE id=?').bind(me.id).first<CustomerRow>())!;
     if (row.password_hash && !(await verifyPassword(input.currentPassword || '', row.password_hash))) fail(401, 'INVALID_CREDENTIALS', 'Joriy parol notoʻgʻri');
-    if (!row.phone_verified_at) fail(409, 'PHONE_REQUIRED', 'Parol oʻrnatishdan oldin telefon raqamingizni tasdiqlang');
+    if (!row.phone_verified_at && !row.email_verified_at) fail(409, 'PHONE_REQUIRED', 'Parol oʻrnatishdan oldin telefon raqamingiz yoki emailingizni tasdiqlang');
     await c.env.DB.prepare('UPDATE customers SET password_hash=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(await passwordHash(input.password), me.id).run();
     return c.json({ ok: true });
   });

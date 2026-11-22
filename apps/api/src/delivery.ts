@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { money } from '@fayz/shared';
 import type { App, Bindings, Staff } from './lib';
-import { audit, coordinates, fail, idFrom, limitOr429, orderEvent, parse, sha256 } from './lib';
+import { audit, coordinates, fail, idFrom, limitOr429, orderEvent, parse, providerBase, sha256 } from './lib';
 import { ACTIVE, FINISHED, REASSIGNABLE, TRACKABLE, courierTransitions, nextDeliveryStatus, stageOf, stepsToShipped, type CourierAction, type DeliveryStatus } from './lifecycle';
 import { notify, pushCustomer } from './push';
 
@@ -240,7 +240,7 @@ export function registerDelivery(app: App) {
     await limitOr429(c.env.DB, `route:${me.id}`, 20, 3600, 'Marshrut soʻrovlari limiti tugadi');
     const from = await c.env.DB.prepare('SELECT lat,lng FROM delivery_locations WHERE order_id=?').bind(id).first<{ lat: number; lng: number }>() || await storeLocation(c.env.DB);
     if (from.lat == null || from.lng == null) fail(409, 'NO_ORIGIN', 'Joriy joylashuv yoki doʻkon manzili nomaʼlum');
-    const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+    const res = await fetch(`${providerBase(c.env, 'routes', 'https://routes.googleapis.com')}/directions/v2:computeRoutes`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': c.env.GOOGLE_ROUTES_KEY!, 'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline' },
       body: JSON.stringify({ origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } }, destination: { location: { latLng: { latitude: order.delivery_lat, longitude: order.delivery_lng } } }, travelMode: 'DRIVE', routingPreference: 'TRAFFIC_AWARE', languageCode: 'uz' }),
     });

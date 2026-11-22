@@ -7,13 +7,16 @@ export type Bindings = {
   DB: D1Database; IMAGES: R2Bucket; APP_ORIGIN: string; PUBLIC_BASE_URL: string; BOOTSTRAP_SECRET: string;
   /** "production" disables every development-only shortcut (e.g. OTP echo). */
   ENVIRONMENT?: string;
-  /** Development only: return OTP codes in the API response instead of sending an SMS. Ignored in production. */
+  /** Development only: return OTP codes in the API response instead of sending them. Ignored outside local development. */
   OTP_DEV_ECHO?: string;
+  /** Development only: origin of a local mock (http://127.0.0.1:<port>) that stands in for every external provider. */
+  DEV_MOCK_PROVIDERS?: string;
   // Optional integration secrets — set with `wrangler secret put <NAME> --env production`, never in Git.
   TELEGRAM_BOT_TOKEN?: string;
   SMS_PROVIDER?: string; ESKIZ_EMAIL?: string; ESKIZ_PASSWORD?: string; ESKIZ_FROM?: string;
   GOOGLE_ROUTES_KEY?: string;
   FCM_SERVICE_ACCOUNT?: string;
+  EMAIL_PROVIDER?: string; RESEND_API_KEY?: string; EMAIL_FROM?: string;
 };
 export type Role = 'owner' | 'manager' | 'courier';
 export type Staff = { id: number; role: Role };
@@ -31,6 +34,17 @@ export const parse = async <T extends z.ZodTypeAny>(c: { req: { json: () => Prom
 export const sha256 = async (value: string): Promise<string> => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))).map(x => x.toString(16).padStart(2, '0')).join('');
 export const idFrom = (raw: string): number => { const id = Number(raw); if (!Number.isSafeInteger(id) || id < 1) fail(400, 'INVALID_ID', 'ID notoʻgʻri'); return id; };
 export const isProduction = (env: Bindings) => env.ENVIRONMENT === 'production';
+/**
+ * Local test mode. Requires BOTH an explicit ENVIRONMENT=development and a plain-http public URL, so a deployed
+ * Worker (always https, ENVIRONMENT=production) can never enable OTP echo or mock providers by a stray variable.
+ */
+export const isDevelopment = (env: Bindings) => env.ENVIRONMENT === 'development' && /^http:\/\//.test(env.PUBLIC_BASE_URL || '');
+export type Provider = 'eskiz' | 'resend' | 'google-oauth' | 'fcm' | 'telegram' | 'routes';
+/** Real provider origin, or — in local test mode only — the local mock origin with a provider prefix. */
+export function providerBase(env: Bindings, provider: Provider, real: string): string {
+  const mock = env.DEV_MOCK_PROVIDERS || '';
+  return isDevelopment(env) && /^http:\/\/(127\.0\.0\.1|localhost):\d{2,5}$/.test(mock) ? `${mock}/${provider}` : real;
+}
 export const clientIp = (c: { req: { header: (name: string) => string | undefined } }) => c.req.header('CF-Connecting-IP') || 'local';
 
 /**
