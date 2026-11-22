@@ -70,13 +70,14 @@ export function MapView({ apiKey, center, markers = [], picker, onPick, onAddres
   }, [state, JSON.stringify(markers)]);
 
   if (state === 'off' || state === 'failed') {
-    const point = center || markers.find(m => m.kind === 'destination') || markers[0];
+    // Every known point is listed with its own link, so courier and destination stay usable without a key.
+    const points: { title: string; p: LatLng }[] = markers.length ? markers.map(m => ({ title: m.title, p: m })) : center ? [{ title: 'Tanlangan nuqta', p: center }] : [];
     return <div className={`map-fallback ${className}`} role="note">
       <Icon name="map" size={26} stroke={1.6} />
       <strong>{state === 'off' ? 'Xarita hali ulanmagan' : 'Xarita yuklanmadi'}</strong>
       <span className="t-caption">{state === 'off' ? 'Google Maps kaliti administrator tomonidan kiritilgach, bu yerda interaktiv xarita chiqadi.' : error}</span>
-      {point && <span className="num map-coords">{formatCoords(point)}</span>}
-      {point && <a className="btn btn-sm btn-secondary" href={mapsLink(point)} target="_blank" rel="noopener"><Icon name="navigation" size={16} />Google Maps’da ochish</a>}
+      {points.length === 1 && <><span className="num map-coords">{formatCoords(points[0].p)}</span><a className="btn btn-sm btn-secondary" href={mapsLink(points[0].p)} target="_blank" rel="noopener"><Icon name="navigation" size={16} />Google Maps’da ochish</a></>}
+      {points.length > 1 && <ul className="map-points">{points.map((x, i) => <li key={i}><span>{x.title}</span><a className="num" href={mapsLink(x.p)} target="_blank" rel="noopener">{formatCoords(x.p)}</a></li>)}</ul>}
     </div>;
   }
   return <div className={`map-box ${className}`}>
