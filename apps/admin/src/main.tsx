@@ -6,7 +6,7 @@ import './style.css';
 
 declare global { interface Window { fayzDesktop?: { request: (input: { path: string; method: string; authorization?: string; contentType?: string; body?: string | Uint8Array }) => Promise<{ status: number; data: any }> } } }
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const API = import.meta.env.VITE_API_URL || (window.location.pathname.startsWith('/__app/') ? window.location.origin : 'http://localhost:8787');
 type View = 'dashboard' | 'products' | 'categories' | 'orders' | 'settings';
 type Order = { id: number; orderNumber: string; customerName: string; phone: string; address: string; status: string; total: number; createdAt: string; items: { name: string; price: number; quantity: number }[] };
 type Report = { orders: { orders: number; ordered_total: number; delivered_total: number }; payments: { received_total: number }; inventory: { products: number; units: number }; daily: { day: string; orders: number; total: number }[] };

@@ -1,0 +1,8 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'uz.fayzmarket.customer'
+    compileSdk 35
+    defaultConfig { applicationId 'uz.fayzmarket.customer'; minSdk 23; targetSdk 28; versionCode 1; versionName '1.0.0'; resValue 'string', 'default_api_url', (project.findProperty('fayzApiUrl') ?: 'http://192.168.1.106:8787').toString() }
+    buildTypes { release { minifyEnabled false } }
+    sourceSets { main { assets.srcDirs = ['src/main/assets'] } }
+}

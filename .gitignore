@@ -2,6 +2,7 @@ node_modules/
 dist/
 .expo/
 .wrangler/
+apps/api/.local-phone-db/
 .env
 .env.*
 !.env.example
@@ -16,5 +17,13 @@ apps/desktop/web/
 apps/desktop/api-url.json
 apps/desktop/release/
 apps/mobile/ios/
+apps/android/.gradle/
+apps/android/.cxx/
+apps/android/build/
+apps/android/customer/build/
+apps/android/admin/build/
+apps/android/customer/src/main/assets/
+apps/android/admin/src/main/assets/
+apps/android/local.properties
 coverage/
 *.log
