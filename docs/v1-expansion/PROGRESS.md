@@ -25,11 +25,13 @@ Yakuniy jadval: [FINAL_REPORT](FINAL_REPORT.md). Production: Worker `9ff0b7fb`, 
 ## Keyingi aniq qadam
 
 1. Telefonni USB debugging bilan ulash: `adb install -r dist/apk/v1.1.1/*.apk` (versionCode 5); so‘ng `node scripts/android-qa/upgrade.mjs` va `native-qa.mjs` ni telefonda (yoki qo‘lda `docs/deployment/REAL_DEVICE_QA.md`).
-2. Windows kompyuterda `dist/desktop/Fayz-Market-Admin-Setup.exe` sinovi.
+2. Windows kompyuterda `dist/desktop/fayz-market-admin-1.1.1-windows-x64-setup.exe` sinovi.
 3. Foydalanuvchi qaroriga ko‘ra: Eskiz, Resend + domen, Telegram bot, Firebase, Google Maps/Routes — `INTEGRATIONS_SETUP.md`.
 4. FCM sozlangach: Android’ga Firebase Messaging client + `google-services.json`, versionCode 5.
 
 ## Eslatmalar
+
+- `dist/` tozalandi: faqat 4 ta distributiv + `dist/RELEASE_MANIFEST.md` (xeshlar, sinov holati, o‘chirilgan fayllar). Eski APK’lar yo‘q — upgrade testi uchun eski versiya kerak bo‘lsa, uni tegishli commit’dan build qiling. O‘rnatish/ochilish tekshiruvi (faqat o‘qiydi): `node scripts/android-qa/install-open-check.mjs dist/apk/v1.1.1`.
 
 - Lokal QA: `scripts/deploy-qa/local-worker.sh <dir>` (QA_PORT, QA_ENV_FILE, QA_OTP_ECHO) → `expansion-verify.mjs`, `scripts/ui-qa/expansion-ui.mjs` (`CHROME_PATH` — Chrome hozir `~/Desktop/Google Chrome.app` da); V1 regress: `QA_BOOTSTRAP=qa-local-secret-only` + `seed.mjs` + `regress.mjs`.
 - Mock provayderlar: `node scripts/deploy-qa/provider-test-mode.mjs` (o‘zi Worker’ni ko‘taradi, 8789/8790).

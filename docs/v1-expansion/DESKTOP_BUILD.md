@@ -6,8 +6,8 @@
 
 | Fayl | Platforma | Hajm | SHA-256 |
 |---|---|---|---|
-| `Fayz-Market-Admin-macOS.dmg` (v1.1.1) | macOS, Apple Silicon (arm64) | 107 789 138 bayt | `3923631d9aa93c133d3595e60f26cc07fc867df1adf4a2f79bf47af4d5b0fea9` |
-| `Fayz-Market-Admin-Setup.exe` (v1.1.1) | Windows 10/11 x64 (NSIS) | 92 180 248 bayt | `6037d1721cdf21c520cc2c3dd5b0b9721a61354639cd66ca010191edc16964fb` |
+| `fayz-market-admin-1.1.1-macos-arm64.dmg` (v1.1.1) | macOS, Apple Silicon (arm64) | 107 789 138 bayt | `3923631d9aa93c133d3595e60f26cc07fc867df1adf4a2f79bf47af4d5b0fea9` |
+| `fayz-market-admin-1.1.1-windows-x64-setup.exe` (v1.1.1) | Windows 10/11 x64 (NSIS) | 92 180 248 bayt | `6037d1721cdf21c520cc2c3dd5b0b9721a61354639cd66ca010191edc16964fb` |
 
 Build:
 ```sh
@@ -16,6 +16,8 @@ VITE_API_URL=https://fayz-market-api.ilyosbeksalayev240.workers.dev npm run buil
 VITE_API_URL=https://fayz-market-api.ilyosbeksalayev240.workers.dev node scripts/copy-admin.mjs
 cd apps/desktop && npx electron-builder --mac dmg --arm64 && npx electron-builder --win nsis --x64
 ```
+
+electron-builder `apps/desktop/release/` ga `Fayz-Market-Admin-macOS.dmg` / `Fayz-Market-Admin-Setup.exe` nomi bilan chiqaradi; `dist/desktop/` ga versiya va arxitektura ko‘rsatilgan nom bilan ko‘chiriladi (`fayz-market-admin-1.1.1-macos-arm64.dmg`, `fayz-market-admin-1.1.1-windows-x64-setup.exe`).
 
 ## Imkoniyatlar
 

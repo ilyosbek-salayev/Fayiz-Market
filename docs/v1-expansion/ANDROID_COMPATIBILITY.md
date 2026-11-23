@@ -10,7 +10,7 @@
 | Imzo | `CN=Android Debug`, SHA-256 `93f0f845…f89851` — v1.0.x/v1.1.0 bilan bir xil | bir xil |
 | targetSdk / minSdk | 28 / 23 | 28 / 23 |
 
-versionCode 5: barmoq izi kaliti yaroqsiz bo‘lganda (telefonga yangi barmoq izi qo‘shilsa) ilova qulf ekranida qotib qolmaydi — tuzatish APK tarkibini o‘zgartirgani uchun versionCode oshirildi, versionName 1.1.1 qoldi. Oldingi build (versionCode 4) `dist/apk/v1.1.1-vc4/` da saqlangan.
+versionCode 5: barmoq izi kaliti yaroqsiz bo‘lganda (telefonga yangi barmoq izi qo‘shilsa) ilova qulf ekranida qotib qolmaydi — tuzatish APK tarkibini o‘zgartirgani uchun versionCode oshirildi, versionName 1.1.1 qoldi. Oldingi build’lar (1.0.0–1.1.1 vc4) `dist/` tozalashda olib tashlandi — ro‘yxat va xeshlar `dist/RELEASE_MANIFEST.md` da; kerak bo‘lsa tegishli commit’dan qayta build qilinadi.
 
 Upgrade zanjiri emulyatorda sinaldi: 1.0.1 (2) → 1.1.1 (4) → 1.1.1 (5), har biri `adb install -r` — 12/12 va 12/12, ma’lumot va firstInstallTime saqlandi.
 

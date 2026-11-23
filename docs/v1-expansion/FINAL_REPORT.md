@@ -40,13 +40,13 @@ Belgilar: **Verified** — haqiqiy muhitda ishga tushirib tasdiqlangan (qaysi mu
 |---|---|---|
 | `dist/apk/v1.1.1/fayz-market-customer-debug.apk` (1.1.1, versionCode 5) | 644 012 B | `ecfd5e75…912e` |
 | `dist/apk/v1.1.1/fayz-market-admin-debug.apk` (1.1.1, versionCode 5) | 646 808 B | `8bd38997…0773` |
-| `dist/desktop/Fayz-Market-Admin-macOS.dmg` (1.1.1) | 107 789 138 B | `3923631d…fea9` |
-| `dist/desktop/Fayz-Market-Admin-Setup.exe` (1.1.1) | 92 180 248 B | `6037d172…64fb` |
+| `dist/desktop/fayz-market-admin-1.1.1-macos-arm64.dmg` (1.1.1) | 107 789 138 B | `3923631d…fea9` |
+| `dist/desktop/fayz-market-admin-1.1.1-windows-x64-setup.exe` (1.1.1) | 92 180 248 B | `6037d172…64fb` |
 
 ## Sizdan kerak
 
 1. **Telefon** (USB debugging): `adb install -r dist/apk/v1.1.1/*.apk`, so‘ng kamera, barmoq izi, GPS, bildirishnoma — emulyatordagi skriptlar telefonda ham ishlaydi.
-2. **Windows kompyuter**: `Fayz-Market-Admin-Setup.exe` ni o‘rnatib sinash.
+2. **Windows kompyuter**: `fayz-market-admin-1.1.1-windows-x64-setup.exe` ni o‘rnatib sinash.
 3. **Eskiz** (SMS), **Resend + domen** (email), **Telegram bot**, **Firebase** (yopiq ilovaga push), ixtiyoriy **Google Maps/Routes** — `INTEGRATIONS_SETUP.md`.
 
 ## Ma’lum cheklovlar
