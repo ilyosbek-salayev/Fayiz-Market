@@ -1,9 +1,7 @@
-# Delivery status — 2026-11-22
+# APK yetkazish holati — 2026-11-22
 
-The clone was empty and no prior branch was recoverable. V1 source was rebuilt in `feat/v1-complete`.
+Boʻsh klondan qayta qurilgan Worker API, D1/R2 va React admin saqlandi. Foydalanuvchi talabi boʻyicha faol Android build Expo ishlatmaydi: `apps/android` ichidagi ikki Java WebView ilovasi mijoz va admin interfeyslarini APK ichiga joylaydi.
 
-Implemented: Cloudflare Worker API, four D1 migrations, R2 image handling, Expo Android customer app, responsive React admin, owner/manager access, local integration checks, Android native project, and Windows packaging workflow.
+`dist/apk/fayz-market-customer-debug.apk` va `dist/apk/fayz-market-admin-debug.apk` yaratildi. Lokal API integratsiyasi 38/38, shared testlar 3/3, ikki interfeys buildi va telefon sinovi bazasida buyurtma oqimi API testi oʻtdi. Vaqtinchalik lokal admin login `dist/phone-test-credentials.txt` da; Gitga kiritilmaydi.
 
-Development checks pass, but V1.0 is **not yet technically complete** under the definition of done. The Android APK and real-device checks are pending. Cloudflare production deployment, Windows `.exe`, signed AAB, and store publication have not happened. See `QA_REPORT.md` for exact verification and blockers.
-
-GitHub branch `feat/v1-complete` was published with GitHub Desktop after terminal HTTPS authentication failed. The initial publish at `afd8eb7a3cd693665515648abf56c0584ad301d6` was verified with `git ls-remote`. CI status has not yet been verified.
+Fizik Android telefon ADB orqali ulanmagan. APKlarning qurilmadagi UX va tarmoq xatti-harakati tasdiqlanmagan. Cloudflare production, Google Play, release signing va Windows `.exe` bajarilmadi. Bu debug sinov yetkazmasi; tijorat V1.0 yakuniy qabuli uchun haqiqiy qurilma QA kerak. Qadamlar `BUILD_INSTRUCTIONS.md` da.

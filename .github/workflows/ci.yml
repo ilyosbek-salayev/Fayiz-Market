@@ -9,11 +9,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build:admin
-      - run: npx expo export --platform android --output-dir dist
-        working-directory: apps/mobile
+      - run: npm run build:apks
       - run: printf 'BOOTSTRAP_SECRET="local-test-secret-only-not-for-production"\n' > apps/api/.dev.vars
       - run: npx wrangler d1 migrations apply fayz-market --local --persist-to /tmp/fayz-ci-db
         working-directory: apps/api

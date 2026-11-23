@@ -1,23 +1,16 @@
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z, ZodError } from 'zod';
-import { adminLoginSchema, categorySchema, checkoutSchema, paymentSchema, productSchema, statusSchema } from '@fayz/shared';
+import { passwordHash, randomToken, safeEqual, verifyPassword } from './password';
+import { adminLoginSchema, categorySchema, checkoutSchema, paymentSchema, productSchema, statusSchema, money } from '@fayz/shared';
+import { audit, coordinates, fail, idFrom, orderEvent, parse, sha256, type Env } from './lib';
+import { customerSession, registerCustomers } from './customers';
+import { adminOrderExtras, authorizedOrder, customerOrderView, getDelivery, registerDelivery } from './delivery';
+import { notify, pushCustomer } from './push';
+import { registerStaff } from './staff';
 
-type Bindings = { DB: D1Database; IMAGES: R2Bucket; APP_ORIGIN: string; PUBLIC_BASE_URL: string; BOOTSTRAP_SECRET: string };
-type Variables = { admin: { id: number; role: 'owner' | 'manager' } };
-const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
-
-const fail = (status: number, code: string, message: string): never => { throw new HTTPException(status as 400, { message: JSON.stringify({ code, message }) }); };
-const parse = async <T extends z.ZodTypeAny>(c: { req: { json: () => Promise<unknown> } }, schema: T): Promise<z.infer<T>> => schema.parse(await c.req.json());
-const sha256 = async (value: string): Promise<string> => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))).map(x => x.toString(16).padStart(2, '0')).join('');
-const randomToken = () => Array.from(crypto.getRandomValues(new Uint8Array(32))).map(x => x.toString(16).padStart(2, '0')).join('');
-const passwordHash = async (password: string, salt = randomToken()): Promise<string> => {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 310000, hash: 'SHA-256' }, key, 256);
-  return `${salt}:${Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('')}`;
-};
-const safeEqual = (a: string, b: string) => { if (a.length !== b.length) return false; let result = 0; for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i); return result === 0; };
-const idFrom = (raw: string): number => { const id = Number(raw); if (!Number.isSafeInteger(id) || id < 1) fail(400, 'INVALID_ID', 'ID notoʻgʻri'); return id; };
+const app = new Hono<Env>();
+const ctxOf = (c: { executionCtx: unknown }) => { try { return c.executionCtx as { waitUntil(p: Promise<unknown>): void }; } catch { return undefined; } };
 const pageFrom = (raw: string | undefined) => Math.min(1000, Math.max(1, Number(raw) || 1));
 const limitFrom = (raw: string | undefined) => Math.min(50, Math.max(1, Number(raw) || 20));
 const rowProduct = (row: Record<string, unknown>) => ({
@@ -59,6 +52,8 @@ app.onError((error, c) => {
   return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Server xatosi' } }, 500);
 });
 
+app.use('/orders', customerSession);
+app.use('/orders/*', customerSession);
 app.get('/health', c => c.json({ ok: true, service: 'Fayz Market API' }));
 app.get('/settings', async c => {
   const rows = await c.env.DB.prepare('SELECT key,value FROM settings').all<{ key: string; value: string }>();
@@ -108,7 +103,8 @@ app.get('/images/:key', async c => {
 });
 
 app.post('/orders', async c => {
-  const input = await parse(c, checkoutSchema);
+  const input = await parse(c, checkoutSchema.extend({ location: coordinates.optional(), deliveryDetails: z.string().trim().max(300).default('') }));
+  const customer = c.get('customer');
   const merged = new Map<number, number>();
   for (const item of input.items) merged.set(item.productId, (merged.get(item.productId) || 0) + item.quantity);
   if ([...merged.values()].some(q => q > 99)) fail(400, 'INVALID_QUANTITY', 'Miqdor juda koʻp');
@@ -118,29 +114,38 @@ app.post('/orders', async c => {
   const total = rows.results.reduce((sum, row) => sum + row.price * (merged.get(row.id) || 0), 0);
   const token = randomToken(), orderNumber = 'FM-' + Date.now().toString(36).toUpperCase() + '-' + randomToken().slice(0, 6).toUpperCase();
   await c.env.DB.batch([
-    c.env.DB.prepare('INSERT INTO orders(order_number,access_hash,customer_name,phone,address,note,total) VALUES(?,?,?,?,?,?,?)').bind(orderNumber, await sha256(token), input.customerName, input.phone, input.address, input.note, total),
+    c.env.DB.prepare('INSERT INTO orders(order_number,access_hash,customer_name,phone,address,note,total,customer_id,delivery_lat,delivery_lng,delivery_details) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(orderNumber, await sha256(token), input.customerName, input.phone, input.address, input.note, total, customer?.id ?? null, input.location?.lat ?? null, input.location?.lng ?? null, input.deliveryDetails),
     ...rows.results.map(row => c.env.DB.prepare('INSERT INTO order_items(order_id,product_id,name,price,quantity) VALUES((SELECT id FROM orders WHERE order_number=?),?,?,?,?)').bind(orderNumber, row.id, row.name, row.price, merged.get(row.id)))
   ]);
   const order = await c.env.DB.prepare('SELECT id FROM orders WHERE order_number=?').bind(orderNumber).first<{ id: number }>();
   if (!order) fail(500, 'ORDER_FAILED', 'Buyurtma yaratilmadi');
+  await orderEvent(c.env.DB, order!.id, 'customer', customer?.id ?? null, 'order_created', { location: !!input.location });
+  // Lock-screen safe: order reference, item count and total only — no name, phone or address.
+  const units = [...merged.values()].reduce((a, b) => a + b, 0);
+  await notify(c.env, ctxOf(c), { audience: 'staff', orderId: order!.id, kind: 'new_order', title: `Yangi buyurtma ${orderNumber}`, body: `${units} dona · ${money(total)}` });
   return c.json({ order: { id: order!.id, orderNumber, total, status: 'new', accessToken: token } }, 201);
 });
 app.get('/orders/:id', async c => {
-  const id = idFrom(c.req.param('id'));
-  const token = c.req.header('Authorization')?.match(/^Order ([a-f0-9]{64})$/)?.[1];
-  if (!token) fail(401, 'UNAUTHORIZED', 'Buyurtma tokeni kerak');
-  const row = await c.env.DB.prepare('SELECT * FROM orders WHERE id=? AND access_hash=?').bind(id, await sha256(token!)).first<Record<string, unknown>>();
-  if (!row) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi');
-  const items = await c.env.DB.prepare('SELECT product_id AS productId,name,price,quantity FROM order_items WHERE order_id=?').bind(id).all();
-  return c.json({ order: orderView(row!, items.results) });
+  const row = await authorizedOrder(c, idFrom(c.req.param('id')));
+  return c.json({ order: await customerOrderView(c.env.DB, row) });
 });
 
 async function requireAdmin(c: any, next: () => Promise<void>) {
   const token = c.req.header('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
   if (!token) fail(401, 'UNAUTHORIZED', 'Admin kirishi kerak');
-  const row = await c.env.DB.prepare('SELECT a.id,a.role FROM sessions s JOIN admins a ON a.id=s.admin_id WHERE s.token_hash=? AND s.expires_at > CURRENT_TIMESTAMP').bind(await sha256(token!)).first();
+  const row = await c.env.DB.prepare('SELECT a.id,a.role FROM sessions s JOIN admins a ON a.id=s.admin_id WHERE s.token_hash=? AND s.expires_at > CURRENT_TIMESTAMP AND a.active=1').bind(await sha256(token!)).first();
   if (!row) fail(401, 'UNAUTHORIZED', 'Sessiya tugagan');
   c.set('admin', row); await next();
+}
+/** Couriers share the admin app but may only reach their own account endpoints under /admin. */
+const COURIER_ADMIN_PATHS = new Set(['/admin/me', '/admin/logout', '/admin/password', '/admin/notifications', '/admin/push-token']);
+async function confineCourier(c: any, next: () => Promise<void>) {
+  if (c.get('admin').role === 'courier' && !COURIER_ADMIN_PATHS.has(c.req.path)) fail(403, 'FORBIDDEN', 'Kuryer uchun ruxsat yoʻq');
+  await next();
+}
+async function courierOnly(c: any, next: () => Promise<void>) {
+  if (c.get('admin').role !== 'courier') fail(403, 'FORBIDDEN', 'Faqat kuryerlar uchun');
+  await next();
 }
 const ownerOnly = (c: any) => { if (c.get('admin').role !== 'owner') fail(403, 'FORBIDDEN', 'Faqat egasi ruxsat etilgan'); };
 app.post('/admin/bootstrap', async c => {
@@ -156,23 +161,36 @@ app.post('/admin/login', async c => {
   const normalizedEmail = input.email.toLowerCase();
   const attempt = await c.env.DB.prepare("SELECT attempts FROM login_attempts WHERE email=? AND first_attempt>datetime('now','-15 minutes')").bind(normalizedEmail).first<{ attempts: number }>();
   if ((attempt?.attempts || 0) >= 5) fail(429, 'TOO_MANY_ATTEMPTS', '15 daqiqadan keyin qayta urinib koʻring');
-  const admin = await c.env.DB.prepare('SELECT id,email,password_hash,role FROM admins WHERE email=?').bind(normalizedEmail).first<{ id: number; email: string; password_hash: string; role: string }>();
-  const expected = admin?.password_hash || await passwordHash('invalid-password');
-  const actual = await passwordHash(input.password, expected.split(':')[0]);
-  if (!admin || !safeEqual(actual, expected)) {
+  const admin = await c.env.DB.prepare('SELECT id,email,password_hash,role,name FROM admins WHERE email=? AND active=1').bind(normalizedEmail).first<{ id: number; email: string; password_hash: string; role: string; name: string }>();
+  // An unknown email still runs one key derivation so response time does not reveal which emails exist.
+  const valid = await verifyPassword(input.password, admin?.password_hash || await passwordHash('invalid-password'));
+  if (!admin || !valid) {
     await c.env.DB.prepare("INSERT INTO login_attempts(email,attempts,first_attempt) VALUES(?,1,CURRENT_TIMESTAMP) ON CONFLICT(email) DO UPDATE SET attempts=CASE WHEN first_attempt<datetime('now','-15 minutes') THEN 1 ELSE attempts+1 END,first_attempt=CASE WHEN first_attempt<datetime('now','-15 minutes') THEN CURRENT_TIMESTAMP ELSE first_attempt END").bind(normalizedEmail).run();
     fail(401, 'INVALID_CREDENTIALS', 'Email yoki parol notoʻgʻri');
   }
   await c.env.DB.prepare('DELETE FROM login_attempts WHERE email=?').bind(normalizedEmail).run();
   const token = randomToken();
   await c.env.DB.prepare("INSERT INTO sessions(token_hash,admin_id,expires_at) VALUES(?,?,datetime('now','+7 days'))").bind(await sha256(token), admin!.id).run();
-  return c.json({ token, admin: { id: admin!.id, email: admin!.email, role: admin!.role } });
+  return c.json({ token, admin: { id: admin!.id, email: admin!.email, role: admin!.role, name: admin!.name } });
 });
 app.use('/admin/*', requireAdmin);
+app.use('/admin/*', confineCourier);
+app.use('/courier/*', requireAdmin);
+app.use('/courier/*', courierOnly);
 app.post('/admin/logout', async c => { const token = c.req.header('Authorization')!.slice(7); await c.env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await sha256(token)).run(); return c.json({ ok: true }); });
-app.get('/admin/me', c => c.json({ admin: c.get('admin') }));
-app.get('/admin/users', async c => { ownerOnly(c); const users = await c.env.DB.prepare('SELECT id,email,role,created_at AS createdAt FROM admins ORDER BY id').all(); return c.json({ users: users.results }); });
-app.post('/admin/users', async c => { ownerOnly(c); const input = await parse(c, adminLoginSchema.extend({ role: z.enum(['manager', 'owner']).default('manager') })); const row = await c.env.DB.prepare('INSERT INTO admins(email,password_hash,role) VALUES(?,?,?) RETURNING id').bind(input.email.toLowerCase(), await passwordHash(input.password), input.role).first<{ id: number }>(); return c.json({ id: row?.id }, 201); });
+app.get('/admin/me', async c => {
+  const me = await c.env.DB.prepare('SELECT id,email,role,name,phone FROM admins WHERE id=?').bind(c.get('admin').id).first();
+  return c.json({ admin: me });
+});
+app.get('/admin/users', async c => { ownerOnly(c); const users = await c.env.DB.prepare('SELECT id,email,role,name,phone,active,created_at AS createdAt FROM admins ORDER BY active DESC,id').all(); return c.json({ users: users.results }); });
+app.post('/admin/users', async c => {
+  ownerOnly(c);
+  const input = await parse(c, adminLoginSchema.extend({ role: z.enum(['manager', 'owner', 'courier']).default('manager'), name: z.string().trim().max(120).default(''), phone: z.string().trim().max(40).default('') }));
+  if (input.role === 'courier' && (input.name.length < 2 || !/^\+998\d{9}$/.test(input.phone))) fail(400, 'COURIER_CONTACT', 'Kuryer uchun ism va +998 telefon raqami kerak');
+  const row = await c.env.DB.prepare('INSERT INTO admins(email,password_hash,role,name,phone) VALUES(?,?,?,?,?) RETURNING id').bind(input.email.toLowerCase(), await passwordHash(input.password), input.role, input.name, input.phone).first<{ id: number }>();
+  await audit(c.env.DB, c.get('admin').id, 'staff.create', `admin:${row?.id}`, { role: input.role });
+  return c.json({ id: row?.id }, 201);
+});
 app.get('/admin/products', async c => {
   const page = pageFrom(c.req.query('page')), limit = limitFrom(c.req.query('limit'));
   const rows = await c.env.DB.prepare(`${productSelect} ORDER BY p.id DESC LIMIT ? OFFSET ?`).bind(limit, (page - 1) * limit).all();
@@ -223,29 +241,44 @@ app.post('/admin/images', async c => {
   const header = new Uint8Array(bytes.slice(0, 12));
   const valid = ext === 'jpg' ? header[0] === 0xff && header[1] === 0xd8 : ext === 'png' ? header.slice(0, 4).every((v, i) => v === [137, 80, 78, 71][i]) : String.fromCharCode(...header.slice(0, 4)) === 'RIFF' && String.fromCharCode(...header.slice(8, 12)) === 'WEBP';
   if (!valid) fail(415, 'INVALID_IMAGE', 'Rasm fayli notoʻgʻri');
-  const key = `${randomToken().slice(0, 32)}.${ext}`;
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const key = `${Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 32)}.${ext}`;
   await c.env.IMAGES.put(key, bytes, { httpMetadata: { contentType: type } });
   return c.json({ url: `${c.env.PUBLIC_BASE_URL}/images/${key}` }, 201);
 });
 
-function orderView(row: Record<string, unknown>, items: unknown[]) { return { id: row.id, orderNumber: row.order_number, customerName: row.customer_name, phone: row.phone, address: row.address, note: row.note, status: row.status, total: row.total, createdAt: row.created_at, items }; }
+function orderView(row: Record<string, unknown>, items: unknown[]) { return { id: row.id, orderNumber: row.order_number, customerName: row.customer_name, phone: row.phone, address: row.address, note: row.note, status: row.status, total: row.total, createdAt: row.created_at, items, location: row.delivery_lat != null ? { lat: row.delivery_lat, lng: row.delivery_lng, details: row.delivery_details } : null, deliveryStatus: row.delivery_status ?? null, courierName: row.courier_name ?? null }; }
 app.get('/admin/orders', async c => {
   const page = pageFrom(c.req.query('page')), limit = limitFrom(c.req.query('limit')), status = c.req.query('status');
   if (status && !statusSchema.safeParse({ status }).success) fail(400, 'INVALID_STATUS', 'Holat notoʻgʻri');
   const where = status ? 'WHERE status=?' : '';
-  const rows = await c.env.DB.prepare(`SELECT * FROM orders ${where} ORDER BY id DESC LIMIT ? OFFSET ?`).bind(...(status ? [status] : []), limit, (page - 1) * limit).all();
+  const rows = await c.env.DB.prepare(`SELECT o.*,d.status AS delivery_status,a.name AS courier_name FROM orders o LEFT JOIN deliveries d ON d.order_id=o.id LEFT JOIN admins a ON a.id=d.courier_id ${where.replace('status', 'o.status')} ORDER BY o.id DESC LIMIT ? OFFSET ?`).bind(...(status ? [status] : []), limit, (page - 1) * limit).all();
   const count = await c.env.DB.prepare(`SELECT COUNT(*) AS total FROM orders ${where}`).bind(...(status ? [status] : [])).first<{ total: number }>();
   return c.json({ orders: rows.results.map(row => orderView(row, [])), page, total: count?.total || 0 });
 });
-app.get('/admin/orders/:id', async c => { const id = idFrom(c.req.param('id')); const row = await c.env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first(); if (!row) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi'); const items = await c.env.DB.prepare('SELECT product_id AS productId,name,price,quantity FROM order_items WHERE order_id=?').bind(id).all(); const payments = await c.env.DB.prepare('SELECT id,amount,method,reference,note,created_at AS createdAt FROM payments WHERE order_id=? ORDER BY id DESC').bind(id).all(); return c.json({ order: orderView(row!, items.results), payments: payments.results }); });
+app.get('/admin/orders/:id', async c => { const id = idFrom(c.req.param('id')); const row = await c.env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first(); if (!row) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi'); const items = await c.env.DB.prepare('SELECT product_id AS productId,name,price,quantity FROM order_items WHERE order_id=?').bind(id).all(); const payments = await c.env.DB.prepare('SELECT id,amount,method,reference,note,created_at AS createdAt FROM payments WHERE order_id=? ORDER BY id DESC').bind(id).all(); return c.json({ order: orderView(row!, items.results), payments: payments.results, ...(await adminOrderExtras(c.env.DB, id)) }); });
 app.patch('/admin/orders/:id/status', async c => {
   const id = idFrom(c.req.param('id')), { status } = await parse(c, statusSchema);
   const row = await c.env.DB.prepare('SELECT status FROM orders WHERE id=?').bind(id).first<{ status: string }>();
   if (!row) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi');
   const transitions: Record<string, string[]> = { new: ['confirmed', 'cancelled'], confirmed: ['preparing', 'cancelled'], preparing: ['shipped', 'cancelled'], shipped: ['delivered'], delivered: [], cancelled: [] };
   if (!transitions[row!.status]?.includes(status)) fail(409, 'INVALID_TRANSITION', 'Holat oʻtishi mumkin emas');
+  const delivery = await getDelivery(c.env.DB, id);
+  const courierBusy = delivery && !['declined', 'cancelled'].includes(delivery.status);
+  // With a courier on the order, "shipped" is set by the courier's pickup and "delivered" needs the customer's
+  // confirmation (or an audited admin resolution) — the plain status buttons cannot skip those steps.
+  if (courierBusy && (status === 'shipped' || status === 'delivered')) fail(409, 'DELIVERY_IN_PROGRESS', 'Buyurtma kuryerda — holat kuryer va mijoz tasdigʻi orqali oʻzgaradi');
   const updated = await c.env.DB.prepare('UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?').bind(status, id, row!.status).run();
   if (!updated.meta.changes) fail(409, 'INVALID_TRANSITION', 'Buyurtma holati oʻzgardi');
+  const admin = c.get('admin'), ctx = ctxOf(c);
+  await orderEvent(c.env.DB, id, 'admin', admin.id, `status_${status}`);
+  const order = (await c.env.DB.prepare('SELECT order_number,customer_id FROM orders WHERE id=?').bind(id).first<{ order_number: string; customer_id: number | null }>())!;
+  if (status === 'cancelled' && delivery && !['declined', 'cancelled'].includes(delivery.status)) {
+    await c.env.DB.batch([c.env.DB.prepare("UPDATE deliveries SET status='cancelled',updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=?").bind(id), c.env.DB.prepare('DELETE FROM delivery_locations WHERE order_id=?').bind(id)]);
+    await notify(c.env, ctx, { audience: 'courier', recipientId: delivery.courier_id, orderId: id, kind: 'cancelled', title: `${order.order_number} bekor qilindi`, body: 'Bu yetkazishni bajarish shart emas' });
+  }
+  const customerText: Record<string, string> = { confirmed: 'Buyurtmangiz tasdiqlandi', cancelled: 'Buyurtmangiz bekor qilindi', delivered: 'Buyurtmangiz yetkazildi' };
+  if (customerText[status]) await pushCustomer(c.env, ctx, order.customer_id, { orderId: id, kind: `order_${status}`, title: customerText[status], body: order.order_number });
   return c.json({ ok: true });
 });
 app.post('/admin/orders/:id/payments', async c => {
@@ -265,6 +298,10 @@ app.get('/admin/reports/summary', async c => {
   const daily = await c.env.DB.prepare("SELECT date(created_at) AS day,COUNT(*) AS orders,SUM(total) AS total FROM orders WHERE status!='cancelled' GROUP BY date(created_at) ORDER BY day DESC LIMIT 30").all();
   return c.json({ orders, payments, inventory, daily: daily.results });
 });
-app.put('/admin/settings', async c => { ownerOnly(c); const input = await parse(c, z.object({ contact_phone: z.string().max(40), delivery_info: z.string().max(500), banner_title: z.string().max(120), banner_subtitle: z.string().max(200) })); await c.env.DB.batch(Object.entries(input).map(([key, value]) => c.env.DB.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key, value))); return c.json({ ok: true }); });
+app.put('/admin/settings', async c => { ownerOnly(c); const input = await parse(c, z.object({ contact_phone: z.string().max(40), delivery_info: z.string().max(500), banner_title: z.string().max(120), banner_subtitle: z.string().max(200) }).strip()); await c.env.DB.batch(Object.entries(input).map(([key, value]) => c.env.DB.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key, value))); return c.json({ ok: true }); });
+
+registerCustomers(app);
+registerDelivery(app);
+registerStaff(app);
 
 export default app;
