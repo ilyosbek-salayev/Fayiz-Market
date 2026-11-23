@@ -17,6 +17,7 @@ Belgilar: **Verified** — haqiqiy muhitda ishga tushirib tasdiqlangan (qaysi mu
 | Telegram Login | **Partial** | imzo/replay/bog‘lash testlari; `getMe` mock. **Blocked:** bot token + `/setdomain` |
 | Productionda test token / dev OTP yo‘qligi | **Verified** | unit testlar + production 20/20 (devEcho=false, `qa-bootstrap` → 403); secretlar: faqat `BOOTSTRAP_SECRET` |
 | Barmoq izi (mijoz, admin) | **Verified (emulyator)** / Partial (telefon) | Android 14 emulyatori: prompt, Keystore shifrlash, noto‘g‘ri barmoq rad, to‘g‘ri barmoq ochadi. Haqiqiy telefonda sinalmagan |
+| Yangi barmoq izi qo‘shilganda (kalit yaroqsiz) | **Verified (emulyator, mijoz)** / Partial (admin) | mijoz 7/7: prompt chiqmaydi, shifrlangan sessiya o‘chadi, faqat «Parol bilan kirish» qoladi, keyingi ochilishda qulf yo‘q. Admin: xuddi shu `invalidated` yo‘li parol formasiga o‘tkazadi — kod va typecheck, emulyatorda alohida sinalmagan |
 | Kamera / galereya → R2 | **Verified (emulyator)** / Partial (telefon) | tizim kamera ilovasi, preview, yuklash, galereyaga saqlanmaydi |
 | GPS (checkout, kuryer) | **Verified (emulyator)** / Partial (telefon) | ruxsat dialogi, koordinata buyurtmada, kuryer `watchPosition` va qayta yuborish |
 | Interaktiv xarita kalitsiz (MapLibre + OpenFreeMap) | **Verified** | Android WebView (emulyator), Chrome, macOS `.app` ichida chiziladi; pin surish, GPS markazlash, kuzatuv/admin markerlar |
@@ -28,7 +29,7 @@ Belgilar: **Verified** — haqiqiy muhitda ishga tushirib tasdiqlangan (qaysi mu
 | Sharhlar va kuryer bahosi (faqat tasdiqdan keyin) | **Verified** | lokal + UI |
 | Integratsiyalar sahifasi (secret qaytmaydi) | **Verified** | production 20/20 (8 ta yozuv, qiymatlar yo‘q) |
 | Android APK v1.1.1, paket va imzo saqlangan | **Verified** | aapt2/apksigner; imzo `93f0f845…f89851` |
-| In-place yangilash (ma’lumot saqlanadi) | **Verified (emulyator)** / Partial (telefon) | 1.0.1 → 1.1.1 `adb install -r` 12/12 |
+| In-place yangilash (ma’lumot saqlanadi) | **Verified (emulyator)** / Partial (telefon) | 1.0.1 (2) → 1.1.1 (4) → 1.1.1 (5) `adb install -r` 12/12 + 12/12 |
 | macOS admin `.app` + `.dmg` | **Verified** | codesign, dmg VALID, `.app` production’ga qarshi 9/9 |
 | Windows `.exe` | **Partial** | haqiqiy NSIS build, x64 ilova, ichida production URL; **Windows’da ishga tushirilmagan** |
 | Kod imzosi (Apple Developer ID / Windows sertifikat) | **Blocked** | ixtiyoriy, pullik |
@@ -37,10 +38,10 @@ Belgilar: **Verified** — haqiqiy muhitda ishga tushirib tasdiqlangan (qaysi mu
 
 | Fayl | Hajm | SHA-256 |
 |---|---|---|
-| `dist/apk/v1.1.1/fayz-market-customer-debug.apk` | 755 157 B | `05621d25…a847` |
-| `dist/apk/v1.1.1/fayz-market-admin-debug.apk` | 657 618 B | `637a4370…7610` |
-| `dist/desktop/Fayz-Market-Admin-macOS.dmg` | 107 789 050 B | `43fb79e0…c72b` |
-| `dist/desktop/Fayz-Market-Admin-Setup.exe` | 92 180 112 B | `16076e54…4d68` |
+| `dist/apk/v1.1.1/fayz-market-customer-debug.apk` (1.1.1, versionCode 5) | 644 012 B | `ecfd5e75…912e` |
+| `dist/apk/v1.1.1/fayz-market-admin-debug.apk` (1.1.1, versionCode 5) | 646 808 B | `8bd38997…0773` |
+| `dist/desktop/Fayz-Market-Admin-macOS.dmg` (1.1.1) | 107 789 138 B | `3923631d…fea9` |
+| `dist/desktop/Fayz-Market-Admin-Setup.exe` (1.1.1) | 92 180 248 B | `6037d172…64fb` |
 
 ## Sizdan kerak
 

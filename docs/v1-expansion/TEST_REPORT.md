@@ -1,4 +1,6 @@
-# Test hisoboti (2026-11-22, v1.1.1)
+# Test hisoboti (2026-11-22, v1.1.1 — yakuniy build: versionCode 5)
+
+Oxirgi to‘liq qayta ishga tushirish 2026-11-22 kechqurun, yakuniy APK/installer bundle’lari bilan (bundle fayl nomlari APK ichidagi bilan bir xil ekani tekshirildi). Emulyator Mac qayta yongandan keyin noldan yaratildi (`scripts/android-qa/setup-emulator.mjs`).
 
 Barcha natijalar shu sessiyada haqiqatan bajarilgan. Muhitlar aniq ajratilgan: **lokal Worker** (izolyatsiyalangan D1, har safar yangi), **Chrome WebView emulyatsiyasi**, **Android 14 emulyatori** (haqiqiy APK, haqiqiy Android WebView — lekin telefon emas), **production** (faqat o‘qish).
 
@@ -10,8 +12,10 @@ Barcha natijalar shu sessiyada haqiqatan bajarilgan. Muhitlar aniq ajratilgan: *
 | `scripts/deploy-qa/provider-test-mode.mjs` — mock Eskiz/Resend/Google OAuth+FCM/Telegram/Routes, OTP echo o‘chiq: SMS, email ro‘yxat/parolsiz kirish/tiklash/bog‘lash, integratsiya testlari, Telegram replay, FCM JWT (RS256 tekshirildi), 404 token o‘chirilishi | lokal Worker + mock | **35/35** |
 | `scripts/ui-qa/expansion-ui.mjs` — APK bundle’lari: SMS va **email** ro‘yxat, parolsiz email kirish, **OpenFreeMap xaritasi** (chizilishi, GPS, surib pin ko‘chirish), checkout, admin xaritasi, tayinlash, kuryer oqimi, kuzatuv xaritasi (kuryer + manzil), tasdiq, sharh, R2 rasm, overflow | lokal Worker + Chrome 158 | **54/54** |
 | `scripts/ui-qa/regress.mjs` — asl V1 funksiyalari | lokal Worker + Chrome | **39/39** |
-| `scripts/android-qa/upgrade.mjs` — v1.0.1 → v1.1.1 `adb install -r` | **Android 14 emulyatori** | **12/12** |
+| `scripts/android-qa/upgrade.mjs` — v1.0.1 (2) → v1.1.1 (4) `adb install -r` | **Android 14 emulyatori** | **12/12** |
+| `scripts/android-qa/upgrade.mjs` — v1.1.1 (4) → v1.1.1 (5) `adb install -r` | **Android 14 emulyatori** | **12/12** |
 | `scripts/android-qa/native-qa.mjs` — barmoq izi, kamera, GPS, bildirishnoma, xarita, kuryer GPS | **Android 14 emulyatori** | **25/25** |
+| `scripts/android-qa/biometric-invalidation.mjs` — yangi barmoq izi qo‘shilgach Keystore kaliti yaroqsiz: qulf o‘chadi, parol bilan kirish | **Android 14 emulyatori** | **7/7** |
 | `scripts/deploy-qa/production-readonly.mjs` — test rejimi yo‘qligi, 503 lar, guardlar, integratsiyalar | **production** (yozmaydi) | **20/20** |
 | `scripts/deploy-qa/desktop-smoke.mjs` — paketlangan macOS `.app` | **production** | **9/9** |
 | APK fayllari (aapt2, apksigner, assetlar) | lokal | ✅ |
@@ -32,6 +36,9 @@ Barcha natijalar shu sessiyada haqiqatan bajarilgan. Muhitlar aniq ajratilgan: *
 | `maplibre-gl.css` keyin yuklanib xarita konteyneriga `position: relative` berardi → balandlik 0, xarita bo‘sh (Android WebView’da topildi) | `.map-box > .map-canvas` yuqoriroq spetsifiklik |
 | APK asset papkasiga eski build fayllari qolishi mumkin edi | `build-apks.sh` papkani tozalaydi |
 | Android shell noma’lum fayl turlarini `text/html` deb berardi | `.json`, `.wasm`, `octet-stream` qo‘shildi |
+| Telefonga yangi barmoq izi qo‘shilsa Keystore kaliti butunlay yaroqsiz bo‘ladi, ilova esa ochib bo‘lmaydigan qulf ekranida qolardi | mijoz/admin `invalidated`/`empty` javobida bayroqni o‘chiradi, sababini aytadi, faqat parol yo‘lini ko‘rsatadi; versionCode 5 |
+| Toza qurilmada birinchi ochilishdagi bildirishnoma ruxsati dialogi native-qa’da barmoq izi oynasi deb hisoblanardi | test dialogni avval yopadi, faqat SystemUI BiometricPrompt hisobga olinadi |
+| Settings’ning eski oynasi oldinga chiqib, barmoq izini qo‘shish boshlanmasdi | enrollment oldidan `am force-stop com.android.settings` |
 | Dev OTP faqat `ENVIRONMENT != production` bilan cheklangan edi (o‘zgaruvchi yo‘qolsa xavf) | endi `ENVIRONMENT=development` **va** `http://` URL shart |
 
 ## Sinalmagan (bloklangan)

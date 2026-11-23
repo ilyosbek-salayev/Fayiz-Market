@@ -34,6 +34,8 @@ try {
   // ================= Customer app =================
   sh(`pm revoke ${C} android.permission.ACCESS_FINE_LOCATION`); sh(`pm revoke ${C} android.permission.ACCESS_COARSE_LOCATION`);
   launch(C); let c = await webview(C, 9411);
+  // Android 13+ asks a targetSdk<33 app for notifications on its first launch (a fresh phone shows the same dialog).
+  if (await waitNode(/permission_message/, 5000)) await allowPermission();
   await c.waitFor(() => document.body.innerText.includes('Emulyator soati') || document.body.innerText.includes('Katalog'), 40000);
   check((await c.evaluate(() => location.origin)) === API, 'customer: bundled UI served under the configured API origin', await c.evaluate(() => location.href));
   check((await c.evaluate(() => FayzNative.biometricStatus())) === 'available', 'customer: BiometricManager reports an enrolled fingerprint');
@@ -49,7 +51,8 @@ try {
   await c.click('Profil', '.tabbar button'); await c.waitFor(() => document.body.innerText.includes('Emu Mijoz'), 15000);
   check(await c.waitFor(() => !!document.querySelector('.toggle-row input[type=checkbox]'), 8000), 'customer: "Barmoq izi bilan kirish" offered in profile');
   await c.evaluate(() => document.querySelector('.toggle-row input[type=checkbox]').click());
-  const prompt = await waitNode(/fingerprint|Barmoq izi|Fayz Market/i, 8000);
+  // Only the SystemUI BiometricPrompt counts — not a permission dialog that merely mentions the app name.
+  const prompt = await waitNode(/com\.android\.systemui:id\/(biometric|title|subtitle)|fingerprint/i, 8000);
   check(!!prompt, 'customer: system BiometricPrompt shown', prompt?.label);
   shot('c-biometric-prompt'); await finger(1); await pause(1500);
   const stored = await c.evaluate(() => FayzNative.biometricStored() && localStorage.getItem('fayz_bio_login') === '1' && !localStorage.getItem('fayz_customer_token'));

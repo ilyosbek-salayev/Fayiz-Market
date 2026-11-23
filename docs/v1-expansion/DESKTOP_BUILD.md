@@ -6,8 +6,8 @@
 
 | Fayl | Platforma | Hajm | SHA-256 |
 |---|---|---|---|
-| `Fayz-Market-Admin-macOS.dmg` (v1.1.1) | macOS, Apple Silicon (arm64) | 107 789 050 bayt | `43fb79e0007fdcc90d2bd2c7a86071ea8bb3568071d28dcb01e76c8334d3c72b` |
-| `Fayz-Market-Admin-Setup.exe` (v1.1.1) | Windows 10/11 x64 (NSIS) | 92 180 112 bayt | `16076e540a62d804a41d6b90458cad55239e5c630491153d1b35fbf907594d68` |
+| `Fayz-Market-Admin-macOS.dmg` (v1.1.1) | macOS, Apple Silicon (arm64) | 107 789 138 bayt | `3923631d9aa93c133d3595e60f26cc07fc867df1adf4a2f79bf47af4d5b0fea9` |
+| `Fayz-Market-Admin-Setup.exe` (v1.1.1) | Windows 10/11 x64 (NSIS) | 92 180 248 bayt | `6037d1721cdf21c520cc2c3dd5b0b9721a61354639cd66ca010191edc16964fb` |
 
 Build:
 ```sh

@@ -15,7 +15,7 @@ if (!/set to/i.test(pin)) pin = sh('locksettings set-pin --old 1111 1111 2>&1 ||
 console.log('PIN:', pin.split('\n').pop());
 
 if (/has enrolled|enrolled: true|Enrollments: 1|"count":1/i.test(sh('dumpsys fingerprint 2>/dev/null || true'))) { console.log('fingerprint already enrolled'); process.exit(0); }
-sh('am start -a android.settings.FINGERPRINT_ENROLL'); await pause(2500);
+sh('am force-stop com.android.settings'); /* else a stale Settings task is brought to front */ sh('am start -a android.settings.FINGERPRINT_ENROLL'); await pause(2500);
 if (findNode(/PIN/i)) { sh('input text 1111'); sh('input keyevent KEYCODE_ENTER'); await pause(2500); }
 for (let i = 0; i < 4; i++) { const n = await tapNode(/^(MORE|More|I AGREE|I agree|AGREE|Agree)\|/, 3000); if (!n) break; await pause(1000); }
 let added = false; for (let i = 0; i < 25 && !added; i++) { await touch(1); added = !!findNode(/Fingerprint added/i); }

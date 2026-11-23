@@ -31,7 +31,7 @@ Sinash tartibi: adminda login → mahsulot narxi yoki qoldigʻini oʻzgartirish 
 
 ## Qayta build
 
-Node.js 22+, JDK 17, Android SDK platform 35, build tools 34/35 va platform tools kerak. Bu mashinada JDK `/private/tmp/fayz-toolchain/jdk/Contents/Home`, SDK `/private/tmp/fayz-toolchain/android-sdk` da.
+Node.js 22+, JDK 17, Android SDK platform 35, build tools 34/35 va platform tools kerak. Bu mashinada JDK `~/.fayz-toolchain/jdk/Contents/Home`, SDK `~/.fayz-toolchain/android-sdk` da (`/private/tmp` qayta yoqilganda o‘chib ketgani uchun ko‘chirildi).
 
 ```sh
 npm ci

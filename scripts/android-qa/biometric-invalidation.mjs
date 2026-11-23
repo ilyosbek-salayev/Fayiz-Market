@@ -18,7 +18,7 @@ try {
   c.close(); sh(`am force-stop ${C}`);
 
   // Enrol a second fingerprint (Settings → PIN → intro → touches).
-  sh('input keyevent KEYCODE_WAKEUP'); sh('am start -a android.settings.FINGERPRINT_ENROLL'); await pause(2500);
+  sh('input keyevent KEYCODE_WAKEUP'); sh('am force-stop com.android.settings'); /* else a stale Settings task is brought to front */ sh('am start -a android.settings.FINGERPRINT_ENROLL'); await pause(2500);
   if (findNode(/PIN/i)) { sh('input text 1111'); sh('input keyevent KEYCODE_ENTER'); await pause(2500); }
   for (let i = 0; i < 4; i++) { const n = await tapNode(/^(MORE|More|I AGREE|I agree|AGREE|Agree)\|/, 3000); if (!n) break; await pause(1000); }
   let added = false; for (let i = 0; i < 25 && !added; i++) { await touch(2); added = !!findNode(/Fingerprint added/i); }
