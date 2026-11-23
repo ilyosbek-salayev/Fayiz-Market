@@ -1,9 +1,12 @@
 // Helpers for driving the real APKs on an Android EMULATOR (not a physical phone): adb, UI Automator taps for
 // system dialogs, and Chrome DevTools Protocol into the app's WebView (debug builds are inspectable).
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import os from 'node:os';
 import WebSocket from 'ws';
 
-const SDK = process.env.ANDROID_HOME || '/private/tmp/fayz-toolchain/android-sdk';
+// ~/.fayz-toolchain survives a reboot; /private/tmp (the old location) is wiped by macOS.
+const SDK = process.env.ANDROID_HOME || [`${os.homedir()}/.fayz-toolchain/android-sdk`, '/private/tmp/fayz-toolchain/android-sdk'].find(d => existsSync(d)) || `${os.homedir()}/.fayz-toolchain/android-sdk`;
 export const ADB = `${SDK}/platform-tools/adb`;
 export const pause = ms => new Promise(r => setTimeout(r, ms));
 export const adb = (...args) => execFileSync(ADB, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();

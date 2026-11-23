@@ -57,7 +57,7 @@ try {
   // Relaunch → locked → wrong finger refused → enrolled finger unlocks.
   sh(`am force-stop ${C}`); launch(C); c.close(); c = await webview(C, 9411);
   check(await c.waitFor(() => document.body.innerText.includes('Barmoq izi bilan ochish'), 20000), 'customer: app opens on the fingerprint lock screen');
-  await c.click('Barmoq izi bilan ochish'); await pause(1500); await finger(2); await pause(1500);
+  await c.click('Barmoq izi bilan ochish'); await pause(1500); await finger(9); await pause(1500); // id 9 is never enrolled
   check(!(await c.evaluate(() => document.body.innerText.includes('Emu Mijoz'))), 'customer: an unenrolled finger does not unlock');
   await finger(1);
   const unlocked = await c.waitFor(() => !document.body.innerText.includes('Barmoq izi bilan ochish') && !!document.querySelector('.tabbar'), 15000);

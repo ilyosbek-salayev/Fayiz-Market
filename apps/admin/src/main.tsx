@@ -73,7 +73,13 @@ function App() {
     return () => window.removeEventListener('fayz-open-order', open);
   }, [me]);
   useNotifications(request, me ? `staff-${me.id}` : 'staff', !!me && me.role !== 'courier', fresh => setNotices(old => [...fresh, ...old].slice(0, 5)));
-  const unlock = async () => { setError(''); const r = await biometricUnlock(); if (r.ok) { sessionStorage.setItem('fayz_admin_token', r.value); setToken(r.value); setLocked(false); } else setError('Barmoq izi tasdiqlanmadi'); };
+  const unlock = async () => {
+    setError(''); const r = await biometricUnlock();
+    if (r.ok) { sessionStorage.setItem('fayz_admin_token', r.value); setToken(r.value); setLocked(false); return; }
+    // New fingerprints on the phone permanently invalidate the Keystore key: fall back to the password form.
+    if (r.value === 'invalidated' || r.value === 'empty') { localStorage.removeItem(BIO_FLAG); setLocked(false); setError('Telefonda barmoq izlari oʻzgargani uchun bu usul oʻchirildi. Parol bilan kiring va uni qayta yoqing.'); return; }
+    if (r.value !== 'cancelled') setError('Barmoq izi tasdiqlanmadi');
+  };
   const toggleBio = async () => { if (bioOn) { biometricDisable(); localStorage.removeItem(BIO_FLAG); setBioOn(false); return; } const r = await biometricEnable(token); if (r.ok) { localStorage.setItem(BIO_FLAG, '1'); setBioOn(true); setMessage('Barmoq izi bilan kirish yoqildi'); } else setError('Barmoq izini yoqib boʻlmadi'); };
   const securityPanel = bio === 'unsupported' ? null : <Panel title="Xavfsizlik" subtitle="Ushbu telefon uchun"><Toggle label="Barmoq izi bilan kirish" hint={bio === 'none' ? 'Avval telefon sozlamalarida barmoq izini qoʻshing' : 'Sessiya Android Keystore’da shifrlanadi; ilova ochilganda barmoq izi soʻraladi'} checked={bioOn} onChange={() => { if (bio === 'available') void toggleBio(); }} /></Panel>;
   async function request<T>(path: string, init?: RequestInit): Promise<T> {

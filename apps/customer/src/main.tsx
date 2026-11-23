@@ -89,7 +89,10 @@ function App() {
       if(tg) { try { const r = await api<{token?:string;customer:Customer}>(tg.intent==='link' && customerToken ? '/auth/telegram/link' : '/auth/telegram',{method:'POST',body:JSON.stringify({auth:tg.auth})}); if(r.token) signIn(r.token,r.customer); else { setCustomer(r.customer); setToast({message:'Telegram hisobingiz bogʻlandi'}); } setTab('profile'); } catch(e) { setAccountError(friendlyError(e)); setTab('profile'); } }
     })();
   },[]);
-  const unlock = async () => { setAccountError(''); const r = await biometricUnlock(); if(r.ok && await restore(r.value)) setLocked(false); else setAccountError(r.ok ? 'Sessiya tugagan. Parol bilan qayta kiring.' : 'Barmoq izi tasdiqlanmadi'); };
+  const unlock = async () => { setAccountError(''); const r = await biometricUnlock(); if(r.ok && await restore(r.value)) { setLocked(false); return; }
+    // A new fingerprint enrolled on the phone (or a removed screen lock) permanently invalidates the Keystore key.
+    if(!r.ok && (r.value==='invalidated' || r.value==='empty')) { localStorage.removeItem(BIO_FLAG); setAccountError('Telefonda barmoq izlari oʻzgargani uchun bu usul oʻchirildi. Parol bilan kiring va uni qayta yoqing.'); return; }
+    setAccountError(r.ok ? 'Sessiya tugagan. Parol bilan qayta kiring.' : r.value==='cancelled' ? '' : 'Barmoq izi tasdiqlanmadi'); };
   const toggleBiometric = async () => {
     if(localStorage.getItem(BIO_FLAG)==='1') { biometricDisable(); localStorage.removeItem(BIO_FLAG); localStorage.setItem('fayz_customer_token',customerToken); setToast({message:'Barmoq izi bilan kirish oʻchirildi'}); return; }
     const r = await biometricEnable(customerToken);
@@ -320,8 +323,11 @@ function App() {
     {locked && <div className="lock-screen" role="dialog" aria-modal="true" aria-label="Ilova qulflangan">
       <BrandMark size={64} /><h1 className="t-h1">Fayz Market</h1><p className="t-body t-muted">Hisobingiz barmoq izi bilan himoyalangan</p>
       {accountError && <div className="banner banner-error"><Icon name="alert" size={20} /><div>{accountError}</div></div>}
-      <button className="btn btn-primary btn-lg btn-block" onClick={unlock}><Icon name="fingerprint" size={22} />Barmoq izi bilan ochish</button>
-      <button className="btn btn-quiet btn-block" onClick={() => { setLocked(false); setAuthSheet('login'); }}>Parol bilan kirish</button>
+      {/* Once the Keystore key is invalidated the flag is gone: only the password route can work. */}
+      {localStorage.getItem(BIO_FLAG)==='1'
+        ? <><button className="btn btn-primary btn-lg btn-block" onClick={unlock}><Icon name="fingerprint" size={22} />Barmoq izi bilan ochish</button>
+          <button className="btn btn-quiet btn-block" onClick={() => { setLocked(false); setAuthSheet('login'); }}>Parol bilan kirish</button></>
+        : <button className="btn btn-primary btn-lg btn-block" onClick={() => { setLocked(false); setAuthSheet('login'); }}>Parol bilan kirish</button>}
       <button className="link-btn" onClick={() => setLocked(false)}>Hisobsiz davom etish</button>
     </div>}
     {toast && <Toast message={toast.message} action={toast.action} onAction={toast.onAction} onDone={hideToast} />}
