@@ -32,3 +32,11 @@ Package ID: `uz.fayzmarket.customer`, `uz.fayzmarket.admin`. Eski va yangi debug
 5. Do‘konning guest/registered checkout, background GPS/push talablari bo‘yicha aniq xizmat darajasi.
 6. Backup/restore, monitoring, support owner va rollback rejasi.
 7. Alohida deploy/push tasdig‘i; production’da faqat shundan keyin patchni qo‘llash va read-only smoke.
+
+## Post-Codex yangilanish (Claude, 2026-11-25)
+
+- **Git:** Codex o‘zgarishlari o‘zgartirilmasdan `main` branchga commit qilindi (`1d66a73`). `main` = `feat/v1-premium-ui` (u `feat/v1-complete` va `feat/v1-native-apks`ni to‘liq o‘z ichiga oladi) + audit + Cloudflare tuzatishi + QA/hujjatlar. Push/merge qilinmadi; boshqa branchlar o‘chirilmadi.
+- **Cloudflare Workers Build xatosi tuzatildi:** ildizda `wrangler.toml` yo‘qligi sabab `npx wrangler deploy` “workspace root” xatosi bilan yiqilardi. Ildiz konfiguratsiyasi `[env.production]` bilan bir xil, drift testi bor. Diqqat: build ulangan branch’ga push production’ga avtomatik deploy qiladi.
+- **Artefaktlar endi aniq commit’ga bog‘langan:** APK `b03fb5c`, desktop `7ce81cf`. Manifest: `docs/v1-expansion/RELEASE_MANIFEST-1.1.2.md`.
+- **Runtime:** Android emulyatorda upgrade/xarita/native QA PASS, macOS read-only smoke PASS. Fizik telefon va Windows hali NOT TESTED.
+- **Yakuniy baho:** texnik **release candidate** tayyor; mijozga tijoriy topshirish uchun hali **NO-GO** (credential rotation, production’ga patch deploy, fizik qurilma/Windows QA, real provayderlar). Batafsil: `docs/v1-expansion/POST_CODEX_FINAL_REPORT.md`.

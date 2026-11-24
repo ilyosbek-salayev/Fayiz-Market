@@ -1,0 +1,13 @@
+device: sdk_gphone64_arm64 / Android 14 (EMULATOR)
+PASS uz.fayzmarket.customer: adb install -r — before 1.1.2 (6)
+PASS uz.fayzmarket.customer: now 1.1.2 (6), first install time kept — 2026-11-23 10:32:52
+PASS uz.fayzmarket.customer: app opens and renders its UI
+PASS uz.fayzmarket.customer: UI served under the production API origin — https://fayz-market-api.ilyosbeksalayev240.workers.dev
+PASS uz.fayzmarket.customer: Cloudflare production API reachable from the WebView (GET /health)
+PASS uz.fayzmarket.admin: adb install -r — before 1.1.2 (6)
+PASS uz.fayzmarket.admin: now 1.1.2 (6), first install time kept — 2026-11-23 10:32:52
+PASS uz.fayzmarket.admin: app opens and renders its UI
+PASS uz.fayzmarket.admin: UI served under the production API origin — https://fayz-market-api.ilyosbeksalayev240.workers.dev
+PASS uz.fayzmarket.admin: Cloudflare production API reachable from the WebView (GET /health)
+
+10/10 passed — sdk_gphone64_arm64 / Android 14 (EMULATOR)

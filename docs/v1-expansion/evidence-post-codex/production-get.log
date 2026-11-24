@@ -1,0 +1,13 @@
+PASS GET /health: 200
+PASS GET /settings: 200
+PASS GET /categories: 200
+PASS GET /products: 200
+PASS GET /auth/config: 200
+Auth availability: {"phone":{"enabled":false,"devEcho":false},"email":{"enabled":false,"devEcho":false},"telegram":{"enabled":false,"botUsername":null,"botId":null},"password":true}
+PASS dev OTP echo disabled
+PASS GET /admin/orders: 401
+PASS GET /courier/deliveries: 401
+PASS GET /customer/orders: 401
+PASS GET /__app/index.html: 404
+11/11 passed
+R2 image GET: 200 image/jpeg 36691 bytes

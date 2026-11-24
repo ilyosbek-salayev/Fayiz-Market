@@ -1,0 +1,58 @@
+BROWSER Failed to load resource: the server responded with a status of 404 (Not Found)
+PASS profile offers sign-in / registration
+PASS OTP requested; dev server shows the code (never in production) — 376830
+PASS resend countdown shown
+PASS account created, verified phone shown
+PASS session stored on device
+PASS product page shows verified-review section (empty)
+PASS no review/rating UI during checkout
+PASS without a Google key: interactive OpenFreeMap map with OSM attribution
+PASS device location used (permission granted) and the map centred on it
+PASS dragging the map moves the delivery pin to a new point
+PASS confirmed location shown in checkout
+PASS checkout has no horizontal overflow at 390 px
+PASS order placed — FM-MWV3PHYX-C81EEB
+PASS coordinates + details stored with the order
+PASS owner sees dashboard + Integrations menu
+PASS admin receives in-app new-order notification (polling)
+PASS admin sees the customer map location and details
+PASS admin order map (OpenFreeMap) with destination marker + external navigation link
+PASS assignment blocked until confirmation
+PASS courier assigned; status + audit history visible
+PASS manual shipped/delivered hidden while courier holds the order
+PASS courier sees only the courier panel with the assignment
+PASS delivery detail: address, call, navigation to pickup
+PASS courier: Qabul qilish
+PASS courier: Doʻkondan oldim
+PASS courier: Yoʻlga chiqdim
+PASS location sharing indicator on during the trip
+PASS customer API receives the courier position — {"lat":41.33,"lng":69.25,"accuracy":10,"recordedAt":"2026-11-24 19:42:51","ageSeconds":9,"live":true}
+PASS route button present
+BROWSER Failed to load resource: the server responded with a status of 503 (Service Unavailable)
+PASS no invented distance/ETA without Google Routes
+PASS customer order shows ON_THE_WAY
+PASS tracking sheet: live position and courier name
+PASS tracking map (OpenFreeMap) shows courier and destination markers
+PASS courier: handover recorded, waiting for customer
+PASS confirmation prompt shown as soon as the app opens
+PASS review sheet opens only after confirmation (product + courier)
+PASS review submitted
+PASS verified review public with average
+PASS product page shows the verified review
+PASS admin reviews: product review + courier rating
+PASS settings: staff (with courier) + password change
+PASS integrations: status + setup, secret value never shown
+PASS product form offers gallery and camera
+PASS camera input requests the rear camera (capture=environment)
+PASS photo preview before upload
+PASS photo uploaded to R2 and added to the product
+PASS product image served from R2 — http://127.0.0.1:52226/images/51066631b39447b6c492ad5ce9bd4505.png
+PASS email: code requested; local test mode banner shows the code (never in production)
+PASS email: passwordless account created, email shown in profile
+PASS email: passwordless sign-in with a code
+PASS admin no horizontal overflow at 320px
+PASS admin no horizontal overflow at 768px
+PASS courier panel no overflow at 320px
+PASS no native alert/confirm dialogs
+
+54/54 passed

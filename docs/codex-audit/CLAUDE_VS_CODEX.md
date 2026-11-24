@@ -21,3 +21,16 @@
 | FCM/real providerlar tugallanmagan | VERIFIED | Secret list’da faqat BOOTSTRAP_SECRET; auth/config uch usulni disabled ko‘rsatdi |
 
 Claude yakuniy hisobotining o‘zi ham real telefon, Windows, tashqi hisoblar, signing va background GPS cheklovlarini tan olgan. Ularni keyingi release’da yopilmagan holda to‘liq tayyor deb hisoblash mumkin emas.
+
+## Codex da’volarining qayta tekshiruvi (Claude, 2026-11-25)
+
+| Codex da’vosi | Natija |
+|---|---|
+| API 129/129, integration 38/38, V1 UI 43/43, extended UI 54/54, security 11/11, mock 35/35 | Qayta ishga tushirildi — barchasi aynan shu sonlar bilan PASS |
+| npm audit 0 | Tasdiqlandi |
+| MapLibre worker/Vite asset tuzatildi | Chrome UI’da PASS; **qo‘shimcha:** APK WebView (emulyator) va paketlangan macOS ilovada ham worker yuklanadi va xarita chiziladi |
+| macOS read-only smoke 8/8 (keyin 10/10) | Yangi DMG bilan 11/11 (ilova bundle’i worker’ga ishorasi qo‘shildi) |
+| Windows x64 installer | Build integrity tasdiqlandi; real Windows’da hali NOT TESTED |
+| Yakuniy distributivlar/SHA-256 tugallanmagan | Yakunlandi: commit’dan qayta qurildi, `RELEASE_MANIFEST-1.1.2.md` |
+| Codex aniqlamagan: Cloudflare Workers Build xatosi | Topildi va tuzatildi (ildiz `wrangler.toml`) |
+| Codex aniqlamagan: lockfile’dan keyin Android QA `ws` importi buzilgan | Tuzatildi |

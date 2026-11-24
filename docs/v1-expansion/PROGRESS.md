@@ -20,6 +20,9 @@ Branch: `feat/v1-premium-ui` · **Push qilinmagan** · Expo va GitHub Actions yo
 
 ## Holat
 
+**2026-11-25 (post-Codex):** yagona branch `main`; Codex auditi qabul qilindi va qayta tasdiqlandi; Cloudflare Workers Build xatosi tuzatildi (ildiz `wrangler.toml`); 1.1.2 RC (versionCode 6) commit’dan qurildi va emulyator/macOS’da sinaldi. Yakuniy: [POST_CODEX_FINAL_REPORT](POST_CODEX_FINAL_REPORT.md), [RELEASE_MANIFEST-1.1.2](RELEASE_MANIFEST-1.1.2.md). Keyingi qadamlar o‘sha hisobotning 11-bo‘limida.
+
+Oldingi holat (1.1.1): 
 Yakuniy jadval: [FINAL_REPORT](FINAL_REPORT.md). Production: Worker `9ff0b7fb`, D1 0001–0006, R2 `fayz-market-images`. Ma’lumot: 1 owner, 10 sozlama, 0 buyurtma.
 
 ## Keyingi aniq qadam

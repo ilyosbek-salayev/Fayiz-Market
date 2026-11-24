@@ -40,3 +40,11 @@ Rotation tartibi (faqat tasdiqdan so‘ng): owner uchun yangi unique parol → b
 - Biometrikasiz customer token localStorage’da; Android debug APK va physical access threat modeli alohida. Keychain/Keystore barcha server session xavflarini bartaraf etmaydi.
 - Anonymous checkout abuse/idempotency, account enumeration, retention cleanup, audit event va biznes mutation o‘rtasidagi durable outbox yo‘qligi qolgan risklar.
 - Yangi patch va yangi dependencylar production’da deploy qilinmagan; live backendga «barcha xavfsizlik tuzatishlari bor» deb aytilmaydi.
+
+## Post-Codex qo‘shimchalar (Claude, 2026-11-25)
+
+- **Owner credential (P0, ochiq):** `dist/production-admin-credentials.txt` hali diskda (0600, Git’ga kirmaydi). Qiymat qayta o‘qilmadi/chiqarilmadi; maxsus skan uning qiymatlari tracked fayllar va reachable Git tarixida yo‘qligini ko‘rsatdi. Ilgari ochiq matnda ko‘rsatilgani sababli **rotation shart**; avtomatik almashtirilmadi. Tavsiya tartibi: (1) owner o‘zi admin panelda yangi kuchli parol o‘rnatadi; (2) barcha owner sessiyalari va push tokenlari bekor qilinadi (yangi parol bilan qayta login); (3) `BOOTSTRAP_SECRET` endi kerak emasligi uchun `wrangler secret put` bilan yangi tasodifiy qiymatga almashtiriladi yoki o‘chiriladi; (4) credential fayli parol menejeriga ko‘chirilib, diskdan o‘chiriladi; (5) `dist/backups/*.sql` shifrlangan joyga ko‘chiriladi.
+- **Production’da hali eski kod:** Worker `9ff0b7fb` (2026-11-22). S01–S10 tuzatishlari production’da yo‘q — deploy alohida tasdiq bilan.
+- **Git-ulangan avtomatik deploy:** Cloudflare Workers Builds yoqilgan. Ildiz `wrangler.toml` tufayli endi build muvaffaqiyatli bo‘ladi, ya’ni production branch’ga har bir push production’ga chiqadi. Branch himoyasi (faqat review qilingan merge) va production branch = `main` tavsiya etiladi. D1 migratsiyalari avtomatik qo‘llanmaydi (`wrangler deploy` migratsiya qilmaydi) — yangi migratsiya bo‘lsa avval backup va qo‘lda apply.
+- **Ildiz konfiguratsiya xavfi:** ildizdan `wrangler d1 … --remote` endi production’ga qaraydi. Barcha QA skriptlari `apps/api` ga `cd` qiladi (tekshirildi); faylda ogohlantirish bor.
+- **Sinov sirlari:** `scripts/prepare-phone-test.mjs` faqat lokal LAN test credential’ini o‘z ichiga oladi (production emas).

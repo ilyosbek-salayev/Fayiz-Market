@@ -1,0 +1,27 @@
+PASS customer: bundled UI served under the configured API origin — http://127.0.0.1:8791/__app/index.html
+PASS customer: BiometricManager reports an enrolled fingerprint
+PASS customer: "Barmoq izi bilan kirish" offered in profile
+PASS customer: system BiometricPrompt shown — ||com.android.systemui:id/biometric_scrollview
+PASS customer: session token encrypted with the Keystore key; plain token removed from WebView storage
+PASS customer: app opens on the fingerprint lock screen
+PASS customer: an unenrolled finger does not unlock
+PASS customer: enrolled fingerprint decrypts the session and unlocks
+PASS customer: MapLibre + OpenFreeMap draws in the Android WebView (WebGL, no API key)
+PASS customer: Android runtime location permission requested by the shell — While using the app||com.android.permissioncontroller:id/permission_allow_foreground_only_button
+PASS customer: emulator GPS fix reaches the WebView and centres the map pin
+PASS customer: order stored with the GPS coordinates — FM-MWV3Z5B7-DFD2DE 41.36549830000001,69.28489830000001
+PASS admin: Android system notification posted from the polling feed (app in background)
+PASS admin: channel "operations", lock-screen visibility private
+PASS admin: notification visible in the shade and tapped
+PASS admin: tapping the notification opens that order — FM-MWV3ZGOJ-CF9C5B
+PASS admin: camera intent opens the system camera app
+PASS admin: photo taken and confirmed in the camera app
+PASS admin: captured photo returned to the WebView as a resized preview — 27 KB · yuklashga tayyor
+PASS admin: photo uploaded and shown from storage (R2 via local Worker)
+PASS admin: photo not saved to the device gallery (app cache only)
+PASS setup: courier assigned to the GPS order — 200
+PASS courier: real WebView watchPosition shares the emulator GPS fix — {"lat":41.3299983,"lng":69.25,"accuracy":5,"recordedAt":"2026-11-24 19:50:48","ageSeconds":7,"live":true}
+PASS courier: movement is pushed again (≥15 s / ≥30 m rule) — {"lat":41.34,"lng":69.26,"accuracy":5,"recordedAt":"2026-11-24 19:50:55","ageSeconds":1,"live":true}
+PASS courier: on-screen sharing indicator
+
+25/25 passed (Android 14 emulator — not a physical device)

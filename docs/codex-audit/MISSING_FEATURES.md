@@ -25,3 +25,12 @@ Hozir yangi xizmat yoqilmadi. Delivery qabul qilinganda aniq «Yetkazish davomid
 Delivery handover/cancel/reassign/logout, server 401/403/409 yoki ruxsat bekor qilinishida service to‘xtaydi, navbat va credential tozalanadi. Permission yo‘qolsa qayta-qayta yashirin ishga tushmaydi. Process restart’da foydalanuvchi roziligini chetlab o‘tadigan auto-start yo‘q. Backend har bir nuqta uchun active assignment’ni tekshiradi. Offline nuqtalar cheklangan va vaqt tamg‘ali; eski nuqtani «live» ko‘rsatmaslik. OEM battery saver, ekran o‘chiq, approximate location, revoke va force-stop fizik sinovlari shart. Background permission faqat alohida isbotlangan ehtiyoj va platforma siyosati bilan; odatiy visible-start foreground service uchun o‘z-o‘zidan so‘ralmaydi.
 
 [Rasmiy service talablari](https://developer.android.com/develop/background-work/services/fgs/service-types), [background start cheklovlari](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start).
+
+## Post-Codex holat (Claude, 2026-11-25)
+
+| Prioritet | Ish | Yangi holat |
+|---|---|---|
+| P0 | Credential rotation | O‘zgarmadi — BLOCKED: egasi tasdig‘i/amali (tartib SECURITY_REPORT’da) |
+| P0 | Patch’ni production’ga chiqarish | Tayyor: `main` + ildiz `wrangler.toml`. Egasi `main`ni push qilib, Cloudflare production branch’ini `main` qilsa — avtomatik deploy; yoki qo‘lda `cd apps/api && npx wrangler deploy --env production`. Migratsiya kerak emas |
+| P1 | Aynan joriy release native/desktop smoke | Emulyator (upgrade 12/12, xarita 6/6, native 25/25) va macOS (11/11) bilan yopildi; fizik telefon va Windows qoladi |
+| — | Cloudflare Workers Build xatosi | DONE (lokal simulyatsiya PASS; haqiqiy build keyingi push’da tasdiqlanadi) |

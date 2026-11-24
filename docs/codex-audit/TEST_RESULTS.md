@@ -42,3 +42,30 @@ Audit 2026-11-24–25. Quyidagi sonlar saqlangan yakuniy dalillardan olinadi. Pr
 `npm ci` → `npm test` → `npm run typecheck`. UI uchun avval `VITE_ANDROID_BUILD=1 npm run build:customer` va `VITE_ANDROID_BUILD=1 npm run build:admin`, keyin `node scripts/codex-audit/run-local.mjs`. Chrome manzilini `CHROME_PATH` bilan bering. `QA_SUITES=api,integration,regression,expansion,security` yordamida tor to‘plam tanlanadi. Mock: `node scripts/deploy-qa/provider-test-mode.mjs`. Hech bir mutating suite’ga production URL bermang.
 
 UI sinovi davomida shu `apps/*/dist` fayllarini boshqa desktop/Android build bilan almashtirmang. Yakuniy artefaktni tekshirganda paket ichidagi bundle va test qilingan bundle mosligini qayta tekshiring. Security/feature test coverage barcha mumkin bo‘lgan holatlarni qamramaydi; yuklama, crash injection va fizik qurilmalar alohida.
+
+## Post-Codex qayta tekshiruv (Claude, 2026-11-25)
+
+Codex ishi `main` branchda commit qilingandan keyin (`1d66a73`…`7ce81cf`) barcha to‘plamlar qayta ishga tushirildi. Loglar: `docs/v1-expansion/evidence-post-codex/` (Codex dalillari o‘zgartirilmadi — runner endi `QA_EVIDENCE_DIR` qabul qiladi).
+
+| Test | Natija | Dalil |
+|---|---|---|
+| Vitest (Codex 46 + yangi 3 ta Cloudflare config testi) | VERIFIED — 49/49 | `npm test` |
+| TypeScript API/admin/customer | VERIFIED — exit 0 | `npm run typecheck` |
+| Backend expansion | VERIFIED — 129/129 | `expansion-api.log` |
+| API integration + lokal R2 | VERIFIED — 38/38 | `integration.log` |
+| Kengaytirilgan UI (xarita, GPS, pin, tracking) | VERIFIED — 54/54 | `expansion-ui.log` |
+| V1 UI regressiyasi | VERIFIED — 43/43 | `regression-ui.log` |
+| Security regression | VERIFIED — 11/11 | `security-regression.log` |
+| Provider mock | VERIFIED — 35/35 (real provider emas) | `mock-providers.log` |
+| npm audit | 0 ta ma’lum zaiflik | `npm audit` |
+| Cloudflare Workers Build simulyatsiyasi (toza clone, `npm clean-install` + ildizdan `wrangler deploy --dry-run`) | VERIFIED — exit 0; bundle qo‘lda deploy bilan bir xil | `wrangler.toml`, `apps/api/deploy-config.test.ts` |
+| Production GET-only + R2 rasm GET | VERIFIED — 11/11 + 200 image/jpeg | `production-get.log` |
+| Android emulyator: 1.1.1→1.1.2 ustidan yangilash | EMULATOR — 12/12 | `android-upgrade-emulator.log` |
+| Android emulyator: production’da ochilish (read-only) | EMULATOR — 10/10 | `android-install-open-emulator.log` |
+| Android emulyator: MapLibre worker APK WebView ichida | EMULATOR — 6/6 (worker `shouldInterceptRequest` 200, plitkalar chizildi) | `android-map-worker-emulator.log` |
+| Android emulyator: native QA (biometrika, GPS/xarita, bildirishnoma, kamera→R2, kuryer GPS) | EMULATOR — 25/25 | `android-native-emulator.log` |
+| macOS paketlangan ilova read-only smoke | VERIFIED — 11/11 | `desktop-readonly.log` |
+| Windows asar/arxitektura | VERIFIED (build integrity); runtime NOT TESTED | `desktop-bundle-match.txt`, `desktop-architecture.txt` |
+| Fizik Android telefon, Windows runtime, real provayderlar | NOT TESTED / BLOCKED | Qurilma va hisoblar yo‘q |
+
+Topilgan va tuzatilgan test-infra nosozligi: lockfile qayta yaratilgach `ws` root’ga hoist qilinmaydi → `scripts/android-qa/lib.mjs` Node’ning o‘rnatilgan `WebSocket`iga o‘tkazildi (assertion o‘zgarmadi).

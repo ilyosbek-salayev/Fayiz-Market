@@ -26,3 +26,7 @@ Android 13+ POST_NOTIFICATIONS runtime UX, token refresh, boshqa accountga o‘t
 ## Tasdiq talab qiladigan yakuniy amallar
 
 Production owner rotation (oldin oshkor bo‘lgan), secretlarni o‘rnatish, deploy, remote migration/resource yoki billing, GitHub push/merge. Ushbu audit hech birini bajarmadi. Tayyor commit va release matritsasini ko‘rib chiqib alohida tasdiqlash lozim.
+
+## Cloudflare Git build (2026-11-25)
+
+Dashboard → Workers & Pages → `fayz-market-api` → Settings → Build: production branch’ni `main` qiling (hozir build `feat/v1-premium-ui`dan qo‘lda ishga tushirilgan). Bu branch’ga har bir push production’ga deploy qiladi — branch himoyasi tavsiya etiladi. Root directory `/` va deploy command `npx wrangler deploy` o‘zgartirilmasin (repo shunga moslangan).

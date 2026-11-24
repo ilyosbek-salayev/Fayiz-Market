@@ -56,11 +56,14 @@ function dmg(file) {
 
 function exe(file) {
   const kind = run('file', ['-b', file]).trim();
-  const strings = readFileSync(file).toString('latin1');
+  const bytes = readFileSync(file);
+  // Authenticode lives in the PE certificate table (data directory #4); size 0 means the file is unsigned.
+  const pe = bytes.readUInt32LE(0x3c), magic = bytes.readUInt16LE(pe + 24);
+  const certSize = bytes.readUInt32LE(pe + 24 + (magic === 0x20b ? 112 : 96) + 4 * 8 + 4);
   return {
     format: kind,
-    installer: /Nullsoft/i.test(strings) ? 'NSIS' : 'unknown',
-    signing: { authenticode: /\x30\x82[\s\S]{2}\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x07\x02/.test(strings.slice(-200000)) ? 'present' : 'not signed' },
+    installer: /Nullsoft/i.test(kind) ? 'NSIS' : 'unknown',
+    signing: { authenticode: certSize ? `present (${certSize} bytes)` : 'not signed' },
   };
 }
 

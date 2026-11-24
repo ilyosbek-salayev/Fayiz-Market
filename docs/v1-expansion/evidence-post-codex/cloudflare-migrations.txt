@@ -1,0 +1,4 @@
+───────────────────────────────────────────────
+Resource location: remote 
+
+✅ No migrations to apply!

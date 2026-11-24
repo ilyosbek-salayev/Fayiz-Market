@@ -2,7 +2,7 @@
 
 Audit: 2026-11-24–25 (Asia/Tashkent). Boshlang‘ich HEAD `91c1416`, branch `feat/v1-premium-ui`. Ish boshida faqat `.DS_Store` o‘zgargan; unga tegilmadi. Ushbu hisobot kod ko‘rigi, yangi lokal sinovlar va production read-only dalillarini ajratadi. Oldingi hisobotdagi PASS avtomatik qabul qilinmadi.
 
-**Xulosa: pilot uchun asos mavjud, to‘liq tijoriy topshirish hali tayyor emas.** Hisoblar, fizik qurilmalar va production patch joylashtirish alohida yakunlanishi kerak. [Testlar](TEST_RESULTS.md), [xavfsizlik](SECURITY_REPORT.md), [release](RELEASE_READINESS.md).
+**Xulosa: pilot uchun asos mavjud, to‘liq tijoriy topshirish hali tayyor emas.** (2026-11-25 post-Codex tasdiqlash va yakuniy holat: [POST_CODEX_FINAL_REPORT](../v1-expansion/POST_CODEX_FINAL_REPORT.md).) Hisoblar, fizik qurilmalar va production patch joylashtirish alohida yakunlanishi kerak. [Testlar](TEST_RESULTS.md), [xavfsizlik](SECURITY_REPORT.md), [release](RELEASE_READINESS.md).
 
 ## Arxitektura va discovery
 

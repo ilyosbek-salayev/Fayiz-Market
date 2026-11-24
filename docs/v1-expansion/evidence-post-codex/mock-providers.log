@@ -1,0 +1,37 @@
+PASS test mode: SMS and email enabled through providers, OTP echo off — {"phone":{"enabled":true,"devEcho":false},"email":{"enabled":true,"devEcho":false},"telegram":{"enabled":false,"botUsername":null,"botId":"123456789"},"password":true}
+PASS SMS OTP: API returns no code when a provider sends it — {"ok":true,"expiresIn":300,"resendIn":60}
+PASS SMS OTP: Eskiz login + send with the number and code
+PASS SMS OTP: code delivered by SMS registers the account
+PASS email OTP: invalid address → 400
+PASS email OTP: Resend receives from/to/subject with the code, API returns no code
+PASS email OTP: resend within 60 s → 429
+PASS email OTP: wrong code rejected
+PASS email OTP: register without password (passwordless account)
+PASS email OTP: code cannot be reused
+PASS email OTP: registered email cannot register again
+PASS email login: code sent to the verified address
+PASS email login: code signs in to the same account
+PASS email login: unknown address answers like success but sends nothing
+PASS email login: unknown address cannot sign in
+PASS email reset: sets a password and logs out other devices
+PASS email reset: old session revoked
+PASS password login by email works
+PASS password login by email: wrong password → 401
+PASS email link: address used by another account → 409
+PASS email link: needs a session
+PASS email link: SMS account gains a verified email
+PASS integrations: 8 entries, secrets reported only as present
+PASS integration test "sms" runs against the mock — {"ok":true,"message":"Eskiz hisobiga ulanish muvaffaqiyatli"}
+PASS integration test "email" runs against the mock — {"ok":true,"message":"fayz.test domeni tasdiqlangan"}
+PASS integration test "telegram" runs against the mock — {"ok":true,"message":"@FayzQaBot boti ulangan"}
+PASS integration test "fcm" runs against the mock — {"ok":true,"message":"Firebase loyihasi: fayz-qa-mock"}
+PASS integration test "google_routes" runs against the mock — {"ok":true,"message":"Marshrut hisoblandi"}
+PASS Telegram login: payload signed with the test bot token accepted
+PASS Telegram login: replay refused
+PASS FCM: staff device tokens registered
+PASS FCM: new order created — 201
+PASS FCM: service-account JWT is RS256-signed and verifies with the public key
+PASS FCM: message sent to both tokens with title, data and Android channel
+PASS FCM: token answered 404 was pruned; the live token still receives — live-
+
+35/35 passed

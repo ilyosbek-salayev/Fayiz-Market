@@ -1,0 +1,16 @@
+# dist/ holati — o'zgartirishdan oldin (2026-11-25 00:52 +0500)
+b1b61b24df7225f685ab118d975bee13a28b2337e58d557a52b3c535da2c4b79  dist/RELEASE_MANIFEST.md
+e13968d9f091d20550c412fe665adfa3c999ee7ff8c6ffa9cf67a5a8a551650a  dist/apk/fayz-market-admin-debug.apk
+283783f06a90697c6436b3924ac4e28df7445062abbc0e92b1b40e6140865fac  dist/apk/fayz-market-customer-debug.apk
+8bd38997c70d2360a554ac2e9330f14c593ea3b9f34a2af795ec961f1c860773  dist/apk/v1.1.1/fayz-market-admin-debug.apk
+ecfd5e751ab15ff6dc432682bb7082dc3db189a91034b881ee538b50a895912e  dist/apk/v1.1.1/fayz-market-customer-debug.apk
+e13968d9f091d20550c412fe665adfa3c999ee7ff8c6ffa9cf67a5a8a551650a  dist/apk/v1.1.2/fayz-market-admin-debug.apk
+283783f06a90697c6436b3924ac4e28df7445062abbc0e92b1b40e6140865fac  dist/apk/v1.1.2/fayz-market-customer-debug.apk
+3923631d9aa93c133d3595e60f26cc07fc867df1adf4a2f79bf47af4d5b0fea9  dist/desktop/fayz-market-admin-1.1.1-macos-arm64.dmg
+6037d1721cdf21c520cc2c3dd5b0b9721a61354639cd66ca010191edc16964fb  dist/desktop/fayz-market-admin-1.1.1-windows-x64-setup.exe
+0e0f07de8befca64c555932bb15dd6b5811559ebab7200629924116ccc0cf7e1  dist/desktop/fayz-market-admin-1.1.2-macos-arm64.dmg
+62d02c5fc5cce5e004cba6b1a4425cccd41296f75cc3256cbd83bf458d1c5194  dist/desktop/fayz-market-admin-1.1.2-windows-x64-setup.exe
+8bd38997c70d2360a554ac2e9330f14c593ea3b9f34a2af795ec961f1c860773  dist/telegram/FayzMarket-Admin-v1.1.1.apk
+ecfd5e751ab15ff6dc432682bb7082dc3db189a91034b881ee538b50a895912e  dist/telegram/FayzMarket-Mijoz-v1.1.1.apk
+
+# dist/backups va *credentials* fayllari tegilmadi (maxfiy, hisobotga kiritilmadi)

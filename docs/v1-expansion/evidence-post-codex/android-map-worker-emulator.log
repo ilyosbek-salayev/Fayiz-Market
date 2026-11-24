@@ -1,0 +1,8 @@
+PASS uz.fayzmarket.customer: app bundle registers the bundled worker (maplibre-gl-worker-1K9-aB_Z.js)
+PASS uz.fayzmarket.customer: worker script served by the APK (shouldInterceptRequest) — 200 text/javascript
+PASS uz.fayzmarket.customer: MapLibre worker + OpenFreeMap tiles draw inside the APK WebView — loaded; canvas 945x945; Chrome/113.0.5672.136; origin https://fayz-market-api.ilyosbeksalayev240.workers.dev
+PASS uz.fayzmarket.admin: app bundle registers the bundled worker (maplibre-gl-worker-1K9-aB_Z.js)
+PASS uz.fayzmarket.admin: worker script served by the APK (shouldInterceptRequest) — 200 text/javascript
+PASS uz.fayzmarket.admin: MapLibre worker + OpenFreeMap tiles draw inside the APK WebView — loaded; canvas 945x945; Chrome/113.0.5672.136; origin https://fayz-market-api.ilyosbeksalayev240.workers.dev
+
+6/6 passed — sdk_gphone64_arm64 / Android 14 (EMULATOR)
