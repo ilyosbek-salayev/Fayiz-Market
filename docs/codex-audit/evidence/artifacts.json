@@ -1,0 +1,32 @@
+[
+  {
+    "path": "dist/apk/v1.1.1/fayz-market-admin-debug.apk",
+    "bytes": 646808,
+    "sha256": "8bd38997c70d2360a554ac2e9330f14c593ea3b9f34a2af795ec961f1c860773"
+  },
+  {
+    "path": "dist/apk/v1.1.1/fayz-market-customer-debug.apk",
+    "bytes": 644012,
+    "sha256": "ecfd5e751ab15ff6dc432682bb7082dc3db189a91034b881ee538b50a895912e"
+  },
+  {
+    "path": "dist/desktop/fayz-market-admin-1.1.1-macos-arm64.dmg",
+    "bytes": 107789138,
+    "sha256": "3923631d9aa93c133d3595e60f26cc07fc867df1adf4a2f79bf47af4d5b0fea9"
+  },
+  {
+    "path": "dist/desktop/fayz-market-admin-1.1.1-windows-x64-setup.exe",
+    "bytes": 92180248,
+    "sha256": "6037d1721cdf21c520cc2c3dd5b0b9721a61354639cd66ca010191edc16964fb"
+  },
+  {
+    "path": "dist/telegram/FayzMarket-Admin-v1.1.1.apk",
+    "bytes": 646808,
+    "sha256": "8bd38997c70d2360a554ac2e9330f14c593ea3b9f34a2af795ec961f1c860773"
+  },
+  {
+    "path": "dist/telegram/FayzMarket-Mijoz-v1.1.1.apk",
+    "bytes": 644012,
+    "sha256": "ecfd5e751ab15ff6dc432682bb7082dc3db189a91034b881ee538b50a895912e"
+  }
+]

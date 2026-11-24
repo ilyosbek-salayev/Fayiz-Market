@@ -1,4 +1,4 @@
-# Fayz Market V1.0
+# Fayz Market
 
 Accessories store customer app, responsive administration, and Cloudflare Worker API.
 
@@ -10,3 +10,5 @@ Accessories store customer app, responsive administration, and Cloudflare Worker
 - `docs/v1`: audit, operation and release status
 
 See [build instructions](docs/v1/BUILD_INSTRUCTIONS.md) and [deployment guide](docs/v1/DEPLOYMENT_GUIDE.md).
+
+Current independent audit and release gates: [Codex audit](docs/codex-audit/PROJECT_AUDIT.md), [test results](docs/codex-audit/TEST_RESULTS.md), [release readiness](docs/codex-audit/RELEASE_READINESS.md). Version metadata is defined in the root package.json; existing 1.1.1 installers remain historical artifacts.

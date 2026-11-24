@@ -24,3 +24,6 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (!salt || !expected || !Number.isSafeInteger(iterations) || iterations < 1) return false;
   return safeEqual(await derive(password, salt, iterations), expected);
 }
+
+// A fixed non-account hash keeps unknown-account verification to one derivation.
+export const DUMMY_PASSWORD_HASH = `${"0".repeat(64)}:${PBKDF2_ITERATIONS}:${"0".repeat(64)}`;

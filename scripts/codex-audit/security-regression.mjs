@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+const api = process.env.QA_API;
+if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(api || '')) throw new Error('Isolated local Worker required');
+let passed = 0;
+const check = (value, name) => { assert.ok(value, name); passed++; console.log('PASS ' + name); };
+async function call(path, method = 'GET', body, auth) {
+ const r = await fetch(api + path, { method, headers: { 'Content-Type':'application/json', ...(auth ? { Authorization:auth } : {}) }, body:body === undefined ? undefined : JSON.stringify(body) });
+ return { status:r.status, data:await r.json() };
+}
+check((await call('/auth/email/otp','POST',{email:'x'.repeat(70000)})).status === 413, 'oversized JSON rejected before parsing');
+let r = await call('/auth/otp','POST',{phone:'+998909991111',purpose:'register'});
+const code = r.data.devCode;
+const wrong = code === '000000' ? '111111' : '000000';
+const attempts = await Promise.all(Array.from({length:12}, () => call('/auth/register','POST',{phone:'+998909991111',code:wrong,password:'RegressionPass123!',name:'QA User'})));
+check(attempts.filter(r => r.data.error?.code === 'INVALID_CODE').length === 5, 'parallel OTP requests get exactly five verification attempts');
+check(attempts.filter(r => r.status === 429).length === 7, 'remaining parallel OTP requests are rate limited');
+r = await call('/auth/register','POST',{phone:'+998909991111',code,password:'RegressionPass123!',name:'QA User'});
+check(r.status === 429, 'correct OTP rejected after attempt budget exhausted');
+r = await call('/auth/email/otp','POST',{email:'audit@example.invalid',purpose:'register'});
+r = await call('/auth/email/register','POST',{email:'audit@example.invalid',code:r.data.devCode,password:'RegressionPass123!',name:'QA User'});
+check(r.status === 201, 'email customer created');
+const auth = 'Customer ' + r.data.token;
+const second = await call('/auth/login','POST',{email:'audit@example.invalid',password:'RegressionPass123!'});
+const other = 'Customer ' + second.data.token;
+r = await call('/auth/password','POST',{currentPassword:'RegressionPass123!',password:'NewRegressionPass123!'},auth);
+check(r.status === 200, 'customer changes password');
+check((await call('/auth/me','GET',undefined,auth)).status === 200, 'current session remains valid');
+check((await call('/auth/me','GET',undefined,other)).status === 401, 'other sessions revoked after password change');
+check((await call('/customer/push-token','POST',{token:'audit-device-token-123456789',platform:'android'},auth)).status === 200, 'push token registration');
+check((await call('/customer/push-token','DELETE',{token:'audit-device-token-123456789'},auth)).status === 200, 'authenticated push token cleanup');
+check((await call('/customer/push-token','DELETE',{token:'audit-device-token-123456789'})).status === 401, 'push cleanup requires authentication');
+console.log(`${passed}/${passed} passed`);

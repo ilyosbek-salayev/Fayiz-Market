@@ -1,5 +1,7 @@
 const { app, BrowserWindow, shell, ipcMain, Notification, safeStorage, session } = require('electron');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+const { trustedSender } = require('./bridge-policy.cjs');
 const { readFileSync, writeFileSync, rmSync, existsSync } = require('node:fs');
 const apiUrl = JSON.parse(readFileSync(path.join(__dirname, 'api-url.json'), 'utf8')).apiUrl;
 if (!/^https:\/\//.test(apiUrl) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(apiUrl)) throw new Error('A secure API URL is required');
@@ -7,7 +9,10 @@ app.setName('Fayz Market Admin'); // user data folder: …/Fayz Market Admin (no
 app.setAppUserModelId('uz.fayzmarket.admin'); // Windows: notifications are attributed to the installed app
 
 let mainWindow = null;
+const expectedURL = pathToFileURL(path.join(__dirname, 'web', 'index.html')).href;
+function requireTrusted(event) { if (!trustedSender(event, mainWindow, expectedURL)) throw new Error('Untrusted IPC sender'); }
 ipcMain.handle('api-request', async (_event, input) => {
+  requireTrusted(_event);
   if (!/^\/(admin|courier|categories|settings|products|orders|images|p)(\/|\?|$)/.test(input.path) || input.path.includes('..') || input.path.includes('//')) throw new Error('Invalid API path');
   if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(input.method)) throw new Error('Invalid method');
   const headers = {};
@@ -21,6 +26,7 @@ ipcMain.handle('api-request', async (_event, input) => {
 
 // OS notification (macOS Notification Center / Windows toast). Clicking it focuses the app and opens the order.
 ipcMain.on('notify', (_event, input) => {
+  if (!trustedSender(_event, mainWindow, expectedURL)) return;
   if (!Notification.isSupported() || typeof input?.title !== 'string') return;
   const note = new Notification({ title: input.title.slice(0, 120), body: String(input.body || '').slice(0, 240), silent: false });
   note.on('click', () => {
@@ -34,13 +40,15 @@ ipcMain.on('notify', (_event, input) => {
 // The staff session token is encrypted with the OS keychain (macOS Keychain / Windows DPAPI) — never stored in plain text.
 const sessionFile = () => path.join(app.getPath('userData'), 'session.bin');
 ipcMain.handle('session-save', (_event, token) => {
+  requireTrusted(_event);
   if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token) || !safeStorage.isEncryptionAvailable()) return false;
   writeFileSync(sessionFile(), safeStorage.encryptString(token), { mode: 0o600 }); return true;
 });
-ipcMain.handle('session-load', () => {
+ipcMain.handle('session-load', event => {
+  requireTrusted(event);
   try { if (!existsSync(sessionFile()) || !safeStorage.isEncryptionAvailable()) return ''; const token = safeStorage.decryptString(readFileSync(sessionFile())); return /^[a-f0-9]{64}$/.test(token) ? token : ''; } catch { return ''; }
 });
-ipcMain.handle('session-clear', () => { try { rmSync(sessionFile(), { force: true }); } catch { /* already gone */ } });
+ipcMain.handle('session-clear', event => { requireTrusted(event); try { rmSync(sessionFile(), { force: true }); } catch { /* already gone */ } });
 
 function createWindow() {
   mainWindow = new BrowserWindow({ width: 1280, height: 820, minWidth: 760, minHeight: 540, title: 'Fayz Market Admin', backgroundColor: '#FAFAF7', icon: path.join(__dirname, 'build', 'icon.png'), webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, preload: path.join(__dirname, 'preload.cjs') } });

@@ -159,6 +159,12 @@ export function registerStaff(app: App) {
     const rows = await c.env.DB.prepare(`SELECT id,kind,title,body,order_id AS orderId,created_at AS createdAt FROM notifications WHERE ${where} AND id>? ORDER BY id DESC LIMIT 30`).bind(...binds, Number.isSafeInteger(after) && after > 0 ? after : 0).all();
     return c.json({ latest, notifications: rows.results });
   });
+  app.delete('/admin/push-token', async c => {
+    const me = c.get('admin');
+    const { token } = await parse(c, z.object({ token: z.string().min(20).max(4096) }));
+    await c.env.DB.prepare("DELETE FROM push_tokens WHERE token=? AND principal_id=? AND audience IN ('staff','courier')").bind(token, me.id).run();
+    return c.json({ ok: true });
+  });
   app.post('/admin/push-token', async c => {
     const me = c.get('admin');
     const { token, platform } = await parse(c, z.object({ token: z.string().min(20).max(4096), platform: z.enum(['android', 'desktop']) }));

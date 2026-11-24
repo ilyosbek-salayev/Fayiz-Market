@@ -38,7 +38,10 @@ export const isProduction = (env: Bindings) => env.ENVIRONMENT === 'production';
  * Local test mode. Requires BOTH an explicit ENVIRONMENT=development and a plain-http public URL, so a deployed
  * Worker (always https, ENVIRONMENT=production) can never enable OTP echo or mock providers by a stray variable.
  */
-export const isDevelopment = (env: Bindings) => env.ENVIRONMENT === 'development' && /^http:\/\//.test(env.PUBLIC_BASE_URL || '');
+export const isDevelopment = (env: Bindings) => {
+  try { const url = new URL(env.PUBLIC_BASE_URL); return env.ENVIRONMENT === 'development' && url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname); }
+  catch { return false; }
+};
 export type Provider = 'eskiz' | 'resend' | 'google-oauth' | 'fcm' | 'telegram' | 'routes';
 /** Real provider origin, or — in local test mode only — the local mock origin with a provider prefix. */
 export function providerBase(env: Bindings, provider: Provider, real: string): string {

@@ -1,0 +1,65 @@
+
+ ⛅️ wrangler 4.166.0
+────────────────────
+Created:     2026-11-22T13:49:37.552Z
+Author:      ilyosbeksalayev240@gmail.com
+Source:      Upload
+Message:     Automatic deployment on upload.
+Version(s):  (100%) 754e970c-a392-4cb4-abe1-ae4091293995
+                 Created:  2026-11-22T13:49:37.552Z
+                     Tag:  -
+                 Message:  -
+
+Created:     2026-11-22T13:50:12.491Z
+Author:      ilyosbeksalayev240@gmail.com
+Source:      Secret Change
+Message:     -
+Version(s):  (100%) 35439594-4882-4fbc-910b-cf274ff4b6d8
+                 Created:  2026-11-22T13:50:12.491Z
+                     Tag:  -
+                 Message:  -
+
+Created:     2026-11-22T13:52:07.615Z
+Author:      ilyosbeksalayev240@gmail.com
+Source:      Unknown (deployment)
+Message:     -
+Version(s):  (100%) ffb4e7d5-95de-45c7-871d-879f99b29610
+                 Created:  2026-11-22T13:52:06.291Z
+                     Tag:  -
+                 Message:  -
+
+Created:     2026-11-22T13:52:26.102Z
+Author:      ilyosbeksalayev240@gmail.com
+Source:      Secret Change
+Message:     -
+Version(s):  (100%) 592e635a-6d08-4379-a563-05b36283200e
+                 Created:  2026-11-22T13:52:26.102Z
+                     Tag:  -
+                 Message:  -
+
+Created:     2026-11-22T14:41:05.757Z
+Author:      ilyosbeksalayev240@gmail.com
+Source:      Unknown (deployment)
+Message:     -
+Version(s):  (100%) 4264c3a7-d28c-4c68-8888-5938c6215194
+                 Created:  2026-11-22T14:41:04.448Z
+                     Tag:  -
+                 Message:  -
+
+Created:     2026-11-22T14:58:06.021Z
+Author:      ilyosbeksalayev240@gmail.com
+Source:      Unknown (deployment)
+Message:     -
+Version(s):  (100%) 6f0db37f-1b5b-4a92-8df3-c30c19fb6e52
+                 Created:  2026-11-22T14:58:04.697Z
+                     Tag:  -
+                 Message:  -
+
+Created:     2026-11-22T17:59:20.955Z
+Author:      ilyosbeksalayev240@gmail.com
+Source:      Unknown (deployment)
+Message:     -
+Version(s):  (100%) 9ff0b7fb-15b2-4340-b78f-af0ec6a7332c
+                 Created:  2026-11-22T17:59:19.562Z
+                     Tag:  -
+                 Message:  -

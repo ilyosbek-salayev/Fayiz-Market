@@ -18,7 +18,7 @@ const call = async (p, { method = 'GET', auth, body, headers = {} } = {}) => { c
 // WebGL through SwiftShader so MapLibre can draw in headless Chrome (a phone WebView uses the GPU).
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
 // Waits until the free (keyless) OpenFreeMap map has drawn its style, then returns the marker kinds on it.
-const mapReady = async (page, scope = '') => { await page.waitForSelector(`${scope} .map-box[data-provider=openfreemap] canvas.maplibregl-canvas`, { timeout: 30000 }); await pause(1200); return page.evaluate(sc => [...document.querySelectorAll(`${sc} .map-box .map-dot`)].map(d => (d.className.match(/map-dot-(\w+)/) || [])[1]).sort().join(','), scope); };
+const mapReady = async (page, scope = '') => { await page.waitForSelector(`${scope} .map-box[data-provider=openfreemap] canvas.maplibregl-canvas`, { timeout: 30000 }).catch(async error => { console.log('MAP DIAGNOSTIC', await page.evaluate(() => document.body.innerText)); await page.screenshot({ path: path.join(OUT, 'map-failure.png') }); throw error; }); await pause(1200); return page.evaluate(sc => [...document.querySelectorAll(`${sc} .map-box .map-dot`)].map(d => (d.className.match(/map-dot-(\w+)/) || [])[1]).sort().join(','), scope); };
 async function open(app, width = 390, geo) {
   const ctx = await browser.createBrowserContext();
   if (geo) await ctx.overridePermissions(API, ['geolocation', 'notifications']);
@@ -28,6 +28,8 @@ async function open(app, width = 390, geo) {
   await page.setRequestInterception(true);
   page.on('request', async req => { const u = new URL(req.url()); if (u.origin === API && u.pathname.startsWith('/__app/')) { const f = path.join(ROOT, 'apps', app, 'dist', u.pathname.slice(7)); try { return req.respond({ status: 200, contentType: mime(f), body: await readFile(f) }); } catch { return req.respond({ status: 404, body: '' }); } } req.continue(); });
   page.on('dialog', async d => { dialogs.push(d.message()); await d.accept(); });
+  page.on('requestfailed', req => console.log('NETWORK', new URL(req.url()).hostname, req.failure()?.errorText));
+  page.on('console', msg => { if (msg.type() === 'error') console.log('BROWSER', msg.text().slice(0, 300)); });
   page.on('pageerror', e => check(false, `${app} page error`, e.message));
   await page.goto(`${API}/__app/index.html`, { waitUntil: 'networkidle0' });
   return { page, ctx };

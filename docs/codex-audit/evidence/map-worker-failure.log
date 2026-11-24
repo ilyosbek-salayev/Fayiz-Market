@@ -1,0 +1,68 @@
+BROWSER Failed to load resource: the server responded with a status of 404 (Not Found)
+PASS profile offers sign-in / registration
+PASS OTP requested; dev server shows the code (never in production) — 478332
+PASS resend countdown shown
+PASS account created, verified phone shown
+PASS session stored on device
+PASS product page shows verified-review section (empty)
+PASS no review/rating UI during checkout
+NETWORK tiles.openfreemap.org net::ERR_ABORTED
+MAP DIAGNOSTIC Savat
+1 dona mahsulot
+Klassik qoʻl soati
+245,000 soʻm / dona
+1
+245,000 soʻm
+Mahsulotlar
+1 dona
+Yetkazib berish tafsilotlarini buyurtma vaqtida aniqlaymiz
+Jami
+245,000 soʻm
+Jami
+245,000 soʻm
+Buyurtma berish
+Bosh sahifa
+Katalog
+1
+Savat
+Buyurtmalar
+Profil
+Buyurtmani rasmiylashtirish
+Klassik qoʻl soati × 1
+245,000 soʻm
+Jami
+245,000 soʻm
+Yetkazish joyi
+Xaritadan manzil tanlash
+Podyezd, qavat, moʻljal
+Ixtiyoriy — kuryerga yordam beradi
+Qabul qiluvchi
+Ism
+Telefon
+Masalan: +998901234567
+Yetkazib berish manzili
+Izoh
+Ixtiyoriy: qulay vaqt va boshqalar
+Buyurtmani yuborish
+245,000 soʻm
+Bekor qilish
+Yetkazish joyi
+
+Xaritani suring — qizil pin yetkazish nuqtasini koʻrsatadi. GPS aniqligi har doim ham toʻliq emas, pinni toʻgʻrilab qoʻying.
+
+Xarita yuklanmadi
+Worker failed to load. Check that the worker URL is correct.. Internet aloqasini tekshiring — manzil koordinatalari pastda.
+Joylashuvimni aniqlash
+Shu joyni tasdiqlash
+Bekor qilish
+FAIL script completed — TimeoutError: Waiting for selector `.sheet .map-box[data-provider=openfreemap] canvas.maplibregl-canvas` failed: Waiting failed: 30000ms exceeded
+    at new WaitTask (file:///Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/ui-qa/node_modules/puppeteer-core/lib/esm/puppeteer/common/WaitTask.js:45:34)
+    at IsolatedWorld.waitForFunction (file:///Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/ui-qa/node_modules/puppeteer-core/lib/esm/puppeteer/api/Realm.js:22:26)
+    at CSSQueryHandler.waitFor (file:///Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/ui-qa/node_modules/puppeteer-core/lib/esm/puppeteer/common/QueryHandler.js:175:95)
+    at async CdpFrame.waitForSelector (file:///Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/ui-qa/node_modules/puppeteer-core/lib/esm/puppeteer/api/Frame.js:529:21)
+    at async CdpPage.waitForSelector (file:///Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/ui-qa/node_modules/puppeteer-core/lib/esm/puppeteer/api/Page.js:1369:20)
+    at async mapReady (file:///Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/ui-qa/expansion-ui.mjs:21:48)
+    at async file:///Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/ui-qa/expansion-ui.mjs:82:3
+PASS no native alert/confirm dialogs
+
+8/9 passed

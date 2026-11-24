@@ -5,6 +5,7 @@
 //    list of coordinates with links — no fake map is ever drawn.
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 declare global { interface Window { google?: any; __fayzMapsReady?: () => void } }
 export type LatLng = { lat: number; lng: number };
@@ -33,7 +34,7 @@ export function loadGoogleMaps(key: string): Promise<any> {
 /** MapLibre is code-split: it is downloaded only when a map is actually shown. */
 let maplibre: Promise<any> | null = null;
 function loadMapLibre(): Promise<any> {
-  if (!maplibre) maplibre = Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css')]).then(([m]) => (m as any).default ?? m).catch(e => { maplibre = null; throw e; });
+  if (!maplibre) maplibre = Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css')]).then(([m]) => { const ml = (m as any).default ?? m; ml.setWorkerUrl(mapWorkerUrl); return ml; }).catch(e => { maplibre = null; throw e; });
   return maplibre;
 }
 export function webglAvailable() {

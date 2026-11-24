@@ -1,0 +1,1 @@
+PASS macOS and Windows asar: version 1.1.2; 10 web files and 4 bridge/config files identical to final source bundle.

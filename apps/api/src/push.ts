@@ -25,7 +25,9 @@ async function pushTo(env: Bindings, audience: Audience, recipientId: number | n
   if (!env.FCM_SERVICE_ACCOUNT) return;
   const query = audience === 'staff'
     ? env.DB.prepare("SELECT p.token FROM push_tokens p JOIN admins a ON a.id=p.principal_id WHERE p.audience='staff' AND a.active=1 AND a.role IN ('owner','manager') AND p.failures<5")
-    : env.DB.prepare('SELECT token FROM push_tokens WHERE audience=? AND principal_id=? AND failures<5').bind(audience, recipientId);
+    : audience === 'courier'
+      ? env.DB.prepare("SELECT p.token FROM push_tokens p JOIN admins a ON a.id=p.principal_id WHERE p.audience='courier' AND p.principal_id=? AND a.active=1 AND a.role='courier' AND p.failures<5").bind(recipientId)
+      : env.DB.prepare('SELECT token FROM push_tokens WHERE audience=? AND principal_id=? AND failures<5').bind(audience, recipientId);
   const tokens = (await query.all<{ token: string }>()).results.map(r => r.token);
   if (!tokens.length) return;
   const account = JSON.parse(env.FCM_SERVICE_ACCOUNT) as { project_id: string; client_email: string; private_key: string };
@@ -36,17 +38,17 @@ async function pushTo(env: Bindings, audience: Audience, recipientId: number | n
       body: JSON.stringify({ message: { token, notification: { title: notice.title, body: notice.body }, data: { kind: notice.kind, orderId: String(notice.orderId ?? '') }, android: { priority: 'high', notification: { channel_id: audience === 'customer' ? 'orders' : 'operations', tag: `${notice.kind}-${notice.orderId ?? ''}` } } } }),
     });
     if (res.ok) await env.DB.prepare('UPDATE push_tokens SET failures=0,last_seen_at=CURRENT_TIMESTAMP WHERE token=?').bind(token).run();
-    else if (res.status === 404 || res.status === 400) await env.DB.prepare('DELETE FROM push_tokens WHERE token=?').bind(token).run(); // unregistered / invalid token
+    else if (res.status === 404) await env.DB.prepare('DELETE FROM push_tokens WHERE token=?').bind(token).run(); // unregistered; a generic 400 can be a payload error, not a dead device
     else await env.DB.prepare('UPDATE push_tokens SET failures=failures+1 WHERE token=?').bind(token).run();
   }
 }
 
-let cached: { token: string; until: number; url: string } | null = null;
+let cached: { token: string; until: number; url: string; identity: string } | null = null;
 const b64url = (data: ArrayBuffer | string) => btoa(typeof data === 'string' ? data : String.fromCharCode(...new Uint8Array(data))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 /** OAuth2 service-account JWT flow (RS256) for the FCM HTTP v1 API. */
 export async function googleAccessToken(account: { client_email: string; private_key: string }, env?: Bindings): Promise<string> {
   const tokenUrl = env ? `${providerBase(env, 'google-oauth', 'https://oauth2.googleapis.com')}/token` : 'https://oauth2.googleapis.com/token';
-  if (cached && cached.until > Date.now() && cached.url === tokenUrl) return cached.token;
+  if (cached && cached.until > Date.now() && cached.url === tokenUrl && cached.identity === account.client_email) return cached.token;
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   const claims = b64url(JSON.stringify({ iss: account.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
@@ -57,6 +59,6 @@ export async function googleAccessToken(account: { client_email: string; private
   const res = await fetch(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${header}.${claims}.${b64url(signature)}` });
   const data = await res.json<any>().catch(() => ({}));
   if (!res.ok || !data.access_token) throw new Error(`Google OAuth failed (${res.status})`);
-  cached = { token: data.access_token, until: Date.now() + 50 * 60 * 1000, url: tokenUrl };
+  cached = { token: data.access_token, until: Date.now() + 50 * 60 * 1000, url: tokenUrl, identity: account.client_email };
   return cached.token;
 }

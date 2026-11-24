@@ -1,0 +1,13 @@
+
+> fayz-market@1.1.2 test
+> vitest run
+
+
+ RUN  v5.1.1 /Users/ilyosbek/Documents/GitHub/Fayiz-Market
+
+
+ Test Files  7 passed (7)
+      Tests  46 passed (46)
+   Start at  00:20:25
+   Duration  263ms (transform 44%, tests 28%, import 24%, worker 3%)
+

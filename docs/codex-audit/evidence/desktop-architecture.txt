@@ -1,0 +1,2 @@
+apps/desktop/release-audit-1.1.2/mac-arm64/Fayz Market Admin.app/Contents/MacOS/Fayz Market Admin: Mach-O 64-bit executable arm64
+apps/desktop/release-audit-1.1.2/win-unpacked/Fayz Market Admin.exe:                               PE32+ executable (GUI) x86-64, for MS Windows

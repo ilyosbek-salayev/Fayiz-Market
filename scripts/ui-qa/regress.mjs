@@ -184,6 +184,15 @@ const api = async (p, init) => (await fetch(API + p, init)).json();
   await page.reload({ waitUntil: 'networkidle0' });
   await click(page, 'Buyurtmalar', '.tabbar button'); await pause(1000);
   check((await text(page)).includes('Tasdiqlandi'), 'customer sees admin status change (stage "Tasdiqlandi")');
+  await page.evaluate(o => localStorage.setItem('fayz_orders', JSON.stringify([o, { ...o, id: 99999999, orderNumber: 'FM-MISSING-AUDIT' }])), globalThis.__order);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await click(page, 'Buyurtmalar', '.tabbar button'); await pause(1000);
+  check((await text(page)).includes('Tasdiqlandi'), 'missing saved order does not hide the valid order');
+  check((await text(page)).includes('Ayrim buyurtmalar yuklanmadi'), 'partial order history failure is visible with retry');
+  check(await page.evaluate(() => JSON.parse(localStorage.getItem('fayz_orders')).length === 2), 'failed order token is retained for later recovery');
+  await click(page, 'Profil', '.tabbar button');
+  const metadata = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
+  check((await text(page)).includes('Fayz Market v' + metadata.version), 'profile version matches build metadata');
   await ctx.close();
 }
 check(dialogs.length === 0, 'no native alert/confirm dialogs used', dialogs.join(' | '));

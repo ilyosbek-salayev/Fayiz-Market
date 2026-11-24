@@ -1,0 +1,11 @@
+PASS packaged app launches
+PASS bundled file UI loads
+PASS login form renders
+PASS renderer has no Node globals
+PASS isolated preload bridge available
+PASS temporary profile has no saved session
+PASS production categories read via IPC
+PASS IPC rejects external API path
+PASS packaged map worker asset present
+PASS packaged MapLibre/OpenFreeMap draws through file origin: loaded
+10/10 passed

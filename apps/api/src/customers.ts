@@ -6,7 +6,7 @@ import type { App, Customer } from './lib';
 import { clientIp, fail, isProduction, limitOr429, parse, sha256, strongPassword, uzPhone } from './lib';
 import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS, generateCode, hashCode, sendSms, smsStatus } from './otp';
 import { codeEmail, emailStatus, sendEmail } from './email';
-import { passwordHash, randomToken, verifyPassword } from './password';
+import { DUMMY_PASSWORD_HASH, passwordHash, randomToken, verifyPassword } from './password';
 import { botIdFromToken, verifyTelegramLogin } from './telegram';
 import { customerOrderView } from './delivery';
 
@@ -40,9 +40,10 @@ async function consumeOtp(db: D1Database, phone: string, purpose: string, code: 
   const row = await db.prepare(`SELECT id,code_hash,attempts FROM ${store.table} WHERE ${store.column}=? AND purpose=? AND consumed_at IS NULL AND expires_at>CURRENT_TIMESTAMP ORDER BY id DESC LIMIT 1`).bind(phone, purpose).first<{ id: number; code_hash: string; attempts: number }>();
   if (!row) fail(400, 'CODE_EXPIRED', 'Kod muddati tugagan yoki soʻralmagan. Yangi kod oling');
   if (row!.attempts >= OTP_MAX_ATTEMPTS) fail(429, 'TOO_MANY_ATTEMPTS', 'Urinishlar tugadi. Yangi kod oling');
-  await db.prepare(`UPDATE ${store.table} SET attempts=attempts+1 WHERE id=?`).bind(row!.id).run();
+  const attempt = await db.prepare(`UPDATE ${store.table} SET attempts=attempts+1 WHERE id=? AND attempts<? AND consumed_at IS NULL AND expires_at>CURRENT_TIMESTAMP RETURNING attempts`).bind(row!.id, OTP_MAX_ATTEMPTS).first<{ attempts: number }>();
+  if (!attempt) fail(429, 'TOO_MANY_ATTEMPTS', 'Urinishlar tugadi. Yangi kod oling');
   const [salt, hash] = row!.code_hash.split(':');
-  if (!/^\d{6}$/.test(code) || (await hashCode(code, phone, salt)) !== hash) fail(400, 'INVALID_CODE', `Kod notoʻgʻri. Qolgan urinish: ${Math.max(0, OTP_MAX_ATTEMPTS - row!.attempts - 1)}`);
+  if (!/^\d{6}$/.test(code) || (await hashCode(code, phone, salt)) !== hash) fail(400, 'INVALID_CODE', `Kod notoʻgʻri. Qolgan urinish: ${Math.max(0, OTP_MAX_ATTEMPTS - attempt!.attempts)}`);
   const used = await db.prepare(`UPDATE ${store.table} SET consumed_at=CURRENT_TIMESTAMP WHERE id=? AND consumed_at IS NULL`).bind(row!.id).run();
   if (!used.meta.changes) fail(400, 'CODE_EXPIRED', 'Kod allaqachon ishlatilgan');
 }
@@ -165,7 +166,7 @@ export function registerCustomers(app: App) {
     const row = 'phone' in input
       ? await c.env.DB.prepare('SELECT * FROM customers WHERE phone=?').bind(input.phone).first<CustomerRow>()
       : await c.env.DB.prepare('SELECT * FROM customers WHERE email=? AND email_verified_at IS NOT NULL').bind(input.email).first<CustomerRow>();
-    const valid = await verifyPassword(input.password, row?.password_hash || await passwordHash('invalid-password'));
+    const valid = await verifyPassword(input.password, row?.password_hash || DUMMY_PASSWORD_HASH);
     if (!row || !row.password_hash || !valid) fail(401, 'INVALID_CREDENTIALS', 'phone' in input ? 'Telefon yoki parol notoʻgʻri' : 'Email yoki parol notoʻgʻri');
     await c.env.DB.prepare('DELETE FROM rate_limits WHERE key=?').bind(`cust-login:${id}`).run();
     return c.json({ token: await startSession(c.env.DB, row!.id), customer: view(row!) });
@@ -184,7 +185,7 @@ export function registerCustomers(app: App) {
   async function checkTelegram(c: any) {
     if (!c.env.TELEGRAM_BOT_TOKEN) fail(503, 'TELEGRAM_NOT_CONFIGURED', 'Telegram orqali kirish hozircha sozlanmagan');
     await limitOr429(c.env.DB, `tg-ip:${clientIp(c)}`, 30, 3600);
-    const { auth } = await parse(c, z.object({ auth: z.record(z.union([z.string(), z.number()])) }));
+    const { auth } = await parse(c, z.object({ auth: z.record(z.string(), z.union([z.string(), z.number()])) }));
     const result = await verifyTelegramLogin(auth, c.env.TELEGRAM_BOT_TOKEN);
     if (!result.ok) fail(401, `TELEGRAM_${result.reason}`, result.reason === 'EXPIRED' ? 'Telegram tasdigʻi eskirgan. Qayta urinib koʻring' : 'Telegram maʼlumoti tasdiqlanmadi');
     if (result.ok) {
@@ -229,9 +230,13 @@ export function registerCustomers(app: App) {
     const me = requireCustomer(c);
     const input = await parse(c, z.object({ currentPassword: z.string().max(200).optional(), password: strongPassword }));
     const row = (await c.env.DB.prepare('SELECT * FROM customers WHERE id=?').bind(me.id).first<CustomerRow>())!;
+    await limitOr429(c.env.DB, `customer-password-check:${me.id}`, 5, 900);
     if (row.password_hash && !(await verifyPassword(input.currentPassword || '', row.password_hash))) fail(401, 'INVALID_CREDENTIALS', 'Joriy parol notoʻgʻri');
     if (!row.phone_verified_at && !row.email_verified_at) fail(409, 'PHONE_REQUIRED', 'Parol oʻrnatishdan oldin telefon raqamingiz yoki emailingizni tasdiqlang');
-    await c.env.DB.prepare('UPDATE customers SET password_hash=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(await passwordHash(input.password), me.id).run();
+    await c.env.DB.batch([
+      c.env.DB.prepare('UPDATE customers SET password_hash=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(await passwordHash(input.password), me.id),
+      c.env.DB.prepare('DELETE FROM customer_sessions WHERE customer_id=? AND token_hash!=?').bind(me.id, await sha256(c.req.header('Authorization')!.slice(9))),
+    ]);
     return c.json({ ok: true });
   });
 
@@ -257,6 +262,12 @@ export function registerCustomers(app: App) {
   });
 
   /** Registers this device for push messages (used once FCM is configured in the Android shell). */
+  app.delete('/customer/push-token', async c => {
+    const me = requireCustomer(c);
+    const { token } = await parse(c, z.object({ token: z.string().min(20).max(4096) }));
+    await c.env.DB.prepare("DELETE FROM push_tokens WHERE token=? AND principal_id=? AND audience='customer'").bind(token, me.id).run();
+    return c.json({ ok: true });
+  });
   app.post('/customer/push-token', async c => {
     const me = requireCustomer(c);
     const { token, platform } = await parse(c, z.object({ token: z.string().min(20).max(4096), platform: z.enum(['android', 'desktop']) }));

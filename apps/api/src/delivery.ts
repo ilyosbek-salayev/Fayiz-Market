@@ -60,10 +60,6 @@ export async function authorizedOrder(c: any, id: number): Promise<OrderRow> {
   return row!;
 }
 
-async function moveOrderToShipped(db: D1Database, order: OrderRow) {
-  for (const step of stepsToShipped(order.status)) await db.prepare('UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(step, order.id).run();
-}
-
 export function registerDelivery(app: App) {
   // ---------- Customer ----------
   app.get('/orders/:id/tracking', async c => {
@@ -82,12 +78,11 @@ export function registerDelivery(app: App) {
     const order = await authorizedOrder(c, idFrom(c.req.param('id')));
     const delivery = await getDelivery(c.env.DB, order.id);
     if (!delivery || delivery.status !== 'handed_over' || order.status !== 'shipped') fail(409, 'NOT_HANDED_OVER', 'Kuryer hali topshirishni qayd etmagan');
-    const updated = await c.env.DB.prepare("UPDATE deliveries SET status='confirmed',confirmed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=? AND status='handed_over'").bind(order.id).run();
-    if (!updated.meta.changes) fail(409, 'ALREADY_CONFIRMED', 'Buyurtma allaqachon tasdiqlangan');
-    await c.env.DB.batch([
-      c.env.DB.prepare("UPDATE orders SET status='delivered',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='shipped'").bind(order.id),
-      c.env.DB.prepare('DELETE FROM delivery_locations WHERE order_id=?').bind(order.id),
+    const [updated] = await c.env.DB.batch([c.env.DB.prepare("UPDATE deliveries SET status='confirmed',confirmed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=? AND status='handed_over' AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status='shipped')").bind(order.id, order.id),
+      c.env.DB.prepare("UPDATE orders SET status='delivered',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='shipped' AND EXISTS(SELECT 1 FROM deliveries WHERE order_id=? AND status='confirmed')").bind(order.id, order.id),
+      c.env.DB.prepare("DELETE FROM delivery_locations WHERE order_id=? AND EXISTS(SELECT 1 FROM deliveries WHERE order_id=? AND status='confirmed')").bind(order.id, order.id),
     ]);
+    if (!updated.meta.changes) fail(409, 'ALREADY_CONFIRMED', 'Buyurtma allaqachon tasdiqlangan');
     await orderEvent(c.env.DB, order.id, 'customer', order.customer_id, 'delivery_confirmed');
     await notify(c.env, ctxOf(c), { audience: 'staff', orderId: order.id, kind: 'delivery_confirmed', title: `${order.order_number} qabul qilindi`, body: 'Mijoz buyurtmani olganini tasdiqladi' });
     return c.json({ ok: true, stage: 'delivered' });
@@ -178,12 +173,11 @@ export function registerDelivery(app: App) {
     const { reason } = await parse(c, z.object({ outcome: z.literal('delivered'), reason: z.string().trim().min(5).max(500) }));
     const order = await c.env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first<OrderRow>();
     if (!order) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi');
-    const res = await c.env.DB.prepare("UPDATE deliveries SET status='resolved',updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=? AND status IN ('handed_over','disputed')").bind(id).run();
-    if (!res.meta.changes) fail(409, 'NOT_RESOLVABLE', 'Faqat topshirilgan yoki eʼtiroz bildirilgan yetkazish hal qilinadi');
-    await c.env.DB.batch([
-      c.env.DB.prepare("UPDATE orders SET status='delivered',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='shipped'").bind(id),
-      c.env.DB.prepare('DELETE FROM delivery_locations WHERE order_id=?').bind(id),
+    const [res] = await c.env.DB.batch([c.env.DB.prepare("UPDATE deliveries SET status='resolved',updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=? AND status IN ('handed_over','disputed') AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status='shipped')").bind(id, id),
+      c.env.DB.prepare("UPDATE orders SET status='delivered',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='shipped' AND EXISTS(SELECT 1 FROM deliveries WHERE order_id=? AND status='resolved')").bind(id, id),
+      c.env.DB.prepare("DELETE FROM delivery_locations WHERE order_id=? AND EXISTS(SELECT 1 FROM deliveries WHERE order_id=? AND status='resolved')").bind(id, id),
     ]);
+    if (!res.meta.changes) fail(409, 'NOT_RESOLVABLE', 'Faqat topshirilgan yoki eʼtiroz bildirilgan yetkazish hal qilinadi');
     await orderEvent(c.env.DB, id, 'admin', admin.id, 'delivery_resolved', reason);
     await audit(c.env.DB, admin.id, 'delivery.resolve', `order:${id}`, { reason });
     return c.json({ ok: true });
@@ -226,7 +220,8 @@ export function registerDelivery(app: App) {
     const delivery = await getDelivery(c.env.DB, id);
     if (!delivery || delivery.courier_id !== me.id) fail(404, 'NOT_FOUND', 'Yetkazish topilmadi');
     if (!['accepted', 'picked_up', 'on_the_way', 'arrived'].includes(delivery!.status)) fail(409, 'NOT_ACTIVE', 'Joylashuv faqat faol yetkazish vaqtida yuboriladi');
-    await c.env.DB.prepare('INSERT INTO delivery_locations(order_id,courier_id,lat,lng,accuracy,recorded_at) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(order_id) DO UPDATE SET lat=excluded.lat,lng=excluded.lng,accuracy=excluded.accuracy,recorded_at=excluded.recorded_at,courier_id=excluded.courier_id').bind(id, me.id, point.lat, point.lng, point.accuracy ?? null).run();
+    const location = await c.env.DB.prepare("INSERT INTO delivery_locations(order_id,courier_id,lat,lng,accuracy,recorded_at) SELECT ?,?,?,?,?,CURRENT_TIMESTAMP WHERE EXISTS(SELECT 1 FROM deliveries d JOIN orders o ON o.id=d.order_id WHERE d.order_id=? AND d.courier_id=? AND d.status IN ('accepted','picked_up','on_the_way','arrived') AND o.status!='cancelled') ON CONFLICT(order_id) DO UPDATE SET lat=excluded.lat,lng=excluded.lng,accuracy=excluded.accuracy,recorded_at=excluded.recorded_at,courier_id=excluded.courier_id").bind(id, me.id, point.lat, point.lng, point.accuracy ?? null, id, me.id).run();
+    if (!location.meta.changes) fail(409, 'NOT_ACTIVE', 'Yetkazish holati oʻzgardi');
     return c.json({ ok: true });
   });
 
@@ -256,16 +251,18 @@ export function registerDelivery(app: App) {
     const input = await parse(c, z.object({ version: z.number().int(), reason: z.string().trim().max(300).optional() }));
     const delivery = await getDelivery(c.env.DB, id);
     if (!delivery || delivery.courier_id !== me.id) fail(404, 'NOT_FOUND', 'Yetkazish topilmadi');
+    if (input.version !== delivery!.version) fail(409, 'STALE', 'Holat oʻzgardi. Yangilab qayta urinib koʻring');
     const next = nextDeliveryStatus(delivery!.status, action);
     if (!next) fail(409, 'INVALID_TRANSITION', 'Bu bosqichda bu amal mumkin emas');
     if (action === 'decline' && !input.reason) fail(400, 'REASON_REQUIRED', 'Rad etish sababini yozing');
     const order = (await c.env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first<OrderRow>())!;
     if (order.status === 'cancelled') fail(409, 'CANCELLED_ORDER', 'Buyurtma bekor qilingan');
     const stamp = courierTransitions[action].stamp;
-    const res = await c.env.DB.prepare(`UPDATE deliveries SET status=?,${stamp ? `${stamp}=CURRENT_TIMESTAMP,` : ''}decline_reason=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=? AND courier_id=? AND version=?`).bind(next, action === 'decline' ? input.reason : delivery!.decline_reason, id, me.id, input.version).run();
+    const statements = [c.env.DB.prepare(`UPDATE deliveries SET status=?,${stamp ? `${stamp}=CURRENT_TIMESTAMP,` : ''}decline_reason=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=? AND courier_id=? AND version=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status!='cancelled')`).bind(next, action === 'decline' ? input.reason : delivery!.decline_reason, id, me.id, input.version, id)];
+    if (action === 'pickup') for (const step of stepsToShipped(order.status)) statements.push(c.env.DB.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!=? AND EXISTS(SELECT 1 FROM deliveries WHERE order_id=? AND courier_id=? AND version=? AND status='picked_up')").bind(step, id, step, id, me.id, input.version + 1));
+    if (action === 'decline' || action === 'handover') statements.push(c.env.DB.prepare('DELETE FROM delivery_locations WHERE order_id=? AND EXISTS(SELECT 1 FROM deliveries WHERE order_id=? AND status=? AND version=?)').bind(id, id, next, input.version + 1));
+    const [res] = await c.env.DB.batch(statements);
     if (!res.meta.changes) fail(409, 'STALE', 'Holat boshqa joyda oʻzgardi. Yangilab, qayta urinib koʻring');
-    if (action === 'pickup') await moveOrderToShipped(c.env.DB, order);
-    if (action === 'decline') await c.env.DB.prepare('DELETE FROM delivery_locations WHERE order_id=?').bind(id).run();
     await orderEvent(c.env.DB, id, 'courier', me.id, `courier_${action}`, input.reason || '');
     const ctx = ctxOf(c);
     const customerText: Partial<Record<CourierAction, [string, string]>> = {

@@ -1,0 +1,4 @@
+
+> fayz-market@1.1.2 typecheck
+> tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/admin/tsconfig.json --noEmit && tsc -p apps/customer/tsconfig.json --noEmit
+

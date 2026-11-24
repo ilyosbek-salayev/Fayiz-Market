@@ -61,20 +61,24 @@ public final class MainActivity extends Activity {
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
     settings.setAllowFileAccess(false);
-    settings.setAllowContentAccess(true);
+    settings.setAllowContentAccess(true); // required for the system file picker
+    settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
     settings.setGeolocationEnabled(true);
     web.addJavascriptInterface(new NativeBridge(), "FayzNative");
     web.setWebViewClient(new WebViewClient() {
       @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         Uri uri = request.getUrl();
         String path = uri.getPath();
-        if (!apiHost().equals(uri.getHost()) || path == null || !path.startsWith("/__app/")) return null;
+        if (!sameOrigin(uri) || path == null || !path.startsWith("/__app/")) return null;
         String asset = path.substring("/__app/".length());
         if (asset.contains("..") || asset.isEmpty()) return null;
         try {
           InputStream data = getAssets().open(asset);
           String mime = asset.endsWith(".js") ? "text/javascript" : asset.endsWith(".css") ? "text/css" : asset.endsWith(".svg") ? "image/svg+xml" : asset.endsWith(".png") ? "image/png" : asset.endsWith(".webp") ? "image/webp" : asset.endsWith(".woff2") ? "font/woff2" : asset.endsWith(".json") ? "application/json" : asset.endsWith(".wasm") ? "application/wasm" : asset.endsWith(".html") ? "text/html" : "application/octet-stream";
-          return new WebResourceResponse(mime, "UTF-8", data);
+          java.util.Map<String, String> headers = new java.util.HashMap<>();
+          headers.put("Content-Security-Policy", "frame-src 'none'; object-src 'none'; base-uri 'none'");
+          headers.put("X-Content-Type-Options", "nosniff");
+          return new WebResourceResponse(mime, "UTF-8", 200, "OK", headers, data);
         } catch (Exception ignored) { return null; }
       }
       @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -87,7 +91,12 @@ public final class MainActivity extends Activity {
         if (scheme.equals("http") || scheme.equals("https")) {
           String host = uri.getHost() == null ? "" : uri.getHost();
           // The API origin and Telegram's official login page stay inside the app; everything else opens outside.
-          if (host.equals(apiHost()) || host.equals("oauth.telegram.org")) return false;
+          if (sameOrigin(uri) && "/__app/index.html".equals(uri.getPath())) {
+            web.addJavascriptInterface(new NativeBridge(), "FayzNative"); return false;
+          }
+          if (scheme.equals("https") && host.equals("oauth.telegram.org") && (uri.getPort() == -1 || uri.getPort() == 443)) {
+            web.removeJavascriptInterface("FayzNative"); return false;
+          }
           openOutside(uri); return true;
         }
         openOutside(uri); return true; // tel:, geo:, tg: …
@@ -110,7 +119,7 @@ public final class MainActivity extends Activity {
       }
       /** Location is shared only with the app's own origin and only after the Android permission is granted. */
       @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-        if (!apiHost().equals(Uri.parse(origin).getHost())) { callback.invoke(origin, false, false); return; }
+        if (!sameOrigin(Uri.parse(origin))) { callback.invoke(origin, false, false); return; }
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) { callback.invoke(origin, true, false); return; }
         geoOrigin = origin; geoCallback = callback;
         requestPermissions(new String[] { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION }, LOCATION_PERMISSION);
@@ -133,7 +142,7 @@ public final class MainActivity extends Activity {
 
   private String defaultApiUrl() { return getString(getResources().getIdentifier("default_api_url", "string", getPackageName())); }
   private String apiUrl() { return getPreferences(MODE_PRIVATE).getString("api_url", defaultApiUrl()).replaceAll("/+$", ""); }
-  private String apiHost() { String host = Uri.parse(apiUrl()).getHost(); return host == null ? "" : host; }
+  private boolean sameOrigin(Uri uri) { return OriginPolicy.sameOrigin(apiUrl(), uri.toString()); }
   private void openApp() {
     String url = apiUrl() + "/__app/index.html";
     Uri incoming = getIntent().getData();
@@ -141,6 +150,7 @@ public final class MainActivity extends Activity {
       String slug = incoming.getLastPathSegment();
       if (slug != null && slug.matches("[a-z0-9-]+")) url += "#/p/" + slug;
     }
+    web.addJavascriptInterface(new NativeBridge(), "FayzNative");
     web.loadUrl(url);
   }
   private void openOutside(Uri uri) {
@@ -201,16 +211,18 @@ public final class MainActivity extends Activity {
   }
 
   // ---------- Menu / debug API address ----------
-  @Override public boolean onCreateOptionsMenu(Menu menu) { menu.add("API manzili"); menu.add("Yangilash"); return true; }
+  @Override public boolean onCreateOptionsMenu(Menu menu) { if (debuggable()) menu.add("API manzili"); menu.add("Yangilash"); return true; }
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     if (item.getTitle().equals("Yangilash")) { web.reload(); return true; }
     showApiDialog(); return true;
   }
   private void showApiDialog() {
+    if (!debuggable()) return;
     EditText field = new EditText(this); field.setSingleLine(true); field.setText(apiUrl());
     new AlertDialog.Builder(this).setTitle("Server (API) manzili").setView(field).setPositiveButton("Saqlash", (d, w) -> {
       String value = field.getText().toString().trim();
       if (!value.matches("https?://[^/ ]+(?::[0-9]+)?/?")) { new AlertDialog.Builder(this).setMessage("Toʻliq http:// yoki https:// manzil kiriting").setPositiveButton("OK", null).show(); return; }
+      if (!value.replaceAll("/+$", "").equals(apiUrl())) biometrics.disable();
       getPreferences(MODE_PRIVATE).edit().putString("api_url", value).apply(); openApp();
     }).setNegativeButton("Bekor qilish", null).show();
   }
@@ -230,7 +242,11 @@ public final class MainActivity extends Activity {
     } catch (Exception ignored) { }
   }
   void callback(String id, boolean ok, String value) {
-    runOnUiThread(() -> web.evaluateJavascript("window.__fayzNative&&window.__fayzNative(" + org.json.JSONObject.quote(id) + "," + ok + "," + org.json.JSONObject.quote(value) + ")", null));
+    runOnUiThread(() -> {
+      Uri current = Uri.parse(web.getUrl() == null ? "" : web.getUrl());
+      if (!sameOrigin(current) || !"/__app/index.html".equals(current.getPath())) return;
+      web.evaluateJavascript("window.__fayzNative&&window.__fayzNative(" + org.json.JSONObject.quote(id) + "," + ok + "," + org.json.JSONObject.quote(value) + ")", null);
+    });
   }
 
   private final class NativeBridge {

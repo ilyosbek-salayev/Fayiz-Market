@@ -1,7 +1,13 @@
 {
   "name": "fayz-market",
   "private": true,
-  "workspaces": ["apps/api", "apps/admin", "apps/customer", "apps/desktop", "packages/*"],
+  "workspaces": [
+    "apps/api",
+    "apps/admin",
+    "apps/customer",
+    "apps/desktop",
+    "packages/*"
+  ],
   "scripts": {
     "typecheck": "tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/admin/tsconfig.json --noEmit && tsc -p apps/customer/tsconfig.json --noEmit",
     "test": "vitest run",
@@ -11,5 +17,15 @@
     "build:customer": "npm run build -w @fayz/customer",
     "build:apks": "bash scripts/build-apks.sh"
   },
-  "devDependencies": {"sharp": "^0.34.0", "typescript": "^5.8.3", "vitest": "^3.2.4"}
+  "devDependencies": {
+    "sharp": "0.35.5",
+    "typescript": "^5.8.3",
+    "vitest": "5.1.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  },
+  "version": "1.1.2",
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "11.0.1"
+  }
 }

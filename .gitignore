@@ -33,3 +33,5 @@ scripts/ui-qa/node_modules/
 scripts/deploy-qa/shots/
 scripts/android-qa/shots/
 scripts/deploy-qa/created.json
+# Isolated audit desktop build output
+apps/desktop/release-audit-*/

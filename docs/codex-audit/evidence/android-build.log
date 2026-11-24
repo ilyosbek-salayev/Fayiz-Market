@@ -1,0 +1,169 @@
+
+> @fayz/customer@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v6.4.6 building for production...
+transforming...
+../../node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 139 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    1.80 kB │ gzip:   0.98 kB
+dist/assets/onest-cyrillic-ext-D3MbBdlY.woff2     10.50 kB
+dist/assets/onest-cyrillic-B4DTQzs9.woff2         15.83 kB
+dist/assets/onest-latin-ext-BB1CCQzJ.woff2        28.43 kB
+dist/assets/onest-latin-BXvespbm.woff2            33.81 kB
+dist/assets/maplibre-gl-worker-1K9-aB_Z.js       550.44 kB
+dist/assets/index-AT80jzQQ.css                    38.08 kB │ gzip:   8.69 kB
+dist/assets/maplibre-gl-AgMWWGR8.css              71.53 kB │ gzip:  10.18 kB
+dist/assets/index-OIvcNCnM.js                    353.66 kB │ gzip: 108.18 kB
+dist/assets/maplibre-gl-CL_19ex-.js            1,111.42 kB │ gzip: 307.39 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.64s
+
+> @fayz/admin@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v6.4.6 building for production...
+transforming...
+../../node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 138 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    0.48 kB │ gzip:   0.32 kB
+dist/assets/onest-cyrillic-ext-D3MbBdlY.woff2     10.50 kB
+dist/assets/onest-cyrillic-B4DTQzs9.woff2         15.83 kB
+dist/assets/onest-latin-ext-BB1CCQzJ.woff2        28.43 kB
+dist/assets/onest-latin-BXvespbm.woff2            33.81 kB
+dist/assets/maplibre-gl-worker-1K9-aB_Z.js       550.44 kB
+dist/assets/index-DZwG9XTj.css                    36.92 kB │ gzip:   8.59 kB
+dist/assets/maplibre-gl-AgMWWGR8.css              71.53 kB │ gzip:  10.18 kB
+dist/assets/index-DwKdN9wb.js                    368.02 kB │ gzip: 110.77 kB
+dist/assets/maplibre-gl-CL_19ex-.js            1,111.42 kB │ gzip: 307.39 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.41s
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :customer:preBuild UP-TO-DATE
+> Task :customer:preDebugBuild UP-TO-DATE
+> Task :customer:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :customer:javaPreCompileDebug UP-TO-DATE
+> Task :customer:checkDebugAarMetadata UP-TO-DATE
+> Task :customer:generateDebugResValues UP-TO-DATE
+> Task :customer:mapDebugSourceSetPaths UP-TO-DATE
+> Task :customer:generateDebugResources UP-TO-DATE
+> Task :customer:mergeDebugResources UP-TO-DATE
+> Task :customer:packageDebugResources UP-TO-DATE
+> Task :customer:parseDebugLocalResources UP-TO-DATE
+> Task :customer:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :customer:extractDeepLinksDebug UP-TO-DATE
+> Task :customer:processDebugMainManifest UP-TO-DATE
+> Task :customer:processDebugManifest UP-TO-DATE
+> Task :customer:processDebugManifestForPackage UP-TO-DATE
+> Task :customer:processDebugResources UP-TO-DATE
+> Task :customer:compileDebugJavaWithJavac UP-TO-DATE
+> Task :customer:mergeDebugShaders UP-TO-DATE
+> Task :customer:compileDebugShaders NO-SOURCE
+> Task :customer:generateDebugAssets UP-TO-DATE
+> Task :customer:mergeDebugAssets
+> Task :customer:processDebugJavaRes NO-SOURCE
+> Task :customer:mergeDebugJavaResource UP-TO-DATE
+> Task :customer:checkDebugDuplicateClasses UP-TO-DATE
+> Task :customer:desugarDebugFileDependencies UP-TO-DATE
+> Task :customer:mergeExtDexDebug UP-TO-DATE
+> Task :customer:mergeLibDexDebug UP-TO-DATE
+> Task :customer:dexBuilderDebug UP-TO-DATE
+> Task :customer:compressDebugAssets
+> Task :customer:mergeProjectDexDebug UP-TO-DATE
+> Task :customer:mergeDebugJniLibFolders UP-TO-DATE
+> Task :customer:mergeDebugNativeLibs NO-SOURCE
+> Task :customer:stripDebugDebugSymbols NO-SOURCE
+> Task :customer:validateSigningDebug UP-TO-DATE
+> Task :customer:writeDebugAppMetadata UP-TO-DATE
+> Task :customer:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :admin:preBuild UP-TO-DATE
+> Task :admin:preDebugBuild UP-TO-DATE
+> Task :admin:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :admin:javaPreCompileDebug UP-TO-DATE
+> Task :admin:checkDebugAarMetadata UP-TO-DATE
+> Task :admin:generateDebugResValues UP-TO-DATE
+> Task :admin:mapDebugSourceSetPaths UP-TO-DATE
+> Task :admin:generateDebugResources UP-TO-DATE
+> Task :admin:mergeDebugResources UP-TO-DATE
+> Task :admin:packageDebugResources UP-TO-DATE
+> Task :admin:parseDebugLocalResources UP-TO-DATE
+> Task :admin:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :admin:extractDeepLinksDebug UP-TO-DATE
+> Task :admin:processDebugMainManifest UP-TO-DATE
+> Task :admin:processDebugManifest UP-TO-DATE
+> Task :admin:processDebugManifestForPackage UP-TO-DATE
+> Task :admin:processDebugResources UP-TO-DATE
+> Task :admin:compileDebugJavaWithJavac UP-TO-DATE
+> Task :admin:mergeDebugShaders UP-TO-DATE
+> Task :admin:compileDebugShaders NO-SOURCE
+> Task :admin:generateDebugAssets UP-TO-DATE
+> Task :admin:mergeDebugAssets
+> Task :admin:processDebugJavaRes NO-SOURCE
+> Task :admin:mergeDebugJavaResource UP-TO-DATE
+> Task :admin:checkDebugDuplicateClasses UP-TO-DATE
+> Task :admin:desugarDebugFileDependencies UP-TO-DATE
+> Task :admin:compressDebugAssets
+> Task :admin:mergeExtDexDebug UP-TO-DATE
+> Task :admin:mergeLibDexDebug UP-TO-DATE
+> Task :admin:dexBuilderDebug UP-TO-DATE
+> Task :admin:mergeProjectDexDebug UP-TO-DATE
+> Task :admin:mergeDebugJniLibFolders UP-TO-DATE
+> Task :admin:mergeDebugNativeLibs NO-SOURCE
+> Task :admin:stripDebugDebugSymbols NO-SOURCE
+> Task :admin:validateSigningDebug UP-TO-DATE
+> Task :admin:writeDebugAppMetadata UP-TO-DATE
+> Task :admin:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :customer:packageDebug
+> Task :customer:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :customer:assembleDebug
+> Task :admin:packageDebug
+> Task :admin:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :admin:assembleDebug
+
+[Incubating] Problems report is available at: file:///Users/ilyosbek/Documents/GitHub/Fayiz-Market/apps/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 3s
+62 actionable tasks: 6 executed, 56 up-to-date
+a34adc937eb79bc3c298f48dd833ce37c50b8e813618b3af63674a740ee3da6d  dist/apk/fayz-market-admin-debug.apk
+7e0fdfc52eeaa2ce17d147c235ab308847eadc8c25347e135842aeb42bf705ee  dist/apk/fayz-market-customer-debug.apk

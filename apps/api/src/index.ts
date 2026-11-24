@@ -1,15 +1,17 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { HTTPException } from 'hono/http-exception';
 import { z, ZodError } from 'zod';
-import { passwordHash, randomToken, safeEqual, verifyPassword } from './password';
+import { DUMMY_PASSWORD_HASH, passwordHash, randomToken, safeEqual, verifyPassword } from './password';
 import { adminLoginSchema, categorySchema, checkoutSchema, paymentSchema, productSchema, statusSchema, money } from '@fayz/shared';
-import { audit, coordinates, fail, idFrom, orderEvent, parse, sha256, type Env } from './lib';
+import { audit, clientIp, limitOr429, coordinates, fail, idFrom, orderEvent, parse, sha256, type Env } from './lib';
 import { customerSession, registerCustomers } from './customers';
 import { adminOrderExtras, authorizedOrder, customerOrderView, getDelivery, registerDelivery } from './delivery';
 import { notify, pushCustomer } from './push';
 import { registerStaff } from './staff';
 
 const app = new Hono<Env>();
+app.use('*', (c, next) => bodyLimit({ maxSize: c.req.path === '/admin/images' ? 5_000_000 : 65_536, onError: c => c.json({ error: { code: 'BODY_TOO_LARGE', message: 'Soʻrov hajmi juda katta' } }, 413) })(c, next));
 const ctxOf = (c: { executionCtx: unknown }) => { try { return c.executionCtx as { waitUntil(p: Promise<unknown>): void }; } catch { return undefined; } };
 const pageFrom = (raw: string | undefined) => Math.min(1000, Math.max(1, Number(raw) || 1));
 const limitFrom = (raw: string | undefined) => Math.min(50, Math.max(1, Number(raw) || 20));
@@ -159,11 +161,12 @@ app.post('/admin/bootstrap', async c => {
 app.post('/admin/login', async c => {
   const input = await parse(c, adminLoginSchema);
   const normalizedEmail = input.email.toLowerCase();
+  await limitOr429(c.env.DB, `admin-login-ip:${clientIp(c)}`, 30, 900);
   const attempt = await c.env.DB.prepare("SELECT attempts FROM login_attempts WHERE email=? AND first_attempt>datetime('now','-15 minutes')").bind(normalizedEmail).first<{ attempts: number }>();
   if ((attempt?.attempts || 0) >= 5) fail(429, 'TOO_MANY_ATTEMPTS', '15 daqiqadan keyin qayta urinib koʻring');
   const admin = await c.env.DB.prepare('SELECT id,email,password_hash,role,name FROM admins WHERE email=? AND active=1').bind(normalizedEmail).first<{ id: number; email: string; password_hash: string; role: string; name: string }>();
   // An unknown email still runs one key derivation so response time does not reveal which emails exist.
-  const valid = await verifyPassword(input.password, admin?.password_hash || await passwordHash('invalid-password'));
+  const valid = await verifyPassword(input.password, admin?.password_hash || DUMMY_PASSWORD_HASH);
   if (!admin || !valid) {
     await c.env.DB.prepare("INSERT INTO login_attempts(email,attempts,first_attempt) VALUES(?,1,CURRENT_TIMESTAMP) ON CONFLICT(email) DO UPDATE SET attempts=CASE WHEN first_attempt<datetime('now','-15 minutes') THEN 1 ELSE attempts+1 END,first_attempt=CASE WHEN first_attempt<datetime('now','-15 minutes') THEN CURRENT_TIMESTAMP ELSE first_attempt END").bind(normalizedEmail).run();
     fail(401, 'INVALID_CREDENTIALS', 'Email yoki parol notoʻgʻri');
@@ -268,13 +271,17 @@ app.patch('/admin/orders/:id/status', async c => {
   // With a courier on the order, "shipped" is set by the courier's pickup and "delivered" needs the customer's
   // confirmation (or an audited admin resolution) — the plain status buttons cannot skip those steps.
   if (courierBusy && (status === 'shipped' || status === 'delivered')) fail(409, 'DELIVERY_IN_PROGRESS', 'Buyurtma kuryerda — holat kuryer va mijoz tasdigʻi orqali oʻzgaradi');
-  const updated = await c.env.DB.prepare('UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?').bind(status, id, row!.status).run();
+  const statements = [c.env.DB.prepare('UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?').bind(status, id, row!.status)];
+  if (status === 'cancelled') statements.push(
+    c.env.DB.prepare("UPDATE deliveries SET status='cancelled',updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=? AND status NOT IN ('declined','cancelled') AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status='cancelled')").bind(id, id),
+    c.env.DB.prepare("DELETE FROM delivery_locations WHERE order_id=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status='cancelled')").bind(id, id),
+  );
+  const [updated] = await c.env.DB.batch(statements);
   if (!updated.meta.changes) fail(409, 'INVALID_TRANSITION', 'Buyurtma holati oʻzgardi');
   const admin = c.get('admin'), ctx = ctxOf(c);
   await orderEvent(c.env.DB, id, 'admin', admin.id, `status_${status}`);
   const order = (await c.env.DB.prepare('SELECT order_number,customer_id FROM orders WHERE id=?').bind(id).first<{ order_number: string; customer_id: number | null }>())!;
   if (status === 'cancelled' && delivery && !['declined', 'cancelled'].includes(delivery.status)) {
-    await c.env.DB.batch([c.env.DB.prepare("UPDATE deliveries SET status='cancelled',updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=?").bind(id), c.env.DB.prepare('DELETE FROM delivery_locations WHERE order_id=?').bind(id)]);
     await notify(c.env, ctx, { audience: 'courier', recipientId: delivery.courier_id, orderId: id, kind: 'cancelled', title: `${order.order_number} bekor qilindi`, body: 'Bu yetkazishni bajarish shart emas' });
   }
   const customerText: Record<string, string> = { confirmed: 'Buyurtmangiz tasdiqlandi', cancelled: 'Buyurtmangiz bekor qilindi', delivered: 'Buyurtmangiz yetkazildi' };

@@ -9,6 +9,7 @@ import { AuthSheet, ConfirmDelivery, LinkPhoneSheet, LocationSheet, ProductRevie
 import { biometricDisable, biometricEnable, biometricStatus, biometricStored, biometricUnlock, systemNotify } from '../../../packages/ui/src/native';
 import { formatCoords } from '../../../packages/ui/src/maps';
 import { stageBadge, stageNames } from '../../../packages/ui/src/stages';
+import { loadOrderHistory } from './order-history';
 import '../../../packages/ui/src/tokens.css';
 import '../../../packages/ui/src/expansion.css';
 import './style.css';
@@ -132,12 +133,17 @@ function App() {
   const refreshOrders = useCallback(async (quiet=false) => {
     if(!quiet) { setOrderError(''); setOrdersLoading(true); }
     try {
-      const [guest,mine] = await Promise.all([
-        Promise.all(savedOrders.map(async saved => (await api<{order:OrderDetail}>(`/orders/${saved.id}`,{headers:{Authorization:`Order ${saved.accessToken}`}})).order)),
-        customerToken ? api<{orders:OrderView[]}>('/customer/orders').then(r => r.orders) : Promise.resolve([] as OrderView[]),
-      ]);
+      const sessionAtStart = customerToken;
+      const result = await loadOrderHistory(
+        savedOrders.map(saved => async () => (await api<{order:OrderDetail}>(`/orders/${saved.id}`,{headers:{Authorization:`Order ${saved.accessToken}`}})).order),
+        () => customerToken ? api<{orders:OrderView[]}>('/customer/orders').then(r => r.orders) : Promise.resolve([] as OrderView[]),
+      );
+      if (customerToken !== sessionAtStart) return;
+      const guest = result.guests, mine = result.account.ok ? result.account.orders : [];
       const all = [...mine,...guest];
-      setAccountOrders(mine); setOrders(Object.fromEntries(all.map(order => [order.id,order])));
+      if(result.account.ok) setAccountOrders(mine);
+      setOrders(Object.fromEntries(all.map(order => [order.id,order])));
+      setOrderError(result.failedGuests || !result.account.ok ? 'Ayrim buyurtmalar yuklanmadi. Qolgan buyurtmalar koʻrsatilmoqda. Qayta urinib koʻring.' : '');
       // Status-change notices: compare with the last stage this device has seen (first sight never notifies).
       const seen = read<Record<string,string>>('fayz_stage_seen',{});
       for(const order of all) { const before=seen[order.id]; if(before && before!==order.stage) systemNotify(`order-${order.id}-${order.stage}`,stageNames[order.stage]||'Buyurtma holati oʻzgardi',order.orderNumber,order.id); seen[order.id]=order.stage; }
@@ -257,7 +263,7 @@ function App() {
       {orderError && <div className="banner banner-error" role="alert"><Icon name="alert" size={20} /><div>{orderError}<br /><button className="btn btn-sm btn-secondary" onClick={() => refreshOrders()}>Qayta urinish</button></div></div>}
       {!orderList.length && <EmptyState icon="receipt" title="Hali buyurtma yoʻq" text="Birinchi buyurtmangizni bering — holati shu yerda koʻrinadi." action={<button className="btn btn-primary" onClick={() => go('catalog')}>Katalogga oʻtish</button>} />}
       <div className="order-list">{orderList.map(({id,order,saved}) => { const stage=order?.stage||order?.status; const trackable=order && ['assigned','courier_accepted','picked_up','on_the_way','arrived','delivered_pending_confirmation','disputed'].includes(order.stage); const reviewable=order && order.canReview && (order.items.some(i => !order.reviewed.products.includes(i.productId)) || (order.reviewed.courierRatable && !order.reviewed.courier)); return <article className="order-card" key={id}>
-        <div className="order-top"><div><span className="t-caption">Buyurtma</span><strong className="num order-no">{order?.orderNumber||saved?.orderNumber}</strong></div>{order && stage ? <span className={`badge badge-${stageBadge[stage]||order.status}`}>{stageNames[stage]||statusNames[order.status]||order.status}</span> : <span className="skeleton" style={{width:84,height:24,borderRadius:99}} />}</div>
+        <div className="order-top"><div><span className="t-caption">Buyurtma</span><strong className="num order-no">{order?.orderNumber||saved?.orderNumber}</strong></div>{order && stage ? <span className={`badge badge-${stageBadge[stage]||order.status}`}>{stageNames[stage]||statusNames[order.status]||order.status}</span> : orderError && !ordersLoading ? <span className="t-caption">Yuklanmadi</span> : <span className="skeleton" style={{width:84,height:24,borderRadius:99}} />}</div>
         {order ? <>
           <span className="t-caption">{formatDateTime(order.createdAt)}</span>
           <ul className="order-items">{order.items.map((item,i) => <li key={i}><span>{item.name}</span><span className="num">× {item.quantity}</span></li>)}</ul>
@@ -295,7 +301,7 @@ function App() {
       <section className="panel"><SectionHeader title="Koʻrinish" /><div className="themes" role="radiogroup" aria-label="Rang mavzusi">{Object.entries(themes).map(([key,t]) => <button key={key} role="radio" aria-checked={theme===key} className={`theme-opt${theme===key?' active':''}`} onClick={() => setTheme(key)}><span className="swatch" style={{background:`linear-gradient(135deg, ${t.swatch[0]} 0 50%, ${t.swatch[1]} 50% 100%)`}}>{theme===key && <Icon name="check" size={16} stroke={2.6} />}</span><span>{t.label}</span></button>)}</div></section>
       <section className="panel"><SectionHeader title="Doʻkon bilan aloqa" /><div className="info-rows"><div className="info-row"><Icon name="phone" size={20} /><div><span className="t-caption">Telefon</span><span className="num">{settings.contact_phone||'Aloqa raqami kiritilmagan'}</span></div></div>{settings.delivery_info && <div className="info-row"><Icon name="truck" size={20} /><div><span className="t-caption">Yetkazib berish</span><span>{settings.delivery_info}</span></div></div>}</div></section>
       {debug && <section className="panel"><SectionHeader title="Texnik sozlamalar" /><p className="t-caption panel-note">Faqat sinov (debug) ilovasida koʻrinadi.</p><div className="info-rows"><button className="info-row as-btn" onClick={openApiSettings}><Icon name="server" size={20} /><div><span>Server (API) manzili</span><span className="t-caption">Server manzilini oʻzgartirish</span></div><Icon name="chevron" size={18} /></button><button className="info-row as-btn" onClick={nativeReload}><Icon name="refresh" size={20} /><div><span>Ilovani qayta yuklash</span><span className="t-caption">Serverdan maʼlumotlarni qaytadan olish</span></div><Icon name="chevron" size={18} /></button></div></section>}
-      <p className="t-caption app-version">Fayz Market V1.0</p>
+      <p className="t-caption app-version">Fayz Market v{import.meta.env.VITE_APP_VERSION}</p>
     </div>;
   }
 

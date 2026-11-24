@@ -1,0 +1,1 @@
+PASS existing QA directory refused and sentinel preserved

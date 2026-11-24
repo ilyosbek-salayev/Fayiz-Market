@@ -1,0 +1,28 @@
+  • electron-builder  version=26.18.0 os=27.2.0
+  • loaded configuration  file=package.json ("build" field)
+  • packageManager not detected by file, falling back to environment detection  resolvedPackageManager=npm detected=/Users/ilyosbek/Documents/GitHub/Fayiz-Market/apps/desktop
+  • detected workspace root for project using lock file  pm=npm config=undefined resolved=/Users/ilyosbek/Documents/GitHub/Fayiz-Market projectDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market/apps/desktop
+  • executing @electron/rebuild  electronVersion=45.4.1 arch=x64 buildFromSource=false workspaceRoot=/Users/ilyosbek/Documents/GitHub/Fayiz-Market projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=45.4.1 appOutDir=release-audit-1.1.2/win-unpacked
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=/Users/ilyosbek/Documents/GitHub/Fayiz-Market/apps/desktop/release-audit-1.1.2/win-unpacked
+  • searching for node modules  pm=npm searchDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market/apps/desktop
+  • no node modules found in collection, trying next search directory  pm=npm searchDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market/apps/desktop
+  • searching for node modules  pm=npm searchDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market
+  • no node modules found in collection, trying next search directory  pm=npm searchDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market
+  • searching for node modules  pm=traversal searchDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market/apps/desktop
+  • using manual traversal of node_modules to build dependency tree
+  • no node modules found in collection, trying next search directory  pm=traversal searchDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market/apps/desktop
+  • searching for node modules  pm=traversal searchDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market
+  • using manual traversal of node_modules to build dependency tree
+  • no node modules found in collection, trying next search directory  pm=traversal searchDir=/Users/ilyosbek/Documents/GitHub/Fayiz-Market
+  • no node modules returned while searching directories  searchDirectories=["","/Users/ilyosbek/Documents/GitHub/Fayiz-Market"]
+  • updating asar integrity executable resource  executablePath=release-audit-1.1.2/win-unpacked/Fayz Market Admin.exe
+  • no code signing certificate configured, signing is skipped  path=release-audit-1.1.2/win-unpacked/Fayz Market Admin.exe
+  • building        target=nsis file=release-audit-1.1.2/Fayz-Market-Admin-Setup.exe archs=x64 oneClick=false perMachine=false
+  • no code signing certificate configured, signing is skipped  path=/private/var/folders/f8/8gj08s151vvdxm_6v5yrjx400000gn/T/t-g4150V/elevate-staging-2/resources/elevate.exe
+  • no code signing certificate configured, signing is skipped  path=release-audit-1.1.2/Fayz-Market-Admin-Setup.__uninstaller.exe
+  • no code signing certificate configured, signing is skipped  path=release-audit-1.1.2/Fayz-Market-Admin-Setup.exe
+  • building block map  blockMapFile=release-audit-1.1.2/Fayz-Market-Admin-Setup.exe.blockmap
