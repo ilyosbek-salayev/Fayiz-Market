@@ -3,7 +3,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import os from 'node:os';
-import WebSocket from 'ws';
+// CDP socket: Node's built-in WHATWG WebSocket (Node >= 22), so the QA scripts need no extra npm package.
 
 // ~/.fayz-toolchain survives a reboot; /private/tmp (the old location) is wiped by macOS.
 const SDK = process.env.ANDROID_HOME || [`${os.homedir()}/.fayz-toolchain/android-sdk`, '/private/tmp/fayz-toolchain/android-sdk'].find(d => existsSync(d)) || `${os.homedir()}/.fayz-toolchain/android-sdk`;
@@ -44,9 +44,9 @@ export async function webview(pkg, port) {
     if (!page) await pause(500);
   }
   if (!page) throw new Error(`no WebView page for ${pkg}`);
-  const ws = new WebSocket(page.webSocketDebuggerUrl); await new Promise((ok, bad) => { ws.once('open', ok); ws.once('error', bad); });
+  const ws = new WebSocket(page.webSocketDebuggerUrl); await new Promise((ok, bad) => { ws.addEventListener('open', ok, { once: true }); ws.addEventListener('error', bad, { once: true }); });
   let seq = 0; const waiting = new Map();
-  ws.on('message', raw => { const msg = JSON.parse(raw); if (msg.id && waiting.has(msg.id)) { waiting.get(msg.id)(msg); waiting.delete(msg.id); } });
+  ws.addEventListener('message', event => { const msg = JSON.parse(event.data); if (msg.id && waiting.has(msg.id)) { waiting.get(msg.id)(msg); waiting.delete(msg.id); } });
   const send = (method, params = {}) => new Promise((resolve, reject) => { const id = ++seq; waiting.set(id, m => m.error ? reject(new Error(`${method}: ${m.error.message}`)) : resolve(m.result)); ws.send(JSON.stringify({ id, method, params })); });
   const evaluate = async (fn, ...args) => {
     const r = await send('Runtime.evaluate', { expression: `(${fn})(...${JSON.stringify(args)})`, awaitPromise: true, returnByValue: true, userGesture: true });
