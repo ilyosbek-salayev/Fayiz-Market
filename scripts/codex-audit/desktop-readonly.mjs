@@ -8,7 +8,10 @@ const require = createRequire(new URL('../ui-qa/package.json', import.meta.url))
 const puppeteer = require('puppeteer-core');
 const asar = require('@electron/asar');
 const profile = await mkdtemp(join(tmpdir(), 'fayz-desktop-audit-'));
-const app = resolve('apps/desktop/release-audit-1.1.2/mac-arm64/Fayz Market Admin.app/Contents/MacOS/Fayz Market Admin');
+// DESKTOP_RELEASE_DIR / QA_EVIDENCE_DIR let a later release candidate be smoke-tested without overwriting old evidence.
+const releaseDir = process.env.DESKTOP_RELEASE_DIR || 'apps/desktop/release-audit-1.1.2';
+const evidence = process.env.QA_EVIDENCE_DIR || 'docs/codex-audit/evidence';
+const app = resolve(releaseDir, 'mac-arm64/Fayz Market Admin.app/Contents/MacOS/Fayz Market Admin');
 const child = spawn(app, ['--remote-debugging-port=9417', `--user-data-dir=${profile}`], { stdio: 'ignore' });
 let browser, passed = 0;
 const check = (value, name) => { if (!value) throw new Error(name); passed++; console.log('PASS ' + name); };
@@ -25,11 +28,15 @@ try {
  check(await page.evaluate(async()=>!(await window.fayzDesktop.loadSession())),'temporary profile has no saved session');
  check(await page.evaluate(async()=>{const r=await window.fayzDesktop.request({path:'/categories',method:'GET'});return r.status===200 && Array.isArray(r.data.categories); }),'production categories read via IPC');
  check(await page.evaluate(async()=>{try{await window.fayzDesktop.request({path:'https://evil.example',method:'GET'});return false;}catch{return true;}}),'IPC rejects external API path');
- await page.screenshot({path:'docs/codex-audit/evidence/desktop-login.png'});
- const entries = asar.listPackage(resolve('apps/desktop/release-audit-1.1.2/mac-arm64/Fayz Market Admin.app/Contents/Resources/app.asar'));
+ await page.screenshot({path:`${evidence}/desktop-login.png`});
+ const entries = asar.listPackage(resolve(releaseDir, 'mac-arm64/Fayz Market Admin.app/Contents/Resources/app.asar'));
  const mapFile = entries.find(p => /\/assets\/maplibre-gl-[^-]+.*\.js$/.test(p) && !p.includes('worker')).split('/').pop();
  const workerFile = entries.find(p => /\/assets\/maplibre-gl-worker-.*\.js$/.test(p))?.split('/').pop();
  check(!!workerFile, 'packaged map worker asset present');
+ // The app's own map code (packages/ui/src/maps.tsx → setWorkerUrl) must reference exactly this packaged worker file.
+ const asarPath = resolve(releaseDir, 'mac-arm64/Fayz Market Admin.app/Contents/Resources/app.asar');
+ const appChunks = entries.filter(p => /\/assets\/index-.*\.js$/.test(p)).map(p => asar.extractFile(asarPath, p.replace(/^[\\/]/, '')).toString('utf8'));
+ check(appChunks.some(code => code.includes(workerFile)), 'app bundle points setWorkerUrl at the packaged worker: ' + workerFile);
  const mapResult = await page.evaluate(async ({ mapFile, workerFile }) => {
    const ml = await import('./assets/' + mapFile);
    ml.setWorkerUrl(new URL('./assets/' + workerFile, location.href).href);
