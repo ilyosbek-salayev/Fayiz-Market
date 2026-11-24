@@ -1,0 +1,32 @@
+# Cloudflare Workers Builds (Git integration) entry point — PRODUCTION.
+#
+# The dashboard build for Worker "fayz-market-api" runs `npx wrangler deploy` from the repository root
+# (root directory "/", no build command). Without a config here Wrangler 4 falls back to framework
+# auto-detection and stops with "application detection logic has been run in the root of a workspace".
+#
+# This file mirrors `[env.production]` of apps/api/wrangler.toml exactly; the test
+# apps/api/deploy-config.test.ts fails if the two ever drift. Local development, QA scripts and the
+# documented manual deploy (`cd apps/api && npx wrangler deploy --env production`) keep using
+# apps/api/wrangler.toml. Do not run remote D1/R2 commands from the repository root by accident:
+# everything below points at production resources. Secrets (BOOTSTRAP_SECRET) are never stored here.
+name = "fayz-market-api"
+main = "apps/api/src/index.ts"
+compatibility_date = "2025-06-01"
+account_id = "8c9b943ebbbb7bcff4386e624c4482ca"
+workers_dev = true
+preview_urls = false
+
+[vars]
+ENVIRONMENT = "production"
+APP_ORIGIN = "https://fayz-market-api.ilyosbeksalayev240.workers.dev"
+PUBLIC_BASE_URL = "https://fayz-market-api.ilyosbeksalayev240.workers.dev"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fayz-market"
+database_id = "89f6ea76-65dd-43ea-a574-6dc17aed1ddd"
+migrations_dir = "apps/api/migrations"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "fayz-market-images"
