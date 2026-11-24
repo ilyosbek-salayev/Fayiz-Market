@@ -1,10 +1,12 @@
 // Isolated regression runner. Never points a mutating suite at production.
 import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
-import { mkdtemp, open } from 'node:fs/promises';
+import { mkdir, mkdtemp, open } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-const evidence = 'docs/codex-audit/evidence';
+// QA_EVIDENCE_DIR keeps a later run from overwriting earlier evidence logs.
+const evidence = process.env.QA_EVIDENCE_DIR || 'docs/codex-audit/evidence';
+await mkdir(evidence, { recursive: true });
 const chrome = process.env.CHROME_PATH || `${process.env.HOME}/Desktop/Google Chrome.app/Contents/MacOS/Google Chrome`;
 const run = async (cmd, args, name, env = {}) => {
   const log = await open(`${evidence}/${name}.log`, 'w');
