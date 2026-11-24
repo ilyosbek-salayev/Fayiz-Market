@@ -1,0 +1,15 @@
+Version ID:  eb2fd9e9-d449-4a8c-aa74-0d64c9c9d150
+Created:     2026-11-24T22:17:58.875Z
+Author:      ilyosbeksalayev240@gmail.com
+Source:      Upload
+Tag:         -
+Message:     -
+Handlers:            get, post, put, delete, options, patch, query, all, on, use, router, getPath, _basePath, routes, errorHandler, onError, notFound, fetch, request, fire, route, basePath, mount
+Compatibility Date:  2025-06-01
+Your Worker has access to the following bindings:
+Binding                                                               Resource                  
+env.DB (89f6ea76-65dd-43ea-a574-6dc17aed1ddd)                         D1 Database               
+env.IMAGES (fayz-market-images)                                       R2 Bucket                 
+env.APP_ORIGIN ("https://fayz-market-api.ilyosbeksalay...")           Environment Variable      
+env.ENVIRONMENT ("production")                                        Environment Variable      
+env.PUBLIC_BASE_URL ("https://fayz-market-api.ilyosbeksalay...")      Environment Variable      

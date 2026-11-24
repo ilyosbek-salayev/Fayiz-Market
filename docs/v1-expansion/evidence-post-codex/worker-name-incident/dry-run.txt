@@ -1,0 +1,22 @@
+### A) apps/api: npx wrangler deploy --env production --dry-run
+Total Upload: 945.21 KiB / gzip: 162.77 KiB
+env.DB (fayz-market)                                                  D1 Database               
+env.IMAGES (fayz-market-images)                                       R2 Bucket                 
+env.ENVIRONMENT ("production")                                        Environment Variable      
+env.APP_ORIGIN ("https://fayz-market-api.ilyosbeksalay...")           Environment Variable      
+env.PUBLIC_BASE_URL ("https://fayz-market-api.ilyosbeksalay...")      Environment Variable      
+--dry-run: exiting now.
+### B) root: npx wrangler deploy --dry-run
+Total Upload: 944.60 KiB / gzip: 162.75 KiB
+env.DB (fayz-market)                                                  D1 Database               
+env.IMAGES (fayz-market-images)                                       R2 Bucket                 
+env.ENVIRONMENT ("production")                                        Environment Variable      
+env.APP_ORIGIN ("https://fayz-market-api.ilyosbeksalay...")           Environment Variable      
+env.PUBLIC_BASE_URL ("https://fayz-market-api.ilyosbeksalay...")      Environment Variable      
+--dry-run: exiting now.
+### C) root: npx wrangler deploy --env production --dry-run  (NOTO'G'RI)
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+    - No environment found in configuration with name "production".
+Total Upload: 944.60 KiB / gzip: 162.75 KiB
+--dry-run: exiting now.
+normalized bundle sha: A=3df09acff052f88b B=3df09acff052f88b C=3df09acff052f88b

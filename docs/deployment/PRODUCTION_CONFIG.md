@@ -40,6 +40,8 @@ npx wrangler deploy --env production
 
 Dashboard’dagi Git build `fayz-market-api` uchun repository ildizidan (`/`) build buyruqsiz `npx wrangler deploy` ishlatadi. Ildizda konfiguratsiya bo‘lmagani uchun Wrangler 4 framework aniqlashga o‘tib, *“application detection logic has been run in the root of a workspace”* xatosi bilan to‘xtagan (build `e160d1d6`, commit `2dd4f66`). Endi ildizdagi `wrangler.toml` aynan `[env.production]`ni takrorlaydi; `apps/api/deploy-config.test.ts` ikkalasi farqlansa yiqiladi. Ildizdan qurilgan bundle qo‘lda deploy bundle’i bilan bir xil (yo‘l izohlaridan tashqari SHA-256 mos).
 
+2026-11-25 hodisa: ildizdan `npx wrangler deploy --env production` (ildizda `[env.production]` yo‘q paytda) alohida `fayz-market-api-production` Worker’ini yaratdi. Endi ildiz konfiguratsiyasida ham `[env.production]` (`name = "fayz-market-api"`) bor va uchala yo‘l bitta Worker’ga boradi: ildizdan `npx wrangler deploy`, ildizdan `npx wrangler deploy --env production`, `apps/api`dan `npx wrangler deploy --env production`. Tafsilot: `docs/v1-expansion/evidence-post-codex/worker-name-incident/README.md`.
+
 Muhim: Git build ulangan branch’ga push **production’ga avtomatik deploy** qiladi. Dashboard → Settings → Build → Branch control’da production branch `main` bo‘lishi kerak. Ildizdan remote D1/R2 buyruqlarini tasodifan ishlatmang — ildiz konfiguratsiyasi production resurslariga qaraydi.
 
 Migratsiyalar:

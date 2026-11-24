@@ -1,0 +1,14 @@
+== secret names (fayz-market-api-production)
+[]
+== https://fayz-market-api.ilyosbeksalayev240.workers.dev
+GET /health            200
+GET /auth/config       200
+GET /__app/index.html  404
+DELETE /customer/push-token (no auth, no body): 404
+CORS for evil origin: 0
+== https://fayz-market-api-production.ilyosbeksalayev240.workers.dev
+GET /health            200
+GET /auth/config       200
+GET /__app/index.html  404
+DELETE /customer/push-token (no auth, no body): 401
+CORS for evil origin: 0

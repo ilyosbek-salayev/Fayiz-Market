@@ -126,3 +126,7 @@ Batafsil (hajm, imzo, arxitektura, sinov holati, o‘chirilgan fayllar): [RELEAS
 5. Real SMS/email/Telegram/FCM kerak bo‘lsa — hisoblar va acceptance test.
 
 Pilot (do‘kon ichida, parol bilan kirish, ochiq ilova bildirishnomalari) uchun 1.1.2 RC 1–2 bandlardan keyin ishlatilishi mumkin.
+
+## 12. Qo‘shimcha: `fayz-market-api-production` hodisasi (2026-11-25)
+
+Ildizdan `npx wrangler deploy --env production` ildiz `wrangler.toml`da `[env.production]` yo‘qligi sabab alohida `fayz-market-api-production` Worker’ini (`eb2fd9e9`) yaratdi — u production D1/R2’ga ulangan, 1.1.2 kodida, faqat o‘z workers.dev manzilida, ilovalardan trafik yo‘q. Asosiy `fayz-market-api` o‘zgarmadi (`9ff0b7fb`). Repo tuzatildi: ildizga `[env.production]` (`name = "fayz-market-api"`) va regressiya testi; endi uchala deploy yo‘li bitta Worker’ga boradi. Ortiqcha Worker’ni o‘chirish tartibi va dalillar: [`evidence-post-codex/worker-name-incident/README.md`](evidence-post-codex/worker-name-incident/README.md).

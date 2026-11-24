@@ -1,0 +1,21 @@
+root: npx wrangler deploy                        -> Worker fayz-market-api | D1 89f6ea76 | R2 fayz-market-images | ENV production
+root: npx wrangler deploy --env production       -> Worker fayz-market-api | D1 89f6ea76 | R2 fayz-market-images | ENV production
+apps/api: npx wrangler deploy --env production   -> Worker fayz-market-api | D1 89f6ea76 | R2 fayz-market-images | ENV production
+### dry-run root (no env)
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mMultiple environments are defined in the Wrangler configuration file, but no target environment was specified for the deploy command.[0m
+  To avoid unintentional changes to the wrong environment, it is recommended to explicitly specify the target environment using the `-e|--env` flag or CLOUDFLARE_ENV env variable.
+  If your intention is to use the top-level environment of your configuration simply pass an empty string to the flag to target such environment. For example `--env=""`.
+Total Upload: 944.60 KiB / gzip: 162.75 KiB
+--dry-run: exiting now.
+### dry-run root --env production
+Total Upload: 944.60 KiB / gzip: 162.75 KiB
+env.DB (fayz-market)                                                  D1 Database               
+env.IMAGES (fayz-market-images)                                       R2 Bucket                 
+env.ENVIRONMENT ("production")                                        Environment Variable      
+env.APP_ORIGIN ("https://fayz-market-api.ilyosbeksalay...")           Environment Variable      
+env.PUBLIC_BASE_URL ("https://fayz-market-api.ilyosbeksalay...")      Environment Variable      
+--dry-run: exiting now.
+### dry-run apps/api --env production
+Total Upload: 945.21 KiB / gzip: 162.77 KiB
+--dry-run: exiting now.
+normalized bundle sha: root=3df09acff052f88b root-env=3df09acff052f88b apps/api=3df09acff052f88b

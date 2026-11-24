@@ -46,8 +46,24 @@ describe('Cloudflare Workers Builds root config', () => {
     expect(deployShape(root)).toEqual(deployShape(production));
   });
 
+  // Regression (2026-11-25): `npx wrangler deploy --env production` run from the repository root, when the root
+  // config had no [env.production], deployed a separate Worker "fayz-market-api-production" bound to the
+  // production D1 and R2 instead of updating "fayz-market-api".
+  it('root `--env production` updates the same Worker, never a "-production" copy', () => {
+    const rootProduction = unstable_readConfig({ config: rootConfigPath, env: 'production' });
+    expect(rootProduction.name).toBe('fayz-market-api');
+    expect(deployShape(rootProduction)).toEqual(deployShape(production));
+  });
+
+  it('every documented deploy command resolves to the one production Worker name', () => {
+    const names = [root, unstable_readConfig({ config: rootConfigPath, env: 'production' }), production].map(c => c.name);
+    expect(new Set(names)).toEqual(new Set(['fayz-market-api']));
+  });
+
   it('never carries secret values', () => {
-    const secretish = Object.keys(root.vars).filter(key => /SECRET|TOKEN|PASSWORD|API_KEY|PRIVATE/i.test(key));
-    expect(secretish).toEqual([]);
+    for (const config of [root, unstable_readConfig({ config: rootConfigPath, env: 'production' })]) {
+      const secretish = Object.keys(config.vars).filter(key => /SECRET|TOKEN|PASSWORD|API_KEY|PRIVATE/i.test(key));
+      expect(secretish).toEqual([]);
+    }
   });
 });
