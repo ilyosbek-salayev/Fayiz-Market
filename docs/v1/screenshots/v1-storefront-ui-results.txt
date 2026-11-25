@@ -43,6 +43,23 @@ PASS checkout: states that ordering is not paying
 PASS pickup: store address shown, delivery address/map hidden
 PASS order placed: pickup + bank transfer details + "I transferred" action
 PASS customer reports transfer → "Toʻlov tekshirilmoqda"
+PASS cart: courier fee shown as its own line (15 000 soʻm)
+PASS checkout: the phone GPS point is attached automatically (map stays optional)
+PASS checkout: total = goods + courier fee
+PASS profile with sign-in buttons: no horizontal overflow at 390 px
+PASS sign-in sheet fully on screen
+PASS quick login: +998 fixed, number formatted while typing
+PASS quick login: new number → account opened, asks for a name
+PASS quick login: signed in with a verified phone and name, no password
+PASS admin login (even debug build): no server/API control — only email, password, Kirish
+PASS debug build: technical settings exist only inside Settings, for the super admin
+PASS debug build: a manager does not see technical settings
+PASS release build: no technical settings at all
+PASS price starts empty with a "0" placeholder (nothing to delete)
+PASS typing after a 0 replaces it («05» → «5»)
+PASS price shows «1 000 000» while typing
+PASS caret stays after the typed digit when groups shift
+PASS product saved with price 1 000 000 and stock 3
 PASS admin sidebar shows the new symbol
 PASS settings: brand, store location and payment panels
 PASS admin: logo uploaded and previewed before saving
@@ -50,10 +67,13 @@ PASS admin: brand saved with the uploaded light logo (R2)
 PASS customer shows the new logo without a new APK (cached for offline)
 PASS admin: revert to the approved built-in logo
 PASS admin: banner created in the editor appears in the storefront
-PASS integrations: encrypted-key notice, payment providers, no secret values on screen
+PASS integrations: compact list, payment providers, no secret values on screen
+PASS integrations: Payme without credentials is «Sozlanmagan», never «Ulangan»
+PASS integrations: a key that was never tested shows «tekshirilmagan», not «Ulangan»
+PASS integrations: «Ulangan» only after a successful live check
 PASS admin order: payment method, status and record action
 PASS admin: recording the full amount marks the order paid
 PASS admin 390px: settings without horizontal overflow
 PASS admin dark theme: dark symbol
 
-57/57 passed
+77/77 passed

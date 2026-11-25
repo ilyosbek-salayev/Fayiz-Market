@@ -1,0 +1,18 @@
+PASS uz.fayzmarket.customer: old version installed — 1.1.1 (5)
+adb: error: listener 'tcp:9401' not found
+  uz.fayzmarket.customer stored keys before update: fayz_cart,fayz_cart_products,fayz_orders,fayz_profile,fayz_theme,fayz_upgrade_probe
+PASS uz.fayzmarket.customer: adb install -r (in place, no uninstall) — Success
+PASS uz.fayzmarket.customer: versionCode 5 → 7, firstInstallTime kept — 1.2.0; first 2026-11-23 10:32:52
+PASS uz.fayzmarket.customer: WebView storage survived the update — https://fayz-market-api.ilyosbeksalayev240.workers.dev; keys fayz_brand_v1,fayz_cart,fayz_cart_products,fayz_orders,fayz_profile,fayz_storefront_v1,fayz_theme,fayz_upgrade_probe
+PASS uz.fayzmarket.customer: every stored key still present
+PASS uz.fayzmarket.customer: new native bridge methods present — biometricStatus,notify,keepScreenOn,openExternal
+PASS uz.fayzmarket.admin: old version installed — 1.1.1 (5)
+adb: error: listener 'tcp:9402' not found
+  uz.fayzmarket.admin stored keys before update: fayz_upgrade_probe
+PASS uz.fayzmarket.admin: adb install -r (in place, no uninstall) — Success
+PASS uz.fayzmarket.admin: versionCode 5 → 7, firstInstallTime kept — 1.2.0; first 2026-11-23 10:32:52
+PASS uz.fayzmarket.admin: WebView storage survived the update — https://fayz-market-api.ilyosbeksalayev240.workers.dev; keys fayz_admin_theme,fayz_brand_v1,fayz_upgrade_probe
+PASS uz.fayzmarket.admin: every stored key still present
+PASS uz.fayzmarket.admin: new native bridge methods present — biometricStatus,notify,keepScreenOn,openExternal
+
+12/12 passed

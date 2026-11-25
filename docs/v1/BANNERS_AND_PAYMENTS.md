@@ -55,6 +55,21 @@
 - Production’da Payme va Click **sozlanmagan**: kalit va shartnoma yoʻq. Shuning uchun checkoutda koʻrinmaydi va «faol» deb koʻrsatilmaydi.
 - Kamida bitta toʻlov usuli doim yoqilgan qoladi: server boshqacha saqlashga ruxsat bermaydi.
 
+### Yetkazib berish haqi (1.2.1)
+
+- Admin → Sozlamalar → Toʻlov va qabul qilish:
+  - **Yetkazib berish narxi** — kuryer xizmati;
+  - **Bepul yetkazib berish chegarasi** — 0 boʻlsa, chegara yoʻq.
+- Server haqni oʻzi hisoblaydi: `delivery_fee` = narx, yoki 0 (olib ketishda yoki chegaradan oshganda). Uni mahsulotlar summasiga qoʻshib `total` qiladi.
+- Mijoz yuborgan haq yoki summa eʼtiborsiz qoldiriladi.
+- Savat, checkout, mijoz buyurtmasi va admin buyurtmasida haq alohida qator boʻlib koʻrinadi.
+- Barcha toʻlov yoʻllari jami summadan foydalanadi: qoʻlda qayd etish, bank, Payme (tiyin), Click.
+- Sinov:
+  - 315 000 = 300 000 + 15 000;
+  - olib ketishda haq 0;
+  - 600 000 (chegaradan oshgan) — haq 0;
+  - faqat mahsulot puli toʻlansa, buyurtma «toʻlandi» boʻlmaydi.
+
 ### Holatlar
 
 | Holat | Kim yoki nima oʻrnatadi |

@@ -1,6 +1,6 @@
-PASS uz.fayzmarket.customer: installed 1.2.0 (versionCode 7)
-PASS uz.fayzmarket.admin: installed 1.2.0 (versionCode 7)
-PASS customer APK: adaptive launcher icon (new brand)
+PASS uz.fayzmarket.customer: installed DEBUG build 1.2.1 (versionCode 8)
+PASS uz.fayzmarket.admin: installed DEBUG build 1.2.1 (versionCode 8)
+PASS customer release APK: adaptive launcher icon (new brand) + legacy PNGs
 PASS APK WebView: new brand symbol and route-to-store header button
 PASS APK WebView: store location, user location and admin banner
 PASS Android location permission dialog shown on "Aniqlash" (only when asked)
@@ -9,6 +9,8 @@ PASS store map (MapLibre in the APK WebView) with road route, distance and time
 PASS Android system Back closes the map and stays in the app
 PASS checkout in the APK: fulfilment and payment choices
 PASS admin APK login: new brand symbol
+PASS admin DEBUG build: login still has no server/API control (it lives in Sozlamalar → Texnik sozlamalar)
 PASS admin APK: Brend va koʻrinish + Doʻkon joylashuvi panels
+PASS admin DEBUG build: technical settings available to the super admin inside Settings
 
-12/12 passed (EMULATOR, not a physical phone)
+14/14 passed (EMULATOR, not a physical phone)

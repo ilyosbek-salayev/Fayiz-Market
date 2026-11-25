@@ -1,0 +1,12 @@
+PASS oversized JSON rejected before parsing
+PASS parallel OTP requests get exactly five verification attempts
+PASS remaining parallel OTP requests are rate limited
+PASS correct OTP rejected after attempt budget exhausted
+PASS email customer created
+PASS customer changes password
+PASS current session remains valid
+PASS other sessions revoked after password change
+PASS push token registration
+PASS authenticated push token cleanup
+PASS push cleanup requires authentication
+11/11 passed

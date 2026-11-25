@@ -1,0 +1,9 @@
+
+ RUN  v5.1.1 /Users/ilyosbek/Documents/GitHub/Fayiz-Market
+
+
+ Test Files  10 passed (10)
+      Tests  73 passed (73)
+   Start at  07:56:02
+   Duration  563ms (import 63%, tests 20%, transform 15%, worker 2%)
+

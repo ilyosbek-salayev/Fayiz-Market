@@ -1,0 +1,45 @@
+PASS home loads banner from /settings
+PASS home renders products
+PASS search filters catalog — QA: Klassik qoʻl soati
+PASS clearing search restores list
+PASS category chip filters — Sumkalar
+PASS sort price ascending — 89000 ≤ 99000 ≤ 159000 ≤ 245000 ≤ 320000 ≤ 410000 ≤ 1289000
+PASS product detail opens
+PASS add to cart shows in-app toast (no native alert)
+PASS cart persisted to localStorage — {"1":1,"3":2}
+PASS cart lists items
+PASS quantity increment — 2,2
+PASS checkout validation shown inline
+PASS order submitted via UI — FM-MWVE1DDK-66F6B4
+PASS order stored locally and cart cleared
+PASS order status visible (Qabul qilindi)
+PASS profile persisted from checkout
+PASS theme black applied & saved — rgb(21, 21, 19)
+PASS theme green applied & saved — rgb(247, 250, 248)
+PASS theme blue applied & saved — rgb(247, 249, 252)
+PASS theme yellow applied & saved — rgb(250, 250, 247)
+PASS wrong password shows error banner
+PASS admin login → dashboard
+PASS category created via UI
+PASS product created via UI
+PASS product edit saved — 180000
+PASS stock adjustment saved — 7
+PASS delete asks in-app confirmation (no native confirm)
+PASS product hidden after confirmation
+PASS order detail modal opens
+PASS status change persisted — confirmed
+PASS payment recorded and listed
+PASS Escape closes modal
+PASS store settings saved
+PASS administrator added and listed
+PASS mobile drawer opens from menu button
+PASS drawer navigates and closes
+PASS logout returns to login
+PASS customer sees admin status change (stage "Tasdiqlandi")
+PASS missing saved order does not hide the valid order
+PASS partial order history failure is visible with retry
+PASS failed order token is retained for later recovery
+PASS profile version matches build metadata (V1 label + technical version)
+PASS no native alert/confirm dialogs used
+
+43/43 passed

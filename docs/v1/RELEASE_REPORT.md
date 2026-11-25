@@ -1,4 +1,19 @@
-# Release hisoboti — Fayz Market V1 (texnik 1.2.0)
+# Release hisoboti — Fayz Market V1
+
+> **Joriy release: 1.2.1** (Android versionCode 8). Asosiy oʻzgarishlar:
+>
+> - doʻkonga beriladigan Android ilovalar endi **release** build: production’ga qulflangan, server yoki debug tugmasi yoʻq;
+> - narx inputi tuzatildi;
+> - integratsiyalar sahifasi soddalashtirildi;
+> - telefon+kod bilan kirish, GPS avtomatik biriktirish, yetkazish haqi qoʻshildi.
+>
+> Fayllar, SHA-256 va sinov holati: `dist/RELEASE_MANIFEST.md` (Git nusxasi `docs/v1/RELEASE_MANIFEST-1.2.1.md`). Batafsil: `UX_REFINEMENT_1.2.1.md`.
+>
+> Server tomoni (0008 migratsiya + deploy) egasining ruxsatini kutmoqda. Ungacha 1.2.1 ilovalar joriy production bilan ishlaydi, yangi server funksiyalari koʻrinmaydi.
+>
+> Pastdagi 1.2.0 boʻlimlari tarix uchun saqlangan.
+
+## 1.2.0 (tarix)
 
 **Release turi:** release candidate (RC). Branch: `main`. Bu Play/App Store yoki korporativ tarqatish uchun imzolangan release emas:
 

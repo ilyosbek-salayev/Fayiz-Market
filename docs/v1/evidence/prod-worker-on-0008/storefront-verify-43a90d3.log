@@ -1,0 +1,138 @@
+PASS bootstrap owner on a fresh database
+PASS storefront: built-in brand, no banners, cash + delivery only, no routing
+PASS logo upload: owner, 256×256 PNG → R2 URL
+PASS logo upload: manager → 403
+PASS logo upload: courier → 403
+PASS logo upload: anonymous → 401
+PASS logo upload: SVG refused (415)
+PASS logo upload: content not matching declared type refused
+PASS logo upload: too small (64 px) → 422
+PASS logo upload: wide banner-shaped image → 422
+PASS logo upload: over 1 MB → 413
+PASS uploaded logo is served by the Worker as image/png
+PASS branding: foreign logo URL refused
+PASS branding: manager cannot change brand
+PASS branding: owner saves name, tagline, light logo
+PASS storefront: new brand without a new APK
+PASS settings carry the brand keys for older clients
+PASS branding history keeps the replaced (built-in) logo for revert
+PASS branding: revert to the built-in logo
+PASS branding history keeps the uploaded logo after revert
+PASS store route: no store location → 409
+PASS store location: manager → 403
+PASS store location: invalid latitude → 400
+PASS store location: owner saves name, address, coordinates
+PASS storefront: store location visible to customers
+PASS store route: no routing service → 503 (no fake line)
+PASS integrations: master key reported, ORS not configured
+PASS integrations: manager → 403
+PASS integrations: malformed key refused
+PASS integrations: a secret of another integration refused
+PASS integrations: manager cannot set credentials
+PASS integrations: owner sets ORS key from the panel
+PASS integrations: D1 holds only AES-GCM ciphertext (no plaintext key)
+PASS integrations: panel shows only presence/source, never the value
+PASS integrations: «Ulanishni tekshirish» makes a real (mock) ORS call
+PASS storefront: routing available after the panel change
+PASS store route: real road geometry, distance and time from the provider
+PASS store route: request sent customer → store as [lng,lat]
+PASS store route: absurdly far start → 422 (quota protected)
+PASS store route: invalid coordinates → 400
+PASS public /settings never exposes credentials
+PASS banners: owner creates a banner with R2 image
+PASS banners: manager creates a banner
+PASS banners: courier → 403
+PASS banners: anonymous → 401
+PASS banners: script link refused
+PASS banners: foreign image URL refused
+PASS banners: link without button text refused
+PASS storefront: active banners in display order
+PASS banners: update + disable
+PASS storefront: disabled banner hidden without a new APK
+PASS banners: delete
+PASS banners: deleting twice → 404
+PASS banners: default hero text editable
+PASS payment settings: manager → 403
+PASS payment settings: bank transfer needs details
+PASS payment settings: cannot switch every method off
+PASS payment settings: owner enables terminal, bank transfer, pickup
+PASS storefront: checkout offers the enabled methods only
+PASS order (1.1.x client, no new fields): delivery + cash + pending
+PASS order: client-sent total/status ignored; server total used
+PASS order: method not offered (Payme off) → 409
+PASS order: delivery without address → 400
+PASS customer order view: payment block (cash, pending)
+PASS cash order cannot be "claimed" as a transfer
+PASS pickup order: no address needed; store address used; no location kept
+PASS pickup order in admin: store address, terminal, no map point
+PASS pickup order: courier cannot be assigned
+PASS bank transfer: customer sees bank details and can report the transfer
+PASS bank transfer: claim without order token → 401
+PASS bank transfer: claim → verifying ("Toʻlov tekshirilmoqda")
+PASS bank transfer: second claim → 409
+PASS payment status: courier → 403
+PASS payment status: stale "from" → 409 (no double change)
+PASS payment status: "failed" needs a reason
+PASS payment status: manager marks failed with reason
+PASS customer sees "failed" with the reason
+PASS partial payment keeps the order unpaid
+PASS duplicate transaction reference refused
+PASS overpayment refused
+PASS remaining amount recorded
+PASS ledger covers total → "paid" with date
+PASS paid order takes no more payments
+PASS paid order cannot be cancelled
+PASS refund: manager → 403
+PASS refund: owner records a refund
+PASS refund: second refund refused
+PASS cancelling an unpaid order cancels its payment
+PASS cancelled payment cannot be reopened
+PASS admin orders filter by payment status
+PASS Payme cannot be switched on before it is configured
+PASS Payme merchant ID validated
+PASS Payme configured but not switched on → not offered
+PASS Payme switched on
+PASS storefront: Payme offered (online)
+PASS Payme self-test: endpoint + stored key, labelled internal
+PASS Payme checkout link: sandbox host, merchant, order id, amount in tiyin from the server
+PASS Payme: wrong key → -32504
+PASS Payme: wrong amount → -31001
+PASS Payme: unknown order → -31050
+PASS Payme: a cash order cannot be paid via Payme
+PASS Payme: CheckPerformTransaction allow
+PASS Payme: CreateTransaction → state 1
+PASS Payme: CreateTransaction is idempotent
+PASS Payme: second transaction for the same order → -31051
+PASS Payme: order shows "verifying" while the bank works
+PASS Payme: PerformTransaction → state 2
+PASS Payme: PerformTransaction is idempotent (no double payment)
+PASS Payme: order paid only after provider perform
+PASS Payme-paid order: manual refund refused (provider cabinet)
+PASS Payme: CheckTransaction → state 2
+PASS Payme: GetStatement lists the transaction in tiyin
+PASS Payme: cancel after perform → state -2 (refund)
+PASS Payme refund reflected on the order
+PASS Payme: cancel before perform → state -1
+PASS Payme: perform after cancel → -31008
+PASS customer sees failed Payme payment and can retry
+PASS Payme: unknown transaction → -31003
+PASS Payme: unknown method → -32601
+PASS Click switched on after configuration
+PASS Click self-test: signature check works (internal)
+PASS Click checkout link carries server amount and order id
+PASS Click: forged signature → -1
+PASS Click: wrong amount → -2
+PASS Click: unknown order → -5
+PASS Click: prepare → merchant_prepare_id
+PASS Click: customer sees "verifying" after prepare
+PASS Click: complete → confirm id
+PASS Click: second complete → -4 (no double payment)
+PASS Click: order paid after signed complete
+PASS Click: provider failure → -9, order not paid
+PASS Click failure recorded as "failed" with reason
+PASS summary: received = ledger (minus refunded) + provider-performed
+PASS integrations: owner removes a panel credential
+PASS removed credential stops the service at once
+PASS audit log: credential changes recorded by name only
+
+136/136 passed

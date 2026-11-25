@@ -1,0 +1,39 @@
+PASS health
+PASS admin protection
+PASS bootstrap protected
+PASS wrong password denied
+PASS login rate limit
+PASS admin login
+PASS manager created
+PASS manager login
+PASS manager denied owner setting
+PASS category creation
+PASS product creation
+PASS R2 image upload
+PASS R2 image serving
+PASS catalog search
+PASS featured catalog
+PASS product detail
+PASS social share page
+PASS store settings update
+PASS store banner persistence
+PASS order checkout
+PASS stock decremented
+PASS oversell rejected
+PASS order access protected
+PASS customer order lookup
+PASS admin order detail
+PASS invalid status denied
+PASS order confirmed
+PASS payment recorded
+PASS overpayment rejected
+PASS paid order cancellation denied
+PASS second order created
+PASS unpaid order cancelled
+PASS stock restored on cancellation
+PASS inventory adjustment
+PASS inventory adjustment persisted
+PASS financial report
+PASS logout
+PASS session invalidated
+38 integration checks passed

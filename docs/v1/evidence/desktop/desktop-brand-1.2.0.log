@@ -1,0 +1,5 @@
+PASS Windows and macOS installers carry the identical web bundle (14 files)
+PASS bundle contains the light and dark brand symbols
+PASS packaged login screen shows the new brand symbol
+PASS login footer reads "Fayz Market V1"
+4/4 passed

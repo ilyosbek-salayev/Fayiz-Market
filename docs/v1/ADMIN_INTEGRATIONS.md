@@ -38,6 +38,23 @@ Har bir kartada quyidagilar bor:
 
 Faollashtirish sozlash tugamaguncha rad etiladi (`409 NOT_CONFIGURED`). Tekshiruv soatiga 10 marta bilan cheklangan. Xato matnidagi uzun tokenga oʻxshash qatorlar `…` bilan yashiriladi.
 
+## 1a. Koʻrinish va holatlar (1.2.1)
+
+Sahifa ixcham roʻyxatga aylantirildi:
+
+- har bir xizmat — bitta qator: holat nuqtasi, nom, vazifa, holat belgisi;
+- yuqorida xulosa: Ulangan / Tekshirish kerak / Sozlanmagan / Xato;
+- qator bosilganda bosqichli oyna ochiladi: **1) Nima kerak → 2) Maʼlumotlar → 3) Maxfiy kalitlar → 4) Tekshirish va yoqish**;
+- texnik `ENV` nomlari faqat sichqoncha olib borilganda chiqadigan izohda.
+
+| Holat | Qachon |
+|---|---|
+| **Ulangan** | Haqiqiy (live) tekshiruv muvaffaqiyatli oʻtgan va undan keyin kalit almashmagan |
+| **Sozlangan · tekshirilmagan** | Kerakli maʼlumot bor, lekin hali tekshirilmagan yoki kalit tekshiruvdan keyin almashgan |
+| **Sozlangan · ichki tekshiruv oʻtdi** | Payme/Click: serverimiz va kalit mos. Bank yoki provayder bilan haqiqiy ulanish **daʼvo qilinmaydi** |
+| **Sozlanmagan** | Kerakli kalit yoki maydon yoʻq. Credentials boʻlmasa hech qachon «Ulangan» chiqmaydi |
+| **Xato** | Oxirgi tekshiruv muvaffaqiyatsiz yoki kalitni ochib boʻlmaydi |
+
 ## 2. Shifrlash
 
 - **Algoritm.** AES-256-GCM (WebCrypto). Har bir yozuvda tasodifiy 12 baytli IV. Kalit nomi GCM *additional data* sifatida ishlatiladi, shuning uchun shifrlangan qiymatni boshqa nomga koʻchirib boʻlmaydi.

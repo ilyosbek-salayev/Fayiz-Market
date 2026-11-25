@@ -6,13 +6,19 @@ Bu hujjat doʻkon egasi (super admin) uchun: tizim nimalarni qila oladi, kundali
 
 | Qism | Kim uchun | Qayerda |
 |---|---|---|
-| **Fayz Market** (Android) | Xaridorlar | `dist/apk/v1.2.0/fayz-market-customer-debug.apk` |
-| **Fayz Market Admin** (Android) | Egasi, administratorlar, kuryerlar | `dist/apk/v1.2.0/fayz-market-admin-debug.apk` |
-| **Fayz Market Admin** (macOS) | Egasi, administratorlar | `dist/desktop/fayz-market-admin-1.2.0-macos-arm64.dmg` |
-| **Fayz Market Admin** (Windows) | Egasi, administratorlar | `dist/desktop/fayz-market-admin-1.2.0-windows-x64-setup.exe` |
+| **Fayz Market** (Android) | Xaridorlar | `dist/apk/v1.2.1/fayz-market-customer.apk` |
+| **Fayz Market Admin** (Android) | Egasi, administratorlar, kuryerlar | `dist/apk/v1.2.1/fayz-market-admin.apk` |
+| **Fayz Market Admin** (macOS) | Egasi, administratorlar | `dist/desktop/fayz-market-admin-1.2.1-macos-arm64.dmg` |
+| **Fayz Market Admin** (Windows) | Egasi, administratorlar | `dist/desktop/fayz-market-admin-1.2.1-windows-x64-setup.exe` |
 | Server | — | Cloudflare Worker `fayz-market-api`, D1 `fayz-market`, R2 `fayz-market-images` |
 
-Foydalanuvchiga mahsulot nomi «Fayz Market V1» sifatida koʻrsatiladi. Texnik versiya 1.2.0 (Android versionCode 7), shuning uchun ilova eski versiya ustidan yangilanadi.
+Foydalanuvchiga mahsulot nomi «Fayz Market V1» sifatida koʻrsatiladi. Texnik versiya **1.2.1** (Android versionCode 8), shuning uchun ilova eski versiya ustidan yangilanadi.
+
+Android APK’lar endi **release** build:
+
+- doim production serverga ulanadi;
+- ilovada server manzili, debug yoki texnik tugmalar yoʻq;
+- avval sinov serveriga ulangan telefon yangilangach, avtomatik production’ga oʻtadi.
 
 ## 2. Bir hisob — barcha admin ilovalari
 
@@ -26,6 +32,12 @@ Foydalanuvchiga mahsulot nomi «Fayz Market V1» sifatida koʻrsatiladi. Texnik 
 | Super admin (owner) | Hammasi: brend, doʻkon manzili, toʻlov usullari, integratsiya kalitlari, xodimlar, pulni qaytarish |
 | Admin (manager) | Mahsulot, kategoriya, buyurtma, toʻlovni qayd etish va holat, bannerlar, sharhlar |
 | Kuryer | Faqat oʻziga biriktirilgan yetkazishlar |
+
+**Admin ilovaga kirish** (Android, macOS, Windows — hammasida bir xil):
+
+1. Ilovani oching.
+2. Email va parolni kiriting. Koʻz belgisi parolni koʻrsatadi.
+3. «Kirish» → Boshqaruv.
 
 ## 3. Kundalik ish
 
@@ -45,9 +57,12 @@ Foydalanuvchiga mahsulot nomi «Fayz Market V1» sifatida koʻrsatiladi. Texnik 
 - Telefondagi koʻrinishi preview’da darhol chiqadi.
 - «Yashirish» bannerni vaqtincha oʻchiradi, «Oʻchirish» butunlay olib tashlaydi.
 
-**Toʻlov usullari.** Sozlamalar → Toʻlov va qabul qilish.
+**Toʻlov usullari va yetkazish haqi.** Sozlamalar → Toʻlov va qabul qilish.
 
 - Naqd, terminal, bank oʻtkazmasi (rekvizitlar bilan) va «Doʻkondan olib ketish»ni yoqish yoki oʻchirish mumkin.
+- **Yetkazib berish narxi** — kuryer xizmati haqi. U buyurtmaga alohida qator boʻlib qoʻshiladi.
+- **Bepul yetkazib berish chegarasi** — buyurtma shu summadan oshsa, yetkazish bepul boʻladi.
+- Narx maydonlariga raqamni oddiy yozing: 1000000 yozsangiz, oʻzi «1 000 000» koʻrinishiga keladi.
 
 **Toʻlovni tasdiqlash.** Buyurtmalar → buyurtma → Toʻlov.
 
@@ -74,6 +89,12 @@ Foydalanuvchiga mahsulot nomi «Fayz Market V1» sifatida koʻrsatiladi. Texnik 
 6. **macOS DMG** Apple Developer ID bilan imzolanmagan: birinchi ochishda «Open anyway» kerak. **Windows EXE** imzosiz: SmartScreen ogohlantiradi.
 7. **Haqiqiy telefon (Samsung) va Windows kompyuterda sinov** bu ishda bajarilmagan. Tekshiruv roʻyxati: `TEST_RESULTS.md` §5.
 8. **SMS, Email, Telegram, FCM** — ularning maʼlumotlari kiritilmaguncha tegishli funksiyalar oʻchiq turadi.
+   - Mijozning «telefon raqam + SMS kod» bilan kirishi uchun SMS (Eskiz) ulangan boʻlishi kerak.
+   - Ungacha mijoz hisobsiz buyurtma beradi yoki boshqa usuldan foydalanadi.
+9. **Integratsiyalar sahifasida «Ulangan»** faqat haqiqiy tekshiruv oʻtgandan keyin yoziladi.
+   - Payme va Click uchun ilova faqat oʻz serveri va kalit mosligini tekshira oladi.
+   - Haqiqiy toʻlov provayder kabinetidagi test bilan tasdiqlanadi.
+10. **Mahsulot xususiyatlari** (rang, xarakteristika) va aksiyalar `ilova app.pdf` da «ixtiyoriy» deb berilgan. Bu versiyaga kiritilmagan.
 
 ## 5. Ishga tushirish tartibi
 

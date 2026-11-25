@@ -161,3 +161,41 @@ Natijalar va loglar `docs/v1/evidence/`, skrinshotlar `docs/v1/screenshots/` da.
 | Read-only smoke | `production-get.mjs` **11/11**, `/storefront` 200, `DELETE /customer/push-token` kirishsiz 401, `/admin/integrations` kirishsiz 401, Payme (sozlanmagan) → -32504. Dalil: `evidence/production/` |
 | Rollback (kerak boʻlsa) | `cd apps/api && npx wrangler rollback 9ff0b7fb-15b2-4340-b78f-af0ec6a7332c --env production` — eski kod yangi sxemada ishlashi tasdiqlangan |
 | Ortiqcha Worker | `fayz-market-api-production` (yagona deploy `eb2fd9e9`) egasining tasdigʻi bilan **oʻchirildi**. Oʻchirish konfiguratsiyasiz papkadan `--name` bilan bajarildi. Natija: uning `/health` → 404; asosiy Worker 11/11, faol versiya `90b70a16` oʻzgarmagan; D1 (2 buyurtma, 2 mahsulot, 1 admin) va R2 joyida |
+
+## 7. 1.2.1 — UX takomillashtirish (haqiqiy telefon fikri + `ilova app.pdf`)
+
+**Egasining oʻz sinovi.** Egasi 1.2.0 ni **haqiqiy Samsung Galaxy A17** da sinadi. Ilovalar ochildi va u tekshirgan asosiy jarayonlar ishladi. Bu egasining natijasi. 1.2.1 haqiqiy telefonda hali sinalmagan.
+
+**Haqiqiy credentials bilan sinalmagan:** Payme, Click, SMS (Eskiz), Telegram, Resend, Firebase, OpenRouteService. Ular production sinovdan oʻtgan deb **belgilanmaydi**.
+
+| Toʻplam | Natija | Qayerda | Dalil |
+|---|---|---|---|
+| TypeScript | PASS | — | `evidence/final/typecheck.log` |
+| Unit (raqam formati, NumberInput qoʻshildi) | **73/73** | Node | `evidence/final/unit.log` |
+| V1 API (+ telefon+kod bilan kirish, yetkazish haqi) | **154/154** | Lokal Worker | `evidence/final/storefront-verify.log` |
+| V1 UI (+ admin login, texnik sozlamalar, narx inputi, integratsiya holatlari, telefon bilan kirish, GPS, haq) | **77/77** | Chrome 360–1280 | `evidence/final/v1-storefront-ui.log` |
+| Oldingi: expansion API / integration / security | **129/129**, **38/38**, **11/11** | Lokal Worker | `evidence/regression-1.2.1/` |
+| Oldingi: expansion UI / regression UI | **54/54**, **43/43** | Chrome | Xuddi shu |
+| Oldingi: provider test rejimi | **35/35** | Lokal Worker + mock | Xuddi shu |
+| Joriy production Worker (`43a90d3`) 0008 sxemasida | **136/136** | Lokal Worker | `evidence/prod-worker-on-0008/` |
+| Release APK: sinov serverga yoʻnaltirilgan debug 1.2.0 ustidan | **11/11** | **EMULATOR** | `evidence/emulator/release-apk-1.2.1.txt` |
+| V1 oqimlari (debug 1.2.1, CDP) | **14/14** | **EMULATOR** | `evidence/emulator/v1-storefront-emulator-1.2.1.txt` |
+| macOS DMG smoke / brend va login | **11/11**, **5/5** | macOS | `evidence/desktop/*-1.2.1.log` |
+
+**Oldingi toʻplamlardagi oʻzgarishlar** — faqat yangi yorliq va kirish yoʻllari; funksiya olib tashlanmagan:
+
+- parol bilan roʻyxatdan oʻtish «Boshqa usullar» ichida;
+- checkoutda xarita tugmasi endi «Xaritada tanlash» (avval GPS);
+- integratsiyaning texnik nomlari sozlash oynasida;
+- pul formati boʻlinmaydigan boʻshliq bilan.
+
+**Sinov topgan va tuzatilgan xatolar:**
+
+- profil kirish tugmalari 390 px da sahifani yonga surardi — tugmalar ustma-ust qoʻyildi, overflow tekshiruvi qoʻshildi;
+- oldingi UI testlari eski yorliqlarni qidirardi — testlar yangilandi.
+
+| 1.2.1 da sinalmagan | Holat |
+|---|---|
+| Haqiqiy telefonda 1.2.1 | **NOT TESTED** (tekshiruv roʻyxati: `UX_REFINEMENT_1.2.1.md` §5) |
+| Windows’da oʻrnatish | **NOT TESTED** |
+| Production’da telefon+kod va yetkazish haqi | **Deploy qilinmagan** (0008 migratsiya + deploy egasining ruxsatini kutmoqda). SMS ulanmaguncha telefon+kod production’da ishlamaydi |

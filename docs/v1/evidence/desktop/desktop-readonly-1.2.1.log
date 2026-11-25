@@ -1,0 +1,12 @@
+PASS packaged app launches
+PASS bundled file UI loads
+PASS login form renders
+PASS renderer has no Node globals
+PASS isolated preload bridge available
+PASS temporary profile has no saved session
+PASS production categories read via IPC
+PASS IPC rejects external API path
+PASS packaged map worker asset present
+PASS app bundle points setWorkerUrl at the packaged worker: maplibre-gl-worker-1K9-aB_Z.js
+PASS packaged MapLibre/OpenFreeMap draws through file origin: loaded
+11/11 passed

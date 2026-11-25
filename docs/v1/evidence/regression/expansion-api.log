@@ -1,0 +1,131 @@
+PASS bootstrap owner (fresh DB) — 201
+PASS owner login returns role
+PASS courier requires name and phone
+PASS owner creates courier
+PASS owner creates manager
+PASS courier logs into the admin app with role courier
+PASS courier GET /admin/orders → 403 — 403
+PASS courier GET /admin/products → 403 — 403
+PASS courier GET /admin/reports/summary → 403 — 403
+PASS courier GET /admin/users → 403 — 403
+PASS courier GET /admin/couriers → 403 — 403
+PASS courier GET /admin/integrations → 403 — 403
+PASS courier PUT /admin/settings → 403 — 403
+PASS courier POST /admin/images → 403 — 403
+PASS courier GET /admin/reviews → 403 — 403
+PASS manager cannot use courier endpoints → 403
+PASS courier endpoints need a session → 401
+PASS manager cannot open integrations → 403
+PASS auth config reports phone + email (dev) and telegram availability
+PASS invalid phone format → 400
+PASS OTP requested (dev echo only in development)
+PASS resend within 60 s → 429
+PASS wrong OTP rejected with attempts left
+PASS weak password rejected
+PASS register with verified phone creates account + session
+PASS OTP cannot be reused
+PASS registered phone cannot register again
+PASS password login wrong → 401
+PASS password login
+PASS logout invalidates the session
+PASS customer login rate limited after 5 attempts
+PASS owner saves public Telegram bot username
+PASS telegram enabled once token secret + username exist
+PASS forged Telegram payload rejected
+PASS Telegram login creates account (no phone assumed)
+PASS Telegram payload replay rejected
+PASS stale Telegram payload rejected
+PASS linking an already-registered phone is refused (no duplicate accounts)
+PASS Telegram account links a verified phone via OTP
+PASS reset for unknown number does not reveal it
+PASS password reset via verified SMS code
+PASS reset logs out other sessions
+PASS login with new password
+PASS invalid coordinates rejected
+PASS malformed JSON → 400 (was 500) — 400
+PASS order with map location linked to the customer
+PASS guest checkout still works (installed apps)
+PASS customer account lists its orders across devices
+PASS order detail keeps old fields and adds stage + location
+PASS another customer cannot open the order
+PASS another customer cannot track the order
+PASS staff feed has the new-order notification without personal data
+PASS cannot assign before confirmation
+PASS admin confirms order
+PASS customer sees CONFIRMED
+PASS assigning a non-courier is refused
+PASS admin assigns courier 2
+PASS duplicate assignment refused
+PASS courier 2 notified of the assignment
+PASS admin sees assignment + audit events
+PASS stale reassignment refused
+PASS admin reassigns to courier 1
+PASS courier 2 told the delivery moved
+PASS courier 2 can no longer see the delivery
+PASS couriers only receive their own notifications
+PASS admin cannot mark shipped while courier holds the order
+PASS courier 1 sees the assignment
+PASS courier sees destination, contact and pickup
+PASS cannot pick up before accepting
+PASS no location sharing before acceptance
+PASS stale courier action refused
+PASS courier accepts
+PASS customer sees COURIER_ACCEPTED with courier first name
+PASS courier publishes location during active delivery
+PASS position hidden from customer before pickup
+PASS courier picks up → order shipped
+PASS order status moved confirmed→preparing→shipped
+PASS reassignment blocked after pickup
+PASS courier starts the trip
+PASS customer sees live courier position + freshness
+PASS an order token only opens its own order
+PASS route without Google Routes key → 503 with navigation fallback message
+PASS cannot hand over before arriving
+PASS courier arrives
+PASS no review before delivery confirmation
+PASS customer cannot confirm before handover
+PASS courier records handover
+PASS customer sees DELIVERED_PENDING_CONFIRMATION + can confirm
+PASS admin cannot skip customer confirmation via status button
+PASS no live position after handover
+PASS another customer cannot confirm
+PASS customer confirms receipt → DELIVERED
+PASS duplicate confirmation refused
+PASS tracking stops after completion
+PASS courier history hides phone and address after completion
+PASS review of a product not in the order refused
+PASS verified product reviews + courier rating saved
+PASS duplicate review refused
+PASS reviews of an undelivered guest order refused
+PASS public product reviews with average
+PASS admin lists reviews and courier ratings
+PASS admin can hide a review (moderation)
+PASS courier list shows rating
+PASS customer disputes the handover
+PASS resolution requires a written reason
+PASS admin resolves dispute (audited)
+PASS resolved order is delivered and reviewable
+PASS decline needs a reason
+PASS courier declines with reason
+PASS staff notified about the decline
+PASS admin cancels before pickup
+PASS courier told about the cancellation
+PASS cancelled delivery cannot be accepted
+PASS reports include delivered orders
+PASS owner deactivates a courier
+PASS deactivated courier session revoked
+PASS deactivated courier cannot log in
+PASS owner cannot lock themselves out
+PASS owner resets a staff password
+PASS password reset revokes that staff member's sessions
+PASS self password change requires current password
+PASS self password change
+FAIL integrations list: status only, never secret values
+PASS invalid Maps key format rejected
+PASS unknown integration fields rejected
+FAIL store pickup location saved
+PASS audit log records privileged actions
+PASS audit log is owner-only
+PASS public settings never contain secrets
+
+127/129 passed

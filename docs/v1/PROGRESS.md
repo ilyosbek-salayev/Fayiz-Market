@@ -27,3 +27,20 @@ Next action: connect an Android phone, install both files from `dist/apk/`, keep
 - Faza I (release): APK vc 7 (`8799a70`), DMG/EXE (`9b17653`); 1.1.2 RC fayllari Savatga koʻchirildi → `RELEASE_REPORT.md`, `dist/RELEASE_MANIFEST.md`.
 - Faza J (handover): `CLIENT_HANDOVER.md`, `ADMIN_INTEGRATIONS.md`, `BANNERS_AND_PAYMENTS.md`, `STORE_LOCATION_AND_MAP.md`, `BRANDING_AND_UI.md`.
 - Ochiq: production migratsiya + deploy + `INTEGRATIONS_MASTER_KEY` (egasining ruxsati), GitHub push (egasi), haqiqiy telefon va Windows sinovi, Payme/Click shartnomasi.
+
+## 1.2.1 — 2026-11-25
+
+- Egasi 1.2.0 ni haqiqiy Samsung A17 da sinadi (ishladi). UX va admin login boʻyicha fikr va `ilova app.pdf` qabul qilindi.
+- `625ea54`, `23175e0`:
+  - release APK (production’ga qulflangan);
+  - toza admin login, texnik sozlamalar faqat debug + super admin;
+  - NumberInput, integratsiyalar sahifasi;
+  - telefon+kod bilan kirish, GPS, yetkazish haqi (migratsiya 0008).
+- QA: API 154, UI 77, unit 73, oldingi toʻplamlar PASS, emulyator 11 + 14, desktop 11 + 5.
+- dist: faqat 1.2.1. 1.2.0 Savatga koʻchirildi.
+- Ochiq:
+  - production’ga 0008 + deploy (ruxsat kerak);
+  - push;
+  - 1.2.1 haqiqiy telefonda;
+  - Windows;
+  - real credentials (SMS va hokazo).

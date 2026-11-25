@@ -81,3 +81,22 @@ Shuningdek:
 - `applicationId` oʻzgarmadi;
 - signing kaliti oʻzgarmadi;
 - versiya pasaytirilmadi.
+
+## Qoʻshimcha: haqiqiy Android fikr-mulohazasi va `ilova app.pdf` (1.2.1)
+
+| Talab | Holat |
+|---|---|
+| Admin login’da server, debug yoki API tugmasi yoʻq | **PASS** — Chrome; emulyatorda release va debug |
+| Production’ga avtomatik ulanish; eski sinov manzili tozalanadi | **PASS** (EMULATOR) |
+| Texnik sozlamalar faqat debug build’da va faqat super admin uchun | **PASS** |
+| Debug va production ajratilgan; customer debug sozlamasi saqlangan | **PASS** |
+| Narx «1 000 000», boshidagi 0, kursor | **PASS** |
+| Integratsiyalar tushunarli; credentials boʻlmasa «Ulangan» chiqmaydi | **PASS** |
+| Telefon + kod bilan kirish | **PASS** (lokal). Production — deploy + SMS kerak |
+| GPS checkout’ga avtomatik, xarita ixtiyoriy | **PASS** |
+| Kuryer xizmat haqi alohida qoʻshiladi | **PASS** (lokal). Production — deploy kerak |
+| Kuryerga mijoz telefoni | **PASS** (avvaldan bor edi) |
+| Mahsulot xususiyatlari va aksiyalar (PDF’da «ixtiyoriy») | **Bajarilmagan** — ortiqcha imkoniyat qoʻshmaslik uchun |
+| 1.2.1 haqiqiy telefonda, Windows’da | **NOT TESTED** |
+
+Batafsil: `UX_REFINEMENT_1.2.1.md`.
