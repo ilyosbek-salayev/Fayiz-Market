@@ -57,11 +57,11 @@ export function registerCustomers(app: App) {
     const sms = smsStatus(c.env);
     const username = (await c.env.DB.prepare("SELECT value FROM settings WHERE key='telegram_bot_username'").first<{ value: string }>())?.value || '';
     const email = emailStatus(c.env);
-    return c.json({ phone: { enabled: sms.configured || sms.devEcho, devEcho: sms.devEcho }, email: { enabled: email.configured || email.devEcho, devEcho: email.devEcho }, telegram: { enabled: !!c.env.TELEGRAM_BOT_TOKEN && !!username, botUsername: username || null, botId: c.env.TELEGRAM_BOT_TOKEN ? botIdFromToken(c.env.TELEGRAM_BOT_TOKEN) : null }, password: true });
+    return c.json({ phone: { enabled: sms.configured || sms.devEcho, devEcho: sms.devEcho, codeLogin: true }, email: { enabled: email.configured || email.devEcho, devEcho: email.devEcho }, telegram: { enabled: !!c.env.TELEGRAM_BOT_TOKEN && !!username, botUsername: username || null, botId: c.env.TELEGRAM_BOT_TOKEN ? botIdFromToken(c.env.TELEGRAM_BOT_TOKEN) : null }, password: true });
   });
 
   app.post('/auth/otp', async c => {
-    const { phone, purpose } = await parse(c, z.object({ phone: uzPhone, purpose: z.enum(['register', 'reset', 'link']) }));
+    const { phone, purpose } = await parse(c, z.object({ phone: uzPhone, purpose: z.enum(['register', 'reset', 'link', 'login']) }));
     const sms = smsStatus(c.env);
     if (!sms.configured && !sms.devEcho) fail(503, 'SMS_NOT_CONFIGURED', 'SMS orqali tasdiqlash hozircha ishlamaydi. Telegram orqali kiring yoki keyinroq urinib koʻring');
     if (purpose === 'link') requireCustomer(c);
@@ -148,6 +148,21 @@ export function registerCustomers(app: App) {
     if (await c.env.DB.prepare('SELECT id FROM customers WHERE email=? AND id!=?').bind(input.email, me.id).first()) fail(409, 'EMAIL_TAKEN', 'Bu email boshqa hisobga bogʻlangan');
     const row = await c.env.DB.prepare('UPDATE customers SET email=?,email_verified_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? RETURNING *').bind(input.email, me.id).first<CustomerRow>();
     return c.json({ customer: view(row!) });
+  });
+
+  /**
+   * Phone + one-time code: signs in an existing customer or opens a new account for a new number (no password).
+   * The code request (purpose 'login') is sent for any number, so this pair never reveals who is registered.
+   */
+  app.post('/auth/phone/login', async c => {
+    const input = await parse(c, z.object({ phone: uzPhone, code: z.string().max(12), name: z.string().trim().max(120).optional() }));
+    await limitOr429(c.env.DB, `verify-ip:${clientIp(c)}`, 30, 3600);
+    await consumeOtp(c.env.DB, input.phone, 'login', input.code);
+    let row = await c.env.DB.prepare('SELECT * FROM customers WHERE phone=?').bind(input.phone).first<CustomerRow>();
+    const isNew = !row;
+    if (row && !row.phone_verified_at) row = await c.env.DB.prepare('UPDATE customers SET phone_verified_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? RETURNING *').bind(row.id).first<CustomerRow>();
+    if (!row) row = await c.env.DB.prepare('INSERT INTO customers(phone,phone_verified_at,name) VALUES(?,CURRENT_TIMESTAMP,?) RETURNING *').bind(input.phone, input.name && input.name.length >= 2 ? input.name : '').first<CustomerRow>();
+    return c.json({ token: await startSession(c.env.DB, row!.id), customer: view(row!), isNew }, isNew ? 201 : 200);
   });
 
   app.post('/auth/register', async c => {

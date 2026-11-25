@@ -11,7 +11,7 @@ export type Storefront = {
   store: { name: string; address: string; lat: number | null; lng: number | null; configured: boolean; phone: string };
   banners: Banner[];
   defaultBanner: { title: string; subtitle: string };
-  checkout: { fulfillment: ('delivery' | 'pickup')[]; payments: PaymentOption[]; bankTransferDetails: string; pickupAddress: string };
+  checkout: { fulfillment: ('delivery' | 'pickup')[]; payments: PaymentOption[]; bankTransferDetails: string; pickupAddress: string; deliveryFee?: number; deliveryFreeFrom?: number };
   routing: { available: boolean };
 };
 

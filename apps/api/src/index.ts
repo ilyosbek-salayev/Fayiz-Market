@@ -9,7 +9,7 @@ import { customerSession, registerCustomers } from './customers';
 import { adminOrderExtras, authorizedOrder, customerOrderView, getDelivery, registerDelivery } from './delivery';
 import { notify, pushCustomer } from './push';
 import { registerStaff } from './staff';
-import { PAYMENT_METHODS, adminPaymentView, checkoutOptions, registerPayments, settleFromLedger } from './payments';
+import { PAYMENT_METHODS, adminPaymentView, checkoutOptions, deliveryFeeFor, registerPayments, settleFromLedger } from './payments';
 import { withManagedSecrets } from './secrets';
 import { registerStorefront } from './storefront';
 
@@ -136,10 +136,13 @@ app.post('/orders', async c => {
   const rows = await c.env.DB.prepare(`SELECT id,name,price,stock,active FROM products WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<{ id: number; name: string; price: number; stock: number; active: number }>();
   if (rows.results.length !== ids.length || rows.results.some(row => !row.active || row.stock < (merged.get(row.id) || 0))) fail(409, 'OUT_OF_STOCK', 'Mahsulot qoldigʻi yetarli emas');
   // The total is always computed here from current prices — a client-sent amount is never used.
-  const total = rows.results.reduce((sum, row) => sum + row.price * (merged.get(row.id) || 0), 0);
+  const itemsTotal = rows.results.reduce((sum, row) => sum + row.price * (merged.get(row.id) || 0), 0);
+  // The courier fee is a separate line added on top of the goods (never taken from the client).
+  const deliveryFee = deliveryFeeFor(s, itemsTotal, input.fulfillment);
+  const total = itemsTotal + deliveryFee;
   const token = randomToken(), orderNumber = 'FM-' + Date.now().toString(36).toUpperCase() + '-' + randomToken().slice(0, 6).toUpperCase();
   await c.env.DB.batch([
-    c.env.DB.prepare('INSERT INTO orders(order_number,access_hash,customer_name,phone,address,note,total,customer_id,delivery_lat,delivery_lng,delivery_details,fulfillment,payment_method) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(orderNumber, await sha256(token), input.customerName, input.phone, address, input.note, total, customer?.id ?? null, location?.lat ?? null, location?.lng ?? null, pickup ? '' : input.deliveryDetails, input.fulfillment, paymentMethod),
+    c.env.DB.prepare('INSERT INTO orders(order_number,access_hash,customer_name,phone,address,note,total,customer_id,delivery_lat,delivery_lng,delivery_details,fulfillment,payment_method,delivery_fee) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(orderNumber, await sha256(token), input.customerName, input.phone, address, input.note, total, customer?.id ?? null, location?.lat ?? null, location?.lng ?? null, pickup ? '' : input.deliveryDetails, input.fulfillment, paymentMethod, deliveryFee),
     ...rows.results.map(row => c.env.DB.prepare('INSERT INTO order_items(order_id,product_id,name,price,quantity) VALUES((SELECT id FROM orders WHERE order_number=?),?,?,?,?)').bind(orderNumber, row.id, row.name, row.price, merged.get(row.id)))
   ]);
   const order = await c.env.DB.prepare('SELECT id FROM orders WHERE order_number=?').bind(orderNumber).first<{ id: number }>();
@@ -148,7 +151,7 @@ app.post('/orders', async c => {
   // Lock-screen safe: order reference, item count and total only — no name, phone or address.
   const units = [...merged.values()].reduce((a, b) => a + b, 0);
   await notify(c.env, ctxOf(c), { audience: 'staff', orderId: order!.id, kind: 'new_order', title: `Yangi buyurtma ${orderNumber}`, body: `${units} dona · ${money(total)}${pickup ? ' · olib ketish' : ''}` });
-  return c.json({ order: { id: order!.id, orderNumber, total, status: 'new', accessToken: token, fulfillment: input.fulfillment, paymentMethod, paymentStatus: 'pending' } }, 201);
+  return c.json({ order: { id: order!.id, orderNumber, total, status: 'new', accessToken: token, fulfillment: input.fulfillment, paymentMethod, paymentStatus: 'pending', deliveryFee } }, 201);
 });
 app.get('/orders/:id', async c => {
   const row = await authorizedOrder(c, idFrom(c.req.param('id')));
@@ -273,7 +276,7 @@ app.post('/admin/images', async c => {
   return c.json({ url: `${c.env.PUBLIC_BASE_URL}/images/${key}` }, 201);
 });
 
-function orderView(row: Record<string, unknown>, items: unknown[]) { return { id: row.id, orderNumber: row.order_number, customerName: row.customer_name, phone: row.phone, address: row.address, note: row.note, status: row.status, total: row.total, createdAt: row.created_at, items, location: row.delivery_lat != null ? { lat: row.delivery_lat, lng: row.delivery_lng, details: row.delivery_details } : null, deliveryStatus: row.delivery_status ?? null, courierName: row.courier_name ?? null, fulfillment: row.fulfillment ?? 'delivery', paymentMethod: row.payment_method ?? 'cash', paymentStatus: row.payment_status ?? 'pending', paidAt: row.paid_at ?? null, paymentNote: row.payment_note ?? '' }; }
+function orderView(row: Record<string, unknown>, items: unknown[]) { return { id: row.id, orderNumber: row.order_number, customerName: row.customer_name, phone: row.phone, address: row.address, note: row.note, status: row.status, total: row.total, createdAt: row.created_at, items, location: row.delivery_lat != null ? { lat: row.delivery_lat, lng: row.delivery_lng, details: row.delivery_details } : null, deliveryStatus: row.delivery_status ?? null, courierName: row.courier_name ?? null, fulfillment: row.fulfillment ?? 'delivery', paymentMethod: row.payment_method ?? 'cash', paymentStatus: row.payment_status ?? 'pending', paidAt: row.paid_at ?? null, paymentNote: row.payment_note ?? '', deliveryFee: row.delivery_fee ?? 0 }; }
 app.get('/admin/orders', async c => {
   const page = pageFrom(c.req.query('page')), limit = limitFrom(c.req.query('limit')), status = c.req.query('status'), payment = c.req.query('payment');
   if (status && !statusSchema.safeParse({ status }).success) fail(400, 'INVALID_STATUS', 'Holat notoʻgʻri');

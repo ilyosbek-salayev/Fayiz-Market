@@ -283,9 +283,41 @@ try {
   r = await clickCall('/payments/click/complete', { ...prep2, action: '1', merchant_prepare_id: String(prep2Id), error: '-5017', error_note: 'Insufficient funds' }); check('Click: provider failure → -9, order not paid', r.data.error === -9);
   r = await call(`/admin/orders/${ck2.id}`, { auth: owner }); check('Click failure recorded as "failed" with reason', r.data.order.paymentStatus === 'failed' && r.data.order.paymentNote.includes('Click'));
 
+  // ---------- Phone + code sign-in ----------
+  r = await call('/auth/config'); check('auth config advertises phone code sign-in', r.data.phone?.codeLogin === true);
+  const quickPhone = '+99893' + String(Date.now()).slice(-7);
+  r = await call('/auth/otp', { method: 'POST', body: { phone: quickPhone, purpose: 'login' } }); const loginCode = r.data.devCode;
+  check('phone login: code requested for a NEW number (no enumeration)', r.status === 200 && /^\d{6}$/.test(loginCode || ''), r.text);
+  r = await call('/auth/phone/login', { method: 'POST', body: { phone: quickPhone, code: loginCode === '000000' ? '111111' : '000000' } }); check('phone login: wrong code refused', r.status === 400 && r.data.error.code === 'INVALID_CODE');
+  r = await call('/auth/phone/login', { method: 'POST', body: { phone: quickPhone, code: loginCode } });
+  const quick = r.data; check('phone login: new number opens a verified account without a password', r.status === 201 && quick.isNew === true && quick.customer.phoneVerified === true && quick.customer.hasPassword === false, r.text);
+  r = await call('/auth/phone/login', { method: 'POST', body: { phone: quickPhone, code: loginCode } }); check('phone login: a code works only once', r.status === 400);
+  r = await call('/auth/me', { method: 'PATCH', auth: 'Customer ' + quick.token, body: { name: 'Tez Kirish' } }); check('phone login: name can be added afterwards', r.data.customer?.name === 'Tez Kirish');
+  await wait(61000);
+  r = await call('/auth/otp', { method: 'POST', body: { phone: quickPhone, purpose: 'login' } });
+  r = await call('/auth/phone/login', { method: 'POST', body: { phone: quickPhone, code: r.data.devCode } });
+  check('phone login: same number signs in to the same account', r.status === 200 && r.data.isNew === false && r.data.customer.id === quick.customer.id && r.data.customer.name === 'Tez Kirish');
+  r = await call('/auth/login', { method: 'POST', body: { phone: quickPhone, password: 'AnyPassword-123' } }); check('phone login: passwordless account cannot be opened with a guessed password', r.status === 401);
+
+  // ---------- Delivery fee ----------
+  r = await call('/admin/payment-settings', { method: 'PUT', auth: owner, body: { cash: true, cardTerminal: true, bankTransfer: true, bankTransferDetails: 'Oluvchi: Fayz Market MChJ, Bank: Kapitalbank, H/r 20208000000000000001, MFO 01088', pickup: true, deliveryFee: 15000, deliveryFreeFrom: 500000 } });
+  check('delivery fee saved by the owner', r.status === 200);
+  r = await call('/admin/payment-settings', { method: 'PUT', auth: owner, body: { cash: true, cardTerminal: true, bankTransfer: false, bankTransferDetails: '', pickup: true, deliveryFee: -5 } }); check('negative delivery fee refused', r.status === 400);
+  r = await call('/storefront'); check('storefront shows the fee rule', r.data.checkout.deliveryFee === 15000 && r.data.checkout.deliveryFreeFrom === 500000);
+  r = await order({ deliveryFee: 0, total: 1 }); check('delivery order: fee added on top by the server (client values ignored)', r.status === 201 && r.data.order.total === 315000 && r.data.order.deliveryFee === 15000, r.text);
+  const feeOrder = r.data.order;
+  r = await call(`/admin/orders/${feeOrder.id}`, { auth: owner }); check('admin order shows the separate delivery fee', r.data.order.deliveryFee === 15000 && r.data.order.total === 315000);
+  r = await call(`/orders/${feeOrder.id}`, { headers: tokenOf(feeOrder) }); check('customer order shows the separate delivery fee', r.data.order.deliveryFee === 15000);
+  r = await order({ fulfillment: 'pickup', address: '' }); check('pickup order: no delivery fee', r.data.order.total === 300000 && r.data.order.deliveryFee === 0);
+  r = await order({ items: [{ productId: prod, quantity: 4 }] }); check('free delivery above the threshold (600 000 ≥ 500 000)', r.data.order.total === 600000 && r.data.order.deliveryFee === 0);
+  r = await call(`/admin/orders/${feeOrder.id}/payments`, { method: 'POST', auth: manager, body: { amount: 300000, method: 'cash' } });
+  r = await call(`/admin/orders/${feeOrder.id}`, { auth: owner }); check('goods-only payment does not mark a fee order paid', r.data.order.paymentStatus === 'pending');
+  await call(`/admin/orders/${feeOrder.id}/payments`, { method: 'POST', auth: manager, body: { amount: 15000, method: 'cash' } });
+  r = await call(`/admin/orders/${feeOrder.id}`, { auth: owner }); check('goods + delivery fee → paid', r.data.order.paymentStatus === 'paid');
+
   // ---------- Reports ----------
   r = await call('/admin/reports/summary', { auth: owner });
-  check('summary: received = ledger (minus refunded) + provider-performed', r.data.payments.received_total === 300000 + 0, JSON.stringify(r.data.payments));
+  check('summary: received = ledger (minus refunded) + provider-performed', r.data.payments.received_total === 300000 + 315000, JSON.stringify(r.data.payments));
 
   // ---------- Secret removal ----------
   r = await call('/admin/integrations/routing/secrets/ORS_API_KEY', { method: 'DELETE', auth: owner }); check('integrations: owner removes a panel credential', r.status === 200);

@@ -5,6 +5,7 @@ import { money } from '@fayz/shared';
 import { Icon, type IconName } from '../../../packages/ui/src/Icon';
 import { BrandMark, useBrand } from '../../../packages/ui/src/brand';
 import { paymentMethodNames, paymentStatusBadge, paymentStatusNames } from '../../../packages/ui/src/storefront';
+import { NumberInput } from '../../../packages/ui/src/NumberInput';
 import { BannersView, BrandPanel, OrderPayment, PaymentSettingsPanel, StorePanel, ThemePanel, useAdminTheme, type PaymentRow } from './storefront-admin';
 import { NETWORK_MESSAGE, formatDateTime, formatDay, friendlyError, nativeDebug, openApiSettings, paintSystemBars } from '../../../packages/ui/src/format';
 import { ConfirmDialog, EmptyState, Field, IconAction, MetricCard, Modal, Panel, Thumb, Toggle } from './components';
@@ -21,7 +22,7 @@ declare global { interface Window { fayzDesktop?: { request: (input: { path: str
 
 const API = import.meta.env.VITE_API_URL || (window.location.pathname.startsWith('/__app/') ? window.location.origin : 'http://localhost:8787');
 type View = 'dashboard' | 'products' | 'categories' | 'orders' | 'banners' | 'reviews' | 'settings' | 'integrations';
-type Order = { id: number; orderNumber: string; customerName: string; phone: string; address: string; status: string; total: number; createdAt: string; items: { name: string; price: number; quantity: number }[]; location: { lat: number; lng: number; details: string } | null; deliveryStatus?: string | null; courierName?: string | null; fulfillment?: string; paymentMethod?: string; paymentStatus?: string; paidAt?: string | null; paymentNote?: string };
+type Order = { id: number; orderNumber: string; customerName: string; phone: string; address: string; status: string; total: number; createdAt: string; items: { name: string; price: number; quantity: number }[]; location: { lat: number; lng: number; details: string } | null; deliveryStatus?: string | null; courierName?: string | null; fulfillment?: string; paymentMethod?: string; paymentStatus?: string; paidAt?: string | null; paymentNote?: string; deliveryFee?: number };
 type Me = { id: number; email: string; role: string; name: string };
 const BIO_FLAG = 'fayz_admin_bio';
 type Report = { orders: { orders: number; ordered_total: number; delivered_total: number }; payments: { received_total: number; verifying?: number }; inventory: { products: number; units: number }; daily: { day: string; orders: number; total: number }[] };
@@ -45,7 +46,7 @@ type Confirmation = { title: string; text: string; label: string; run: () => voi
 
 function App() {
   const [token, setToken] = useState(sessionStorage.getItem('fayz_admin_token') || '');
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showPassword, setShowPassword] = useState(false);
   const [view, setView] = useState<View>('dashboard'); const [error, setError] = useState(''); const [message, setMessage] = useState(''); const [busy, setBusy] = useState(false);
   const [products, setProducts] = useState<Product[]>([]); const [categories, setCategories] = useState<Category[]>([]); const [orders, setOrders] = useState<Order[]>([]); const [report, setReport] = useState<Report | null>(null);
   const [product, setProduct] = useState<typeof emptyProduct & { id?: number }>(emptyProduct); const [editingProduct, setEditingProduct] = useState(false);
@@ -119,7 +120,7 @@ function App() {
   useEffect(() => { if (token && me && me.role !== 'courier') execute(() => load(view, page), ''); }, [token, view, page, me, paymentFilter]);
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(''), 3200); return () => clearTimeout(timer); }, [message]);
   const changeView = (next: View) => { setPage(1); setView(next); setError(''); setMessage(''); setMenuOpen(false); setLoaded(''); window.scrollTo({ top: 0 }); };
-  const login = (event: React.FormEvent) => { event.preventDefault(); execute(async () => { const data = await request<{ token: string }>('/admin/login', { method: 'POST', body: JSON.stringify({ email, password }) }); sessionStorage.setItem('fayz_admin_token', data.token); if (desktopSession.available()) await desktopSession.save(data.token); if (localStorage.getItem(BIO_FLAG) === '1' && biometricStored()) await biometricEnable(data.token); setToken(data.token); setPassword(''); }, ''); };
+  const login = (event: React.FormEvent) => { event.preventDefault(); if (password.length < 10) { setError('Email yoki parol notoʻgʻri'); return; } execute(async () => { const data = await request<{ token: string }>('/admin/login', { method: 'POST', body: JSON.stringify({ email, password }) }); sessionStorage.setItem('fayz_admin_token', data.token); if (desktopSession.available()) await desktopSession.save(data.token); if (localStorage.getItem(BIO_FLAG) === '1' && biometricStored()) await biometricEnable(data.token); setToken(data.token); setPassword(''); }, ''); };
   const logout = () => execute(async () => { try { await request('/admin/logout', { method: 'POST' }); } finally { sessionStorage.removeItem('fayz_admin_token'); await desktopSession.clear(); biometricDisable(); localStorage.removeItem(BIO_FLAG); setBioOn(false); setMe(null); setToken(''); } }, '');
   const saveProduct = (event: React.FormEvent) => { event.preventDefault(); execute(async () => { await request(product.id ? `/admin/products/${product.id}` : '/admin/products', { method: product.id ? 'PUT' : 'POST', body: JSON.stringify(product) }); setEditingProduct(false); setProduct(emptyProduct); await load('products'); }); };
   /** Uploads a prepared photo to R2 (via the Worker) with progress; the URL is added to the product form. */
@@ -165,11 +166,9 @@ function App() {
     <form className="login-card" onSubmit={login}>
       <div className="login-brand"><BrandMark size={56} brand={brand} dark={darkTheme} /><div><h1>{brand.name}</h1><p>Boshqaruv paneliga kirish</p></div></div>
       {error && <div className="banner banner-error" role="alert"><Icon name={error === NETWORK_MESSAGE ? 'wifiOff' : 'alert'} size={20} /><div>{error}</div></div>}
-      <p className="t-caption">Administratorlar va kuryerlar shu yerdan kiradi.</p>
-      <Field label="Email"><input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="username" placeholder="admin@fayzmarket.uz" /></Field>
-      <Field label="Parol" hint="Kamida 10 ta belgi"><input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={10} required autoComplete="current-password" /></Field>
+      <Field label="Email"><input className="input" type="email" inputMode="email" autoCapitalize="off" spellCheck={false} value={email} onChange={e => setEmail(e.target.value)} required autoComplete="username" placeholder="ism@fayzmarket.uz" /></Field>
+      <Field label="Parol"><span className="password-field"><input className="input" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" /><button type="button" className="icon-btn" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Parolni yashirish' : 'Parolni koʻrsatish'} aria-pressed={showPassword}><Icon name="eye" size={20} /></button></span></Field>
       <button className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : 'Kirish'}</button>
-      {debug && <button type="button" className="btn btn-quiet btn-block" onClick={openApiSettings}><Icon name="server" size={18} />Server manzili (sinov)</button>}
     </form>
     <p className="login-foot">Fayz Market V1 · versiya {import.meta.env.VITE_APP_VERSION || ''}</p>
   </main>;
@@ -197,7 +196,7 @@ function App() {
           {(view === 'dashboard' || view === 'orders') && <button className="icon-btn filled" onClick={() => execute(() => load(view, page), '')} disabled={busy} aria-label="Yangilash"><Icon name="refresh" size={20} /></button>}
         </div>
       </header>
-      {error && !(view === 'settings' && loaded !== 'settings') && <div className="banner banner-error page-banner" role="alert"><Icon name={error === NETWORK_MESSAGE ? 'wifiOff' : 'alert'} size={20} /><div><strong>{error === NETWORK_MESSAGE ? 'Aloqa yoʻq' : 'Amal bajarilmadi'}</strong>{error}<div className="banner-actions">{retry}{debug && error === NETWORK_MESSAGE && <button className="btn btn-sm btn-secondary" onClick={openApiSettings}><Icon name="server" size={16} />Server manzili</button>}</div></div></div>}
+      {error && !(view === 'settings' && loaded !== 'settings') && <div className="banner banner-error page-banner" role="alert"><Icon name={error === NETWORK_MESSAGE ? 'wifiOff' : 'alert'} size={20} /><div><strong>{error === NETWORK_MESSAGE ? 'Aloqa yoʻq' : 'Amal bajarilmadi'}</strong>{error}<div className="banner-actions">{retry}</div></div></div>}
       {notices.length > 0 && <div className="notice-stack">{notices.slice(0, 3).map(n => <div key={n.id} className="banner banner-info notice" role="status"><Icon name="bell" size={20} /><div><strong>{n.title}</strong>{n.body}<div className="banner-actions">{n.orderId && <button className="btn btn-sm btn-primary" onClick={() => { setNotices(old => old.filter(x => x.id !== n.id)); openOrder(n.orderId!); }}>Ochish</button>}<button className="btn btn-sm btn-secondary" onClick={() => setNotices(old => old.filter(x => x.id !== n.id))}>Yopish</button></div></div></div>)}</div>}
       <main className="view" key={view}>
 
@@ -299,7 +298,8 @@ function App() {
           {role === 'owner' && <StaffPanel request={request} meId={me?.id} />}
           <PasswordPanel request={request} />
           {securityPanel}
-          {debug && <Panel title="Texnik sozlamalar" subtitle="Faqat sinov (debug) ilovasida koʻrinadi"><button className="btn btn-secondary" onClick={openApiSettings}><Icon name="server" size={18} />Server (API) manzili</button></Panel>}
+          {/* Developer-only: exists only in debug builds and only for the super admin. Release builds are locked to production. */}
+          {debug && role === 'owner' && <Panel title="Texnik sozlamalar" subtitle="Faqat ishlab chiquvchi (debug) build’ida va faqat super admin uchun. Doʻkonga beriladigan ilovada boʻlmaydi."><button className="btn btn-secondary" onClick={openApiSettings}><Icon name="server" size={18} />Server (API) manzili</button></Panel>}
         </div>)}
       </main>
     </div>
@@ -311,8 +311,8 @@ function App() {
         <Field label="Kategoriya"><select className="input" value={product.categoryId} onChange={e => setProduct({ ...product, categoryId: Number(e.target.value) })} required><option value="0">Tanlang</option>{categories.map(cat => <option value={cat.id} key={cat.id}>{cat.name}</option>)}</select></Field>
       </div></section>
       <section className="form-section"><h4>Narx va qoldiq</h4><div className="form-grid">
-        <Field label="Narx (soʻm)"><input className="input num" type="number" inputMode="numeric" min="0" value={product.price} onChange={e => setProduct({ ...product, price: Number(e.target.value) })} required /></Field>
-        <Field label="Qoldiq" hint={product.id ? 'Mavjud mahsulot qoldigʻi «Qoldiq» tugmasi orqali oʻzgaradi' : undefined}><input className="input num" type="number" inputMode="numeric" min="0" value={product.stock} disabled={!!product.id} onChange={e => setProduct({ ...product, stock: Number(e.target.value) })} required /></Field>
+        <Field label="Narx" hint="Faqat raqam — boʻshliqlar oʻzi qoʻyiladi, masalan: 1 000 000"><NumberInput value={product.price} onChange={price => setProduct(p => ({ ...p, price }))} suffix="soʻm" aria-label="Narx, soʻm" /></Field>
+        <Field label="Qoldiq" hint={product.id ? 'Mavjud mahsulot qoldigʻi «Qoldiq» tugmasi orqali oʻzgaradi' : 'Omborda nechta bor'}><NumberInput value={product.stock} onChange={stock => setProduct(p => ({ ...p, stock }))} disabled={!!product.id} suffix="dona" max={1_000_000} aria-label="Qoldiq, dona" /></Field>
       </div></section>
       <section className="form-section"><h4>Tavsif</h4><Field label="Mahsulot haqida"><textarea className="input" rows={4} value={product.description} onChange={e => setProduct({ ...product, description: e.target.value })} /></Field></section>
       <section className="form-section"><h4>Rasmlar <span className="t-caption num">{product.images.length}/8</span></h4>
@@ -330,7 +330,7 @@ function App() {
     {adjust.id > 0 && <Modal as="form" size="sm" title="Qoldiqni oʻzgartirish" subtitle={products.find(p => p.id === adjust.id)?.name} onClose={closeAdjust} onSubmit={e => { e.preventDefault(); execute(async () => { await request(`/admin/products/${adjust.id}/adjust-stock`, { method: 'POST', body: JSON.stringify({ delta: adjust.delta, reason: adjust.reason }) }); setAdjust({ id: 0, delta: 0, reason: '' }); await load('products'); }); }} footer={<><button type="button" className="btn btn-quiet" onClick={closeAdjust}>Bekor qilish</button><button className="btn btn-primary" disabled={busy}>Saqlash</button></>}>
       <div className="form-stack">
         <p className="t-muted">Hozirgi qoldiq: <strong className="num">{products.find(p => p.id === adjust.id)?.stock ?? '—'} dona</strong></p>
-        <Field label="Farq (+/−)" hint="Kirim uchun musbat (5), chiqim uchun manfiy (−2) son"><input className="input num" type="number" value={adjust.delta} onChange={e => setAdjust({ ...adjust, delta: Number(e.target.value) })} required /></Field>
+        <Field label="Farq (+/−)" hint="Kirim uchun musbat (5), chiqim uchun manfiy (−2) son"><NumberInput value={adjust.delta} onChange={delta => setAdjust(a => ({ ...a, delta }))} allowNegative max={1_000_000} suffix="dona" aria-label="Qoldiq farqi" /></Field>
         <Field label="Sabab"><input className="input" value={adjust.reason} onChange={e => setAdjust({ ...adjust, reason: e.target.value })} required minLength={3} placeholder="Masalan: yangi partiya keldi" /></Field>
       </div>
     </Modal>}
@@ -344,7 +344,7 @@ function App() {
         </div></section>
         <OrderDelivery order={selectedOrder} extras={extras} request={request} mapsKey={mapsKey || undefined} onChanged={() => { openOrder(selectedOrder.id); void load('orders'); }} />
         {nextStatuses[selectedOrder.status] && <section className="od-block"><h4>Holatni oʻzgartirish</h4>{extras?.delivery && !['declined', 'cancelled'].includes(extras.delivery.status) && <p className="t-caption">Kuryer biriktirilgan: «Yoʻlga chiqarildi» va «Yetkazildi» kuryer va mijoz tasdigʻi orqali qoʻyiladi.</p>}<div className="status-actions">{nextStatuses[selectedOrder.status].filter(next => !(extras?.delivery && !['declined', 'cancelled'].includes(extras.delivery.status) && (next === 'shipped' || next === 'delivered'))).map(next => <button key={next} className={`btn ${next === 'cancelled' ? 'btn-danger' : 'btn-primary'}`} onClick={() => status(next)} disabled={busy}>{(selectedOrder.fulfillment === 'pickup' && pickupStatusNames[next]) || statusNames[next] || next}</button>)}</div></section>}
-        <section className="od-block"><h4>Mahsulotlar</h4><ul className="line-items">{selectedOrder.items.map((item, i) => <li key={i}><span className="li-name">{item.name}<span className="t-caption num"> × {item.quantity}</span></span><span className="num">{money(item.price * item.quantity)}</span></li>)}</ul><div className="li-total"><span>Jami</span><strong className="num">{money(selectedOrder.total)}</strong></div></section>
+        <section className="od-block"><h4>Mahsulotlar</h4><ul className="line-items">{selectedOrder.items.map((item, i) => <li key={i}><span className="li-name">{item.name}<span className="t-caption num"> × {item.quantity}</span></span><span className="num">{money(item.price * item.quantity)}</span></li>)}{!!selectedOrder.deliveryFee && <li><span className="li-name">Yetkazib berish (kuryer)</span><span className="num">{money(selectedOrder.deliveryFee)}</span></li>}</ul><div className="li-total"><span>Jami</span><strong className="num">{money(selectedOrder.total)}</strong></div></section>
         <OrderPayment order={selectedOrder} payments={payments} transactions={transactions} role={role} request={request} onChanged={() => { openOrder(selectedOrder.id); void load('orders'); }} />
       </div>
     </Modal>}

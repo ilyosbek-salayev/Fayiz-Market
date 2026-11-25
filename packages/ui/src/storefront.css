@@ -50,9 +50,10 @@
 .choice-radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line-strong, #ccc); display: grid; place-items: center; }
 .choice[aria-checked='true'] .choice-radio { border-color: var(--text); }
 .choice[aria-checked='true'] .choice-radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--text); }
-.segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--surface-2, #f3f3ee); }
-.segmented button { min-height: 44px; border: 0; border-radius: 11px; background: transparent; font: inherit; font-weight: 600; font-size: 14px; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 8px; }
-.segmented button[aria-pressed='true'] { background: var(--surface, #fff); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .pay-details { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; padding: 12px 14px; border-radius: 12px; background: var(--surface-2, #f3f3ee); }
 .pay-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 430px) { .segmented button svg { display: none; } .segmented button { font-size: 13.5px; white-space: nowrap; padding: 0 6px; } }
+/* NumberInput with a unit (soʻm, dona) */
+.number-input { position: relative; display: block; }
+.number-input .input { padding-right: 64px; }
+.number-input-suffix { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }

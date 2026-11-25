@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cartTotal, checkoutSchema, productSchema } from './index';
+import { cartTotal, checkoutSchema, money, productSchema } from './index';
 
 describe('checkout validation', () => {
   it('requires an Uzbek phone and at least one item', () => {
@@ -17,5 +17,10 @@ describe('checkout validation', () => {
   });
   it('calculates cart totals in integer soʻm', () => {
     expect(cartTotal([{ product: { price: 120000 } as any, quantity: 2 }, { product: { price: 35000 } as any, quantity: 3 }])).toBe(345000);
+  });
+  it('formats money with space-grouped thousands (as the owner types it)', () => {
+    expect(money(1000000)).toBe('1\u00a0000\u00a0000 soʻm');
+    expect(money(0)).toBe('0 soʻm');
+    expect(money(950)).toBe('950 soʻm');
   });
 });

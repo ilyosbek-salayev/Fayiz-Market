@@ -69,7 +69,9 @@ for (const [name, slug, cat, price, stock, featured, colors] of [
 ]) await call('/admin/products', 'POST', { name, slug, description: 'Lokal vizual sinov mahsuloti.', categoryId: cats[cat], price, stock, active: true, featured, images: [await up(800, 800, ...colors)] }, token);
 await call('/admin/settings', 'PUT', { contact_phone: '+998 90 123 45 67', delivery_info: 'Toshkent boʻylab 1–2 kun ichida yetkaziladi.' }, token);
 await call('/admin/store', 'PUT', { placeName: 'Fayz Market — Chilonzor', address: 'Toshkent sh., Chilonzor tumani, Bunyodkor shoh koʻchasi, 12', lat: 41.2856, lng: 69.2034 }, token);
-await call('/admin/payment-settings', 'PUT', { cash: true, cardTerminal: true, bankTransfer: true, bankTransferDetails: 'Oluvchi: «Fayz Market» MChJ\nBank: (sinov) Kapitalbank\nH/r: 2020 8000 0000 0000 0001\nMFO: 01088', pickup: true }, token);
+await call('/admin/payment-settings', 'PUT', { cash: true, cardTerminal: true, bankTransfer: true, bankTransferDetails: 'Oluvchi: «Fayz Market» MChJ\nBank: (sinov) Kapitalbank\nH/r: 2020 8000 0000 0000 0001\nMFO: 01088', pickup: true, deliveryFee: 15000, deliveryFreeFrom: 0 }, token);
+const MANAGER = { email: 'v1-manager@example.invalid', password: 'V1LocalPassword-456' };
+await call('/admin/users', 'POST', { ...MANAGER, role: 'manager', name: 'Menejer' }, token);
 await call('/admin/integrations/routing/secrets', 'PUT', { ORS_API_KEY: ORS_KEY }, token);
 await call('/admin/banners', 'POST', { title: 'Yangi soatlar keldi', subtitle: 'Klassik va zamonaviy modellar — haftalik chegirma bilan', ctaLabel: 'Koʻrish', ctaTarget: 'category:soatlar', imageUrl: await up(900, 700, '#FFCC29', '#C98F00'), tone: 'dark', position: 1 }, token);
 await call('/admin/banners', 'POST', { title: 'Doʻkonimizga keling', subtitle: 'Chilonzor, Bunyodkor shoh koʻchasi', ctaLabel: 'Yoʻlni koʻrish', ctaTarget: 'store', tone: 'accent', position: 2 }, token);
@@ -77,7 +79,7 @@ await call('/admin/banners', 'POST', { title: 'Doʻkonimizga keling', subtitle: 
 // ---------- Browser ----------
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
 const USER = { latitude: 41.3111, longitude: 69.2797, accuracy: 18 };
-async function open(app, { width = 390, height = 844, geo = true, theme, storage = {} } = {}) {
+async function open(app, { width = 390, height = 844, geo = true, theme, storage = {}, debugShell = false } = {}) {
   const ctx = await browser.createBrowserContext();
   if (geo) await ctx.overridePermissions(API, ['geolocation']);
   const page = await ctx.newPage(); page.setDefaultTimeout(20000);
@@ -86,6 +88,8 @@ async function open(app, { width = 390, height = 844, geo = true, theme, storage
   await page.setRequestInterception(true);
   page.on('request', async req => { const u = new URL(req.url()); if (u.origin === API && u.pathname.startsWith('/__app/')) { const f = path.join(ROOT, 'apps', app, 'dist', u.pathname.slice(7)); try { return req.respond({ status: 200, contentType: mime(f), body: await readFile(f) }); } catch { return req.respond({ status: 404, body: '' }); } } req.continue(); });
   page.on('pageerror', e => check(false, `${app} page error`, e.message));
+  // debugShell: imitates the Android DEBUG build bridge (isDebug() === true) to prove the login never shows server controls.
+  if (debugShell) await page.evaluateOnNewDocument(() => { window.FayzNative = { isDebug: () => true, openApiSettings: () => { window.__apiSettingsOpened = true; }, share() {}, setSystemBars() {} }; });
   await page.evaluateOnNewDocument((key, t, s) => { if (t) localStorage.setItem(key, t); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, app === 'admin' ? 'fayz_admin_theme' : 'fayz_theme', theme, storage);
   await page.goto(`${API}/__app/index.html`, { waitUntil: 'networkidle0' });
   return { page, ctx };
@@ -205,14 +209,94 @@ try {
     await ctx.close();
   }
 
+  // ---------- Customer: GPS attached at checkout, courier fee, phone + code sign-in ----------
+  {
+    const { page, ctx } = await open('customer');
+    const has = (t, n) => t.replace(/\u00a0/g, ' ').includes(n); // money() groups digits with no-break spaces
+    await page.waitForSelector('.loc-row');
+    await page.$$eval('.loc-row', els => els[1].click()); await pause(2000);
+    await page.$$eval('.pcard-add', els => els[0].click()); await pause(400);
+    await click(page, 'Savat', '.tabbar button'); await pause(400);
+    let t = await text(page);
+    check(t.includes('Yetkazib berish') && has(t, '15 000 soʻm'), 'cart: courier fee shown as its own line (15 000 soʻm)', JSON.stringify(t.slice(t.indexOf('Savat'), t.indexOf('Savat') + 400)));
+    await click(page, 'Buyurtma berish', '.action-bar button'); await pause(700);
+    t = await text(page);
+    check(t.includes('Joriy joylashuvingiz (GPS)') && t.includes('Kuryer shu nuqtaga keladi'), 'checkout: the phone GPS point is attached automatically (map stays optional)');
+    const sums = await page.evaluate(() => { const n = s => Number((s || '').replace(/\D/g, '')); const lines = [...document.querySelectorAll('.co-lines > div')].map(d => n(d.lastElementChild?.textContent)); return { goods: lines[0], fee: lines[1], total: n(document.querySelector('.btn-total')?.textContent) }; });
+    check(sums.fee === 15000 && sums.total === sums.goods + 15000, 'checkout: total = goods + courier fee', JSON.stringify(sums));
+    await shot(page, 'customer-checkout-gps-fee');
+    await click(page, 'Bekor qilish', '.sheet button'); await pause(400);
+    await click(page, 'Profil', '.tabbar button'); await pause(500);
+    check(await overflow(page) <= 0, 'profile with sign-in buttons: no horizontal overflow at 390 px', String(await overflow(page)));
+    await click(page, 'Telefon raqam bilan kirish', 'button'); await page.waitForSelector('.quick-login');
+    check(await overflow(page) <= 0 && await page.$eval('.sheet', el => el.getBoundingClientRect().left >= 0), 'sign-in sheet fully on screen');
+    await page.type('.quick-login input[type=tel]', '901112244');
+    check(await page.$eval('.quick-login input[type=tel]', el => el.value) === '90 111-22-44', 'quick login: +998 fixed, number formatted while typing');
+    await shot(page, 'customer-quick-login');
+    await click(page, 'Kodni olish', '.quick-login button'); await pause(1500);
+    const code = await page.evaluate(() => document.querySelector('.quick-login .banner-warning .num')?.textContent || '');
+    await page.type('.quick-login .otp-single', code); await pause(2000);
+    check((await text(page)).includes('Xush kelibsiz') && !!await page.$('.quick-login input[autocomplete=name]'), 'quick login: new number → account opened, asks for a name');
+    await page.type('.quick-login input[autocomplete=name]', 'Sinov Mijoz'); await click(page, 'Saqlash', '.quick-login button'); await pause(1500);
+    t = await text(page);
+    check(t.includes('Sinov Mijoz') && t.includes('+998901112244'), 'quick login: signed in with a verified phone and name, no password', t.slice(0, 160));
+    await shot(page, 'customer-profile-after-quick-login');
+    await ctx.close();
+  }
+
   // ---------- Admin ----------
-  const adminLogin = async (width = 1280, theme) => {
-    const o = await open('admin', { width, height: width < 700 ? 844 : 860, theme });
+  const adminLogin = async (width = 1280, theme, account = OWNER, debugShell = false) => {
+    const o = await open('admin', { width, height: width < 700 ? 844 : 860, theme, debugShell });
     await o.page.waitForSelector('input[type=email]');
-    await o.page.type('input[type=email]', OWNER.email); await o.page.type('input[type=password]', OWNER.password);
+    await o.page.type('input[type=email]', account.email); await o.page.type('input[type=password]', account.password);
     await o.page.click('button.btn-primary'); await o.page.waitForSelector('.sidebar'); await pause(800);
     return o;
   };
+  {
+    // Login screen of a DEBUG Android build: still only logo, email, password and Kirish.
+    const o = await open('admin', { debugShell: true });
+    await o.page.waitForSelector('input[type=email]');
+    const login = await o.page.evaluate(() => ({ text: document.body.innerText, buttons: [...document.querySelectorAll('button')].map(b => (b.getAttribute('aria-label') || b.textContent || '').trim()), inputs: document.querySelectorAll('input').length }));
+    check(!/server|api/i.test(login.text) && !login.buttons.some(b => /server|api/i.test(b)) && login.inputs === 2, 'admin login (even debug build): no server/API control — only email, password, Kirish', JSON.stringify(login.buttons));
+    await shot(o.page, 'admin-login-390');
+    await o.ctx.close();
+    const owner = await adminLogin(1280, undefined, OWNER, true);
+    await click(owner.page, 'Sozlamalar', '.side-nav button'); await owner.page.waitForSelector('.logo-slot'); await pause(800);
+    check((await text(owner.page)).includes('Texnik sozlamalar'), 'debug build: technical settings exist only inside Settings, for the super admin');
+    await owner.ctx.close();
+    const mgr = await adminLogin(1280, undefined, MANAGER, true);
+    await click(mgr.page, 'Sozlamalar', '.side-nav button'); await pause(1500);
+    check(!(await text(mgr.page)).includes('Texnik sozlamalar'), 'debug build: a manager does not see technical settings');
+    await mgr.ctx.close();
+    const rel = await adminLogin(1280);
+    await click(rel.page, 'Sozlamalar', '.side-nav button'); await rel.page.waitForSelector('.logo-slot'); await pause(800);
+    check(!(await text(rel.page)).includes('Texnik sozlamalar'), 'release build: no technical settings at all');
+    await rel.ctx.close();
+  }
+  {
+    // Price input: «1 000 000», no stuck leading 0, saved as a number.
+    const { page, ctx } = await adminLogin(390);
+    await page.click('.menu-btn'); await pause(300); await click(page, 'Mahsulotlar', '.side-nav button'); await pause(800);
+    await click(page, 'Mahsulot qoʻshish', 'button'); await page.waitForSelector('.modal');
+    const price = 'input[aria-label="Narx, soʻm"]';
+    check(await page.$eval(price, el => el.value === '' && el.placeholder === '0'), 'price starts empty with a "0" placeholder (nothing to delete)');
+    await page.click(price); await page.keyboard.type('0'); await page.keyboard.type('5');
+    check(await page.$eval(price, el => el.value) === '5', 'typing after a 0 replaces it («05» → «5»)', await page.$eval(price, el => el.value));
+    await page.keyboard.press('Backspace'); await page.keyboard.type('1000000');
+    check(await page.$eval(price, el => el.value) === '1\u00a0000\u00a0000', 'price shows «1 000 000» while typing', JSON.stringify(await page.$eval(price, el => el.value)));
+    await page.evaluate(sel => { const el = document.querySelector(sel); el.setSelectionRange(1, 1); }, price); await page.keyboard.type('2');
+    check(await page.$eval(price, el => el.value) === '12\u00a0000\u00a0000' && await page.$eval(price, el => el.selectionStart) === 2, 'caret stays after the typed digit when groups shift', JSON.stringify([await page.$eval(price, el => el.value), await page.$eval(price, el => el.selectionStart)]));
+    await page.evaluate(sel => { const el = document.querySelector(sel); el.setSelectionRange(0, el.value.length); }, price); await page.keyboard.type('1000000');
+    const setValue = (sel, v) => page.evaluate((q, val) => { const el = document.querySelector(q); const proto = el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, val); el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); }, sel, v);
+    await setValue('.modal input[required][minlength="2"]', 'Oltin soat'); await setValue('.modal input[pattern]', 'oltin-soat');
+    await page.evaluate(() => { const sel = document.querySelector('.modal select'); sel.value = sel.options[1].value; sel.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.click('input[aria-label="Qoldiq, dona"]'); await page.keyboard.type('3');
+    await shot(page, 'admin-product-price-390');
+    await click(page, 'Saqlash', '.modal-foot button'); await pause(1500);
+    const saved = (await call('/products/oltin-soat').catch(() => null))?.product;
+    check(saved?.price === 1000000 && saved?.stock === 3, 'product saved with price 1 000 000 and stock 3', JSON.stringify(saved && { price: saved.price, stock: saved.stock }));
+    await ctx.close();
+  }
   {
     const { page, ctx } = await adminLogin();
     check(/mark-light/.test(await page.$eval('.side-brand img.brand-mark', el => el.getAttribute('src'))), 'admin sidebar shows the new symbol');
@@ -254,11 +338,18 @@ try {
     const banners = (await call('/storefront')).banners;
     check(banners.some(b => b.title === 'Bayram chegirmasi' && b.ctaTarget === 'catalog'), 'admin: banner created in the editor appears in the storefront');
     // Integrations
-    await click(page, 'Integratsiyalar', '.side-nav button'); await page.waitForSelector('.integration'); await pause(800);
+    await click(page, 'Integratsiyalar', '.side-nav button'); await page.waitForSelector('.int-row'); await pause(800);
     t = await text(page);
-    check(t.includes('Kalitlar shifrlangan holda saqlanadi') && t.includes('Payme') && t.includes('Click') && t.includes('Marshrut (OpenRouteService)') && !t.includes(ORS_KEY), 'integrations: encrypted-key notice, payment providers, no secret values on screen');
-    await page.evaluate(() => [...document.querySelectorAll('.integration')].find(s => s.textContent.includes('Payme'))?.querySelector('.link-btn')?.click()); await pause(400);
+    check(t.includes('shifrlangan holda saqlanadi') && t.includes('Payme') && t.includes('Click') && t.includes('Marshrut (OpenRouteService)') && !t.includes(ORS_KEY), 'integrations: compact list, payment providers, no secret values on screen');
+    const rowStatus = name => page.evaluate(n => [...document.querySelectorAll('.int-row')].find(r => r.querySelector('strong')?.textContent === n)?.querySelector('.int-side')?.textContent || '', name);
+    check(/Sozlanmagan/.test(await rowStatus('Payme')) && !/Ulangan/.test(await rowStatus('Payme')), 'integrations: Payme without credentials is «Sozlanmagan», never «Ulangan»');
+    check(/tekshirilmagan/.test(await rowStatus('Marshrut (OpenRouteService)')), 'integrations: a key that was never tested shows «tekshirilmagan», not «Ulangan»', await rowStatus('Marshrut (OpenRouteService)'));
     await shot(page, 'admin-integrations', true);
+    await page.evaluate(() => [...document.querySelectorAll('.int-row')].find(r => r.textContent.includes('Marshrut (OpenRouteService)'))?.click()); await page.waitForSelector('.modal .int-step'); await pause(700);
+    await shot(page, 'admin-integration-modal');
+    await click(page, 'Ulanishni tekshirish', '.modal button'); await pause(1800);
+    await click(page, 'Yopish', '.modal-foot button'); await pause(800);
+    check(/Ulangan/.test(await rowStatus('Marshrut (OpenRouteService)')), 'integrations: «Ulangan» only after a successful live check', await rowStatus('Marshrut (OpenRouteService)'));
     // Orders: payment block for the bank-transfer order
     await click(page, 'Buyurtmalar', '.side-nav button'); await page.waitForSelector('.table'); await pause(800);
     await shot(page, 'admin-orders-payments');

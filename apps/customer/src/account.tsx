@@ -10,7 +10,7 @@ import { agoText, stageIndex, stageNames, stageSteps } from '../../../packages/u
 import { Field, Sheet, revealOnFocus } from './components';
 
 export type Api = <T>(path: string, init?: RequestInit) => Promise<T>;
-export type AuthConfig = { phone: { enabled: boolean; devEcho: boolean }; email?: { enabled: boolean; devEcho: boolean }; telegram: { enabled: boolean; botUsername: string | null; botId: string | null }; password: boolean };
+export type AuthConfig = { phone: { enabled: boolean; devEcho: boolean; codeLogin?: boolean }; email?: { enabled: boolean; devEcho: boolean }; telegram: { enabled: boolean; botUsername: string | null; botId: string | null }; password: boolean };
 export type Customer = { id: number; name: string; phone: string | null; phoneVerified: boolean; email?: string | null; emailVerified?: boolean; telegram: { username: string | null } | null; hasPassword: boolean };
 export type DeliveryLocation = LatLng & { accuracy?: number; address?: string };
 export type OrderView = {
@@ -19,8 +19,8 @@ export type OrderView = {
   location: { lat: number; lng: number; details: string } | null;
   delivery: null | { status: string; courier: { name: string; phone: string | null } | null; pickedUpAt: string | null; arrivedAt: string | null; handedOverAt: string | null };
   canConfirm: boolean; canReview: boolean; reviewed: { products: number[]; courier: boolean; courierRatable: boolean };
-  /** Absent on servers older than V1 (then: delivery, cash). */
-  fulfillment?: 'delivery' | 'pickup';
+  /** Absent on servers older than V1 (then: delivery, cash, no separate fee). */
+  fulfillment?: 'delivery' | 'pickup'; deliveryFee?: number;
   payment?: { method: string; status: string; paidAt: string | null; note: string; bankTransferDetails: string; canClaimTransfer: boolean; canPayOnline: boolean };
 };
 const PHONE = /^\+998\d{9}$/;
@@ -119,6 +119,67 @@ export function AuthSheet({ api, config, initialMode = 'login', onDone, onClose 
         <div className="divider-text">yoki</div>
         <button className="btn btn-telegram btn-lg btn-block" onClick={() => startTelegram('login', config)}><Icon name="send" size={20} />Telegram orqali kirish</button>
         <p className="t-caption center">Telegram faqat ismingiz va username’ingizni beradi. Telefon raqami alohida SMS bilan tasdiqlanadi.</p>
+      </>}
+    </div>
+  </Sheet>;
+}
+
+// ---------------------------------------------------------------- Phone + code (main sign-in)
+const nine = (phone: string) => phone.replace(/^\+998/, '').replace(/\D/g, '').slice(0, 9);
+const prettyNine = (d: string) => [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean).map((part, i) => (i === 2 || i === 3 ? '-' : i ? ' ' : '') + part).join('');
+/** One field, one code: the number is the account. A new number opens an account; nothing else to remember. */
+export function PhoneLoginSheet({ api, config, onDone, onClose, onOther }: { api: Api; config: AuthConfig | null; onDone: (token: string, customer: Customer) => void; onClose: () => void; onOther: () => void }) {
+  const [digits, setDigits] = useState(''); const [code, setCode] = useState(''); const [name, setName] = useState('');
+  const [step, setStep] = useState<'phone' | 'code' | 'name'>('phone');
+  const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [devCode, setDevCode] = useState('');
+  const [resendAt, setResendAt] = useState(0); const [now, setNow] = useState(Date.now());
+  const [session, setSession] = useState<Session | null>(null);
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const phone = '+998' + digits;
+  const run = async (task: () => Promise<void>) => { setBusy(true); setError(''); try { await task(); } catch (e) { setError(friendlyError(e)); } finally { setBusy(false); } };
+  const requestCode = () => run(async () => {
+    if (digits.length !== 9) throw new Error('Raqamni toʻliq kiriting: 9 ta raqam');
+    const r = await api<{ resendIn: number; devCode?: string }>('/auth/otp', { method: 'POST', body: JSON.stringify({ phone, purpose: 'login' }) });
+    setResendAt(Date.now() + r.resendIn * 1000); setDevCode(r.devCode || ''); setCode(''); setStep('code');
+  });
+  const verify = (value = code) => run(async () => {
+    if (!/^\d{6}$/.test(value)) throw new Error('SMS dagi 6 xonali kodni kiriting');
+    const r = await api<Session & { isNew: boolean }>('/auth/phone/login', { method: 'POST', body: JSON.stringify({ phone, code: value }) });
+    if (r.isNew || !r.customer.name) { setSession(r); setStep('name'); } else onDone(r.token, r.customer);
+  });
+  const saveName = (skip: boolean) => run(async () => {
+    if (!session) return;
+    if (skip || name.trim().length < 2) { onDone(session.token, session.customer); return; }
+    const r = await api<{ customer: Customer }>('/auth/me', { method: 'PATCH', headers: { Authorization: `Customer ${session.token}` }, body: JSON.stringify({ name: name.trim() }) });
+    onDone(session.token, r.customer);
+  });
+  const wait = Math.max(0, Math.ceil((resendAt - now) / 1000));
+  const smsReady = !!config?.phone.enabled;
+  return <Sheet title={step === 'name' ? 'Xush kelibsiz!' : 'Fayz Market’ga kirish'} onClose={onClose}>
+    <div className="form-stack auth-form quick-login">
+      {error && <div className="banner banner-error" role="alert"><Icon name="alert" size={20} /><div>{error}</div></div>}
+      {devCode && step === 'code' && <div className="banner banner-warning" role="status"><Icon name="key" size={20} /><div><strong>Lokal sinov rejimi</strong>SMS yuborilmadi, kod: <span className="num">{devCode}</span>. Productionda bu koʻrinmaydi.</div></div>}
+      {!smsReady && step === 'phone' && <div className="banner banner-warning"><Icon name="alert" size={20} /><div><strong>SMS orqali kirish hozircha ishlamaydi</strong>Doʻkon SMS xizmatini ulagach, raqam va kod bilan kirasiz. Hozircha boshqa usuldan foydalaning yoki hisobsiz buyurtma bering.</div></div>}
+      {step === 'phone' && <>
+        <Field label="Telefon raqami"><span className="phone-field"><span className="phone-prefix num" aria-hidden="true">+998</span><input className="input num" type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="90 123-45-67" aria-label="Telefon raqami, +998 dan keyin 9 ta raqam" value={prettyNine(digits)} onChange={e => setDigits(nine(e.target.value))} onFocus={revealOnFocus} disabled={!smsReady} /></span></Field>
+        <button className="btn btn-primary btn-lg btn-block" onClick={requestCode} disabled={busy || !smsReady || digits.length !== 9}>{busy ? <><span className="spinner" />Yuborilmoqda...</> : 'Kodni olish'}</button>
+        <p className="t-caption center">Raqamingizga SMS kod keladi. Raqam yangi boʻlsa, hisob avtomatik ochiladi — parol kerak emas.</p>
+      </>}
+      {step === 'code' && <>
+        <p className="t-body"><span className="num">+998 {prettyNine(digits)}</span> raqamiga 6 xonali kod yuborildi.</p>
+        <Field label="SMS kod"><input className="input num otp-single" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} autoFocus onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setCode(v); if (v.length === 6) void verify(v); }} onFocus={revealOnFocus} placeholder="••••••" /></Field>
+        <button className="btn btn-primary btn-lg btn-block" onClick={() => verify()} disabled={busy || code.length !== 6}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : 'Kirish'}</button>
+        <div className="resend"><button className="link-btn plain" onClick={() => { setStep('phone'); setError(''); setDevCode(''); }}>Raqamni oʻzgartirish</button>{wait > 0 ? <span className="num">Qayta yuborish: {wait} s</span> : <button className="link-btn plain" onClick={requestCode} disabled={busy}>Kodni qayta yuborish</button>}</div>
+      </>}
+      {step === 'name' && <>
+        <p className="t-body">Hisobingiz ochildi. Kuryer va doʻkon sizga qanday murojaat qilsin?</p>
+        <Field label="Ismingiz"><input className="input" autoComplete="name" value={name} onChange={e => setName(e.target.value)} onFocus={revealOnFocus} autoFocus /></Field>
+        <button className="btn btn-primary btn-lg btn-block" onClick={() => saveName(false)} disabled={busy || name.trim().length < 2}>Saqlash</button>
+        <button className="btn btn-quiet btn-block" onClick={() => saveName(true)} disabled={busy}>Keyinroq</button>
+      </>}
+      {step !== 'name' && <>
+        <div className="divider-text">yoki</div>
+        <button className="btn btn-secondary btn-block" onClick={onOther}><Icon name="key" size={18} />Parol, email yoki Telegram bilan</button>
       </>}
     </div>
   </Sheet>;

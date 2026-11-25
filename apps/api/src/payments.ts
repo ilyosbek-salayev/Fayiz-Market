@@ -30,6 +30,14 @@ export const onlineReady: Record<'payme' | 'click', (env: Bindings, s: Record<st
   click: (env, s) => s.click_enabled === '1' && /^\d{1,12}$/.test(s.click_service_id || '') && /^\d{1,12}$/.test(s.click_merchant_id || '') && !!env.CLICK_SECRET_KEY,
 };
 
+const wholeSoum = (v: string | undefined) => { const n = Math.trunc(Number(v)); return Number.isFinite(n) && n > 0 ? n : 0; };
+/** Courier fee added on top of the goods (0 for pickup, or when the goods reach the free-delivery threshold). */
+export function deliveryFeeFor(s: Record<string, string>, itemsTotal: number, fulfillment: 'delivery' | 'pickup') {
+  if (fulfillment === 'pickup') return 0;
+  const fee = wholeSoum(s.delivery_fee), freeFrom = wholeSoum(s.delivery_free_from);
+  return freeFrom > 0 && itemsTotal >= freeFrom ? 0 : fee;
+}
+
 export function checkoutOptions(env: Bindings, s: Record<string, string>, store: Store) {
   const offline = OFFLINE.filter(m => (s[`payment_${m}`] ?? (m === 'cash' ? '1' : '0')) === '1');
   const payments: { method: PaymentMethod; label: string; online: boolean }[] = [
@@ -39,6 +47,7 @@ export function checkoutOptions(env: Bindings, s: Record<string, string>, store:
   if (!payments.length) payments.push({ method: 'cash', label: PAYMENT_LABELS.cash, online: false }); // checkout is never left without a way to pay
   const pickup = s.fulfillment_pickup === '1' && store.address.trim().length >= 5;
   return {
+    deliveryFee: wholeSoum(s.delivery_fee), deliveryFreeFrom: wholeSoum(s.delivery_free_from),
     fulfillment: pickup ? ['delivery', 'pickup'] as const : ['delivery'] as const,
     payments,
     bankTransferDetails: offline.includes('bank_transfer') ? s.bank_transfer_details || '' : '',
@@ -325,12 +334,12 @@ export function registerPayments(app: App) {
   // ---------- Owner: which methods checkout offers ----------
   app.put('/admin/payment-settings', async c => {
     ownerOnly(c);
-    const input = await parse(c, z.object({ cash: z.boolean(), cardTerminal: z.boolean(), bankTransfer: z.boolean(), bankTransferDetails: z.string().trim().max(600), pickup: z.boolean() }).strict());
+    const input = await parse(c, z.object({ cash: z.boolean(), cardTerminal: z.boolean(), bankTransfer: z.boolean(), bankTransferDetails: z.string().trim().max(600), pickup: z.boolean(), deliveryFee: z.number().int().min(0).max(10_000_000).optional(), deliveryFreeFrom: z.number().int().min(0).max(1_000_000_000).optional() }).strict());
     const s = await settingsMap(c.env.DB);
     if (input.bankTransfer && input.bankTransferDetails.length < 10) fail(400, 'BANK_DETAILS', 'Bank oʻtkazmasi uchun rekvizitlarni toʻliq yozing (oluvchi, bank, hisob raqami)');
     if (input.pickup && (s.store_address || '').trim().length < 5) fail(400, 'STORE_ADDRESS', 'Olib ketish uchun avval doʻkon manzilini kiriting');
     if (!input.cash && !input.cardTerminal && !input.bankTransfer && !ONLINE.some(m => onlineReady[m](c.env, s))) fail(400, 'NO_METHOD', 'Kamida bitta toʻlov usuli yoqilgan boʻlishi kerak');
-    await c.env.DB.batch(putSettings(c.env.DB, [['payment_cash', input.cash ? '1' : '0'], ['payment_card_terminal', input.cardTerminal ? '1' : '0'], ['payment_bank_transfer', input.bankTransfer ? '1' : '0'], ['bank_transfer_details', input.bankTransferDetails], ['fulfillment_pickup', input.pickup ? '1' : '0']]));
+    await c.env.DB.batch(putSettings(c.env.DB, [['payment_cash', input.cash ? '1' : '0'], ['payment_card_terminal', input.cardTerminal ? '1' : '0'], ['payment_bank_transfer', input.bankTransfer ? '1' : '0'], ['bank_transfer_details', input.bankTransferDetails], ['fulfillment_pickup', input.pickup ? '1' : '0'], ...(input.deliveryFee !== undefined ? [['delivery_fee', String(input.deliveryFee)] as [string, string]] : []), ...(input.deliveryFreeFrom !== undefined ? [['delivery_free_from', String(input.deliveryFreeFrom)] as [string, string]] : [])]));
     await audit(c.env.DB, c.get('admin').id, 'payment.settings', 'checkout', { ...input, bankTransferDetails: input.bankTransferDetails ? 'set' : '' });
     return c.json({ ok: true });
   });

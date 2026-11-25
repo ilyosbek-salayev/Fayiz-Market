@@ -52,6 +52,7 @@ public final class MainActivity extends Activity {
   @Override public void onCreate(Bundle state) {
     super.onCreate(state);
     biometrics = new Biometrics(this);
+    clearStaleServerOverride();
     web = new WebView(this);
     web.setBackgroundColor(Color.parseColor("#FAFAF7"));
     setContentView(web);
@@ -141,7 +142,22 @@ public final class MainActivity extends Activity {
   }
 
   private String defaultApiUrl() { return getString(getResources().getIdentifier("default_api_url", "string", getPackageName())); }
-  private String apiUrl() { return getPreferences(MODE_PRIVATE).getString("api_url", defaultApiUrl()).replaceAll("/+$", ""); }
+  /**
+   * Release (non-debuggable) builds always use the production API baked into the build: the address cannot be
+   * changed on the device. Only a developer's debug build may point at another server (Texnik sozlamalar).
+   */
+  private String apiUrl() {
+    if (!debuggable()) return defaultApiUrl().replaceAll("/+$", "");
+    return getPreferences(MODE_PRIVATE).getString("api_url", defaultApiUrl()).replaceAll("/+$", "");
+  }
+  /** A release build installed over a debug build drops any test-server address (and the biometric session tied to it). */
+  private void clearStaleServerOverride() {
+    if (debuggable()) return;
+    String saved = getPreferences(MODE_PRIVATE).getString("api_url", null);
+    if (saved == null) return;
+    if (!saved.replaceAll("/+$", "").equals(defaultApiUrl().replaceAll("/+$", ""))) biometrics.disable();
+    getPreferences(MODE_PRIVATE).edit().remove("api_url").apply();
+  }
   private boolean sameOrigin(Uri uri) { return OriginPolicy.sameOrigin(apiUrl(), uri.toString()); }
   private void openApp() {
     String url = apiUrl() + "/__app/index.html";
@@ -214,7 +230,8 @@ public final class MainActivity extends Activity {
   @Override public boolean onCreateOptionsMenu(Menu menu) { if (debuggable()) menu.add("API manzili"); menu.add("Yangilash"); return true; }
   @Override public boolean onOptionsItemSelected(MenuItem item) {
     if (item.getTitle().equals("Yangilash")) { web.reload(); return true; }
-    showApiDialog(); return true;
+    if (debuggable()) showApiDialog();
+    return true;
   }
   private void showApiDialog() {
     if (!debuggable()) return;

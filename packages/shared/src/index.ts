@@ -26,5 +26,9 @@ export type Category = z.infer<typeof categorySchema> & { id: number };
 export type CartItem = { product: Product; quantity: number };
 export type Order = { id: number; orderNumber: string; customerName: string; phone: string; address: string; note: string; status: typeof orderStatuses[number]; total: number; createdAt: string; items: { productId: number; name: string; price: number; quantity: number }[] };
 
-export function money(amount: number): string { return new Intl.NumberFormat('uz-UZ').format(amount) + ' soʻm'; }
+/** «1 000 000 soʻm»: space-grouped thousands on every device (Intl uz-UZ prints commas in some WebViews). */
+export function money(amount: number): string {
+  const n = Math.round(Number(amount) || 0), digits = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  return `${n < 0 ? '−' : ''}${digits} soʻm`;
+}
 export function cartTotal(items: CartItem[]): number { return items.reduce((sum, item) => sum + item.product.price * item.quantity, 0); }

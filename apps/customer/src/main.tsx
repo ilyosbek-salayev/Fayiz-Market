@@ -8,7 +8,7 @@ import { BannerCarousel, paymentMethodNames, paymentStatusBadge, paymentStatusNa
 import { LocationStrip, StoreScreen, detectLocation, useStorefront, useUserLocation, type UserLocation } from './storefront';
 import { formatDateTime, friendlyError, isNetworkFailure, nativeDebug, nativeReload, openApiSettings, paintSystemBars } from '../../../packages/ui/src/format';
 import { EmptyState, Field, ProductCard, ProductImage, ProductSkeleton, SectionHeader, Sheet, Toast, revealOnFocus } from './components';
-import { AuthSheet, ConfirmDelivery, LinkPhoneSheet, LocationSheet, ProductReviews, ReviewSheet, TrackingSheet, startTelegram, takeTelegramResult, type AuthConfig, type Customer, type DeliveryLocation, type OrderView } from './account';
+import { AuthSheet, ConfirmDelivery, LinkPhoneSheet, LocationSheet, PhoneLoginSheet, ProductReviews, ReviewSheet, TrackingSheet, startTelegram, takeTelegramResult, type AuthConfig, type Customer, type DeliveryLocation, type OrderView } from './account';
 import { biometricDisable, biometricEnable, biometricStatus, biometricStored, biometricUnlock, openExternal, systemNotify } from '../../../packages/ui/src/native';
 import { formatCoords } from '../../../packages/ui/src/maps';
 import { stageBadge, stageNames } from '../../../packages/ui/src/stages';
@@ -95,7 +95,7 @@ function App() {
   const [userSheet,setUserSheet] = useState<{notice:string}|null>(null);
   const [fulfillment,setFulfillment] = useState<'delivery'|'pickup'>('delivery');
   const [paymentMethod,setPaymentMethod] = useState('cash');
-  const [paying,setPaying] = useState(0);
+  const [paying,setPaying] = useState(0); const [quickLogin,setQuickLogin] = useState(false); const [locatingDrop,setLocatingDrop] = useState(false);
   const checkoutOptions = storefront?.checkout;
   const payOptions: PaymentOption[] = checkoutOptions?.payments?.length ? checkoutOptions.payments : [{ method:'cash', label:'Naqd pul', online:false }];
   const pickupOffered = !!checkoutOptions?.fulfillment?.includes('pickup');
@@ -103,7 +103,7 @@ function App() {
   const mapsKey = settings.google_maps_key || undefined;
   const dark = theme==='black';
   const signIn = useCallback((token:string, who:Customer) => {
-    customerToken = token; setCustomer(who); setAuthSheet(null); setLocked(false);
+    customerToken = token; setCustomer(who); setAuthSheet(null); setQuickLogin(false); setLocked(false);
     if(localStorage.getItem(BIO_FLAG)==='1' && biometricStored()) void biometricEnable(token); else localStorage.setItem('fayz_customer_token',token);
     setProfile(old => ({ ...old, customerName: old.customerName.trim() || who.name, phone: who.phone && who.phoneVerified ? who.phone : old.phone }));
     setToast({message:`Xush kelibsiz, ${who.name || 'mijoz'}!`});
@@ -158,6 +158,9 @@ function App() {
   const cartItems = useMemo(() => Object.entries(cart).map(([id,quantity]) => ({ product:cartProducts[id] || products.find(p => p.id===Number(id)),quantity })).filter((x):x is {product:Product;quantity:number} => !!x.product),[cart,cartProducts,products]);
   const cartTotal = cartItems.reduce((sum,x) => sum+x.product.price*x.quantity,0);
   const cartCount = Object.values(cart).reduce((a,b)=>a+b,0);
+  // Courier fee: a separate line on top of the goods, as the shop set it (the server recomputes it on the order).
+  const feeRule = { fee: storefront?.checkout?.deliveryFee || 0, freeFrom: storefront?.checkout?.deliveryFreeFrom || 0 };
+  const feeFor = (isPickup:boolean) => isPickup || !feeRule.fee || (feeRule.freeFrom>0 && cartTotal>=feeRule.freeFrom) ? 0 : feeRule.fee;
   function quantity(product:Product, delta:number) { setCartProducts(old => ({...old,[product.id]:product})); setCart(old => { const next={...old}; const count=Math.min(product.stock,Math.max(0,(next[product.id]||0)+delta)); if(count) next[product.id]=count; else delete next[product.id]; return next; }); }
   const orderHeaders = useCallback((id:number):Record<string,string> => { const saved=savedOrders.find(o => o.id===id); return saved ? {Authorization:`Order ${saved.accessToken}`} : {}; },[savedOrders]);
   const refreshOrders = useCallback(async (quiet=false) => {
@@ -218,6 +221,13 @@ function App() {
     setLocating(true);
     try { setUserLocation(await detectLocation()); setToast({message:'Joylashuvingiz aniqlandi'}); }
     catch(e) { setUserSheet({notice:friendlyError(e)}); } finally { setLocating(false); }
+  };
+  /** Checkout: the phone's GPS point is attached by itself; the map stays available for a different spot. */
+  const openCheckout = () => { setCheckoutError(''); if(!dropoff && userLocation) setDropoff({lat:userLocation.lat,lng:userLocation.lng,accuracy:userLocation.accuracy,address:userLocation.address}); setCheckout(true); };
+  const locateDropoff = async () => {
+    setLocatingDrop(true);
+    try { const here = await detectLocation(); setUserLocation(here); setDropoff({lat:here.lat,lng:here.lng,accuracy:here.accuracy}); }
+    catch(e) { setCheckoutError(friendlyError(e)+' Xaritadan nuqtani tanlashingiz mumkin.'); } finally { setLocatingDrop(false); }
   };
   const bannerAction = (target:string) => {
     if(target==='store') setStoreOpen(true);
@@ -299,8 +309,8 @@ function App() {
             <div className="cart-bottom"><div className="stepper" role="group" aria-label={`${product.name} miqdori`}><button onClick={() => quantity(product,-1)} aria-label={count===1?'Savatdan olib tashlash':'Kamaytirish'}><Icon name={count===1?'trash':'minus'} size={17} /></button><b className="num" aria-live="polite">{count}</b><button onClick={() => quantity(product,1)} disabled={count>=product.stock} aria-label="Koʻpaytirish"><Icon name="plus" size={17} /></button></div><strong className="num">{money(product.price*count)}</strong></div>
           </div>
         </div>)}</div>
-        <div className="summary"><div><span>Mahsulotlar</span><span className="num">{cartCount} dona</span></div>{settings.delivery_info && <div className="t-caption summary-note"><Icon name="truck" size={16} />{settings.delivery_info}</div>}<div className="summary-total"><span>Jami</span><strong className="num">{money(cartTotal)}</strong></div></div>
-        <div className="action-bar"><div className="action-meta"><span className="t-caption">Jami</span><strong className="num">{money(cartTotal)}</strong></div><button className="btn btn-primary btn-lg" onClick={() => { setCheckoutError(''); setCheckout(true); }}>Buyurtma berish</button></div>
+        <div className="summary"><div><span>Mahsulotlar</span><span className="num">{cartCount} dona</span></div>{feeRule.fee>0 && <div><span>Yetkazib berish</span><span className="num">{feeFor(false) ? money(feeFor(false)) : 'bepul'}</span></div>}{feeRule.fee>0 && feeRule.freeFrom>0 && feeFor(false)>0 && <div className="t-caption summary-note"><Icon name="truck" size={16} /><span><span className="num">{money(feeRule.freeFrom)}</span> dan oshsa — yetkazib berish bepul</span></div>}{settings.delivery_info && <div className="t-caption summary-note"><Icon name="truck" size={16} />{settings.delivery_info}</div>}<div className="summary-total"><span>Jami</span><strong className="num">{money(cartTotal+feeFor(false))}</strong></div></div>
+        <div className="action-bar"><div className="action-meta"><span className="t-caption">Jami</span><strong className="num">{money(cartTotal+feeFor(false))}</strong></div><button className="btn btn-primary btn-lg" onClick={openCheckout}>Buyurtma berish</button></div>
       </> : <EmptyState icon="bag" title="Savat boʻsh" text="Yoqqan mahsulotni savatga qoʻshing — u shu yerda saqlanadi." action={<button className="btn btn-primary" onClick={() => go('catalog')}>Katalogga oʻtish</button>} />}
     </div>;
   } else if (tab==='orders') {
@@ -314,6 +324,7 @@ function App() {
         {order ? <>
           <span className="t-caption">{formatDateTime(order.createdAt)}</span>
           <ul className="order-items">{order.items.map((item,i) => <li key={i}><span>{item.name}</span><span className="num">× {item.quantity}</span></li>)}</ul>
+          {!!order.deliveryFee && <div className="order-fee"><span>Yetkazib berish</span><span className="num">{money(order.deliveryFee)}</span></div>}
           <div className="order-total"><span>Jami</span><strong className="num">{money(order.total)}</strong></div>
           {order.payment && <div className="order-pay">
             <div className="pay-line"><span className="t-caption"><Icon name={paymentIcons[order.payment.method]||'wallet'} size={15} /> {paymentMethodNames[order.payment.method]||order.payment.method}</span><span className={`badge plain badge-${paymentStatusBadge[order.payment.status]||'new'}`}>{paymentStatusNames[order.payment.status]||order.payment.status}</span></div>
@@ -346,7 +357,8 @@ function App() {
         </div>
       </section> : <section className="panel account-cta">
         <div className="account-row"><span className="empty-icon small"><Icon name="user" size={24} /></span><div><strong>Hisobingizga kiring</strong><span className="t-caption">Buyurtmalaringiz barcha qurilmalarda saqlanadi, yetkazilgandan keyin baho qoldirasiz.</span></div></div>
-        <div className="cta-row"><button className="btn btn-primary" onClick={() => setAuthSheet('login')}>Kirish</button><button className="btn btn-secondary" onClick={() => setAuthSheet('register')}>Roʻyxatdan oʻtish</button></div>
+        {authConfig?.phone.codeLogin ? <div className="cta-stack"><button className="btn btn-primary btn-lg btn-block" onClick={() => setQuickLogin(true)}><Icon name="phone" size={20} />Telefon raqam bilan kirish</button><button className="btn btn-secondary btn-block" onClick={() => setAuthSheet('login')}>Boshqa usullar: parol, email</button></div>
+          : <div className="cta-row"><button className="btn btn-primary" onClick={() => setAuthSheet('login')}>Kirish</button><button className="btn btn-secondary" onClick={() => setAuthSheet('register')}>Roʻyxatdan oʻtish</button></div>}
         {authConfig?.telegram.enabled && <button className="btn btn-telegram btn-block" onClick={() => authConfig && startTelegram('login',authConfig)}><Icon name="send" size={18} />Telegram orqali kirish</button>}
         <p className="t-caption">Hisobsiz ham buyurtma berishingiz mumkin.</p>
       </section>}
@@ -365,8 +377,8 @@ function App() {
     {showHeader && <header className="app-header"><div className="brand"><BrandMark size={40} brand={brand} dark={dark} /><div><strong>{brand.name}</strong><span>{brand.tagline || storefront?.store.address || 'Fayz Market'}</span></div></div><button className="icon-btn header-go" onClick={() => setStoreOpen(true)} aria-label="Doʻkonga yoʻl — xaritada"><Icon name="directions" size={24} /></button></header>}
     <main key={selected ? 'p'+selected.id : tab} className="main">{screen}</main>
     <nav className="tabbar" aria-label="Asosiy menyu"><div className="tabbar-inner">{navItems.map(([key,label,icon]) => { const current = tab===key && !selected; return <button key={key} className={current?'current':''} aria-current={current?'page':undefined} aria-label={key==='cart' ? `Savat, ${cartCount} ta mahsulot` : undefined} onClick={() => go(key)}><span className="tab-icon"><Icon name={icon} size={22} stroke={current?2:1.8} />{key==='cart' && cartCount>0 && <span className="tab-badge num">{cartCount>99?'99+':cartCount}</span>}</span><span className="tab-label">{label}</span></button>; })}</div></nav>
-    {checkout && <Sheet title="Buyurtmani rasmiylashtirish" onClose={closeCheckout} footer={<><button className="btn btn-primary btn-lg btn-block" onClick={submit} disabled={submitting}>{submitting ? <><span className="spinner" />Yuborilmoqda...</> : <>Buyurtmani yuborish<span className="btn-total num">{money(cartTotal)}</span></>}</button><button className="btn btn-quiet btn-block" onClick={closeCheckout} disabled={submitting}>Bekor qilish</button></>}>
-      <div className="co-summary"><div className="co-items">{cartItems.map(({product,quantity:count}) => <div key={product.id} className="co-item"><span className="co-thumb"><ProductImage src={product.images[0]} /></span><span className="co-name">{product.name}<span className="t-caption num"> × {count}</span></span><span className="num">{money(product.price*count)}</span></div>)}</div><div className="summary-total"><span>Jami</span><strong className="num">{money(cartTotal)}</strong></div></div>
+    {checkout && <Sheet title="Buyurtmani rasmiylashtirish" onClose={closeCheckout} footer={<><button className="btn btn-primary btn-lg btn-block" onClick={submit} disabled={submitting}>{submitting ? <><span className="spinner" />Yuborilmoqda...</> : <>Buyurtmani yuborish<span className="btn-total num">{money(cartTotal+feeFor(pickup))}</span></>}</button><button className="btn btn-quiet btn-block" onClick={closeCheckout} disabled={submitting}>Bekor qilish</button></>}>
+      <div className="co-summary"><div className="co-items">{cartItems.map(({product,quantity:count}) => <div key={product.id} className="co-item"><span className="co-thumb"><ProductImage src={product.images[0]} /></span><span className="co-name">{product.name}<span className="t-caption num"> × {count}</span></span><span className="num">{money(product.price*count)}</span></div>)}</div>{(feeRule.fee>0 || pickup) && <div className="co-lines"><div><span>Mahsulotlar</span><span className="num">{money(cartTotal)}</span></div><div><span>{pickup ? 'Olib ketish' : 'Yetkazib berish (kuryer)'}</span><span className="num">{feeFor(pickup) ? money(feeFor(pickup)) : 'bepul'}</span></div></div>}<div className="summary-total"><span>Jami</span><strong className="num">{money(cartTotal+feeFor(pickup))}</strong></div></div>
       {checkoutError && <div className="banner banner-error" role="alert"><Icon name="alert" size={20} /><div>{checkoutError}</div></div>}
       {pickupOffered && <div className="form-stack"><h3 className="t-h2">Qabul qilish usuli</h3>
         <div className="segmented" role="group" aria-label="Qabul qilish usuli"><button type="button" aria-pressed={!pickup} onClick={() => setFulfillment('delivery')}><Icon name="truck" size={18} />Yetkazib berish</button><button type="button" aria-pressed={pickup} onClick={() => setFulfillment('pickup')}><Icon name="store" size={18} />Doʻkondan olib ketish</button></div>
@@ -375,8 +387,8 @@ function App() {
         <div className="loc-summary"><Icon name="store" size={20} /><div><strong>{storefront?.store.name||'Fayz Market'}</strong><span className="t-caption">{checkoutOptions?.pickupAddress||storefront?.store.address}</span></div><button className="link-btn" onClick={() => setStoreOpen(true)}>Xaritada</button></div>
         <p className="t-caption">Buyurtma tayyor boʻlganda holati «Olib ketishga tayyor» boʻladi.</p>
       </div> : <div className="form-stack"><h3 className="t-h2">Yetkazish joyi</h3>
-        {dropoff ? <div className="loc-summary"><Icon name="pin" size={20} /><div><strong>{dropoff.address || 'Xaritada belgilangan nuqta'}</strong><span className="t-caption num">{formatCoords(dropoff)}{dropoff.accuracy ? ` · ±${dropoff.accuracy} m` : ''}</span></div><button className="link-btn" onClick={() => setLocationSheet(true)}>Oʻzgartirish</button></div>
-          : <button className="btn btn-secondary btn-block loc-btn" onClick={() => setLocationSheet(true)}><Icon name="map" size={20} />Xaritadan manzil tanlash</button>}
+        {dropoff ? <><div className="loc-summary"><Icon name="pin" size={20} /><div><strong>{dropoff.address || (dropoff.accuracy ? 'Joriy joylashuvingiz (GPS)' : 'Xaritada belgilangan nuqta')}</strong><span className="t-caption num">{formatCoords(dropoff)}{dropoff.accuracy ? ` · ±${dropoff.accuracy} m` : ''}</span></div><button className="link-btn" onClick={() => setLocationSheet(true)}>Oʻzgartirish</button></div><p className="t-caption">Kuryer shu nuqtaga keladi va yetib kelganda sizga qoʻngʻiroq qiladi.</p></>
+          : <div className="loc-choice"><button className="btn btn-primary btn-block loc-btn" onClick={locateDropoff} disabled={locatingDrop}>{locatingDrop ? <><span className="spinner" />Aniqlanmoqda...</> : <><Icon name="target" size={20} />Joylashuvimni aniqlash (GPS)</>}</button><button className="btn btn-secondary btn-block loc-btn" onClick={() => setLocationSheet(true)}><Icon name="map" size={20} />Xaritada tanlash</button><p className="t-caption">Ixtiyoriy, lekin kuryer sizni tezroq topadi. Manzilni pastda matn bilan ham yozing.</p></div>}
         <Field label="Podyezd, qavat, moʻljal" hint="Ixtiyoriy — kuryerga yordam beradi"><input className="input" value={deliveryDetails} maxLength={300} onChange={e => setDeliveryDetails(e.target.value)} onFocus={revealOnFocus} placeholder="Masalan: 3-podyezd, 5-qavat, doʻkon yonida" /></Field>
       </div>}
       <div className="form-stack"><h3 className="t-h2">Toʻlov usuli</h3>
@@ -388,6 +400,7 @@ function App() {
     {storeOpen && <StoreScreen api={api} storefront={storefront} user={userLocation} onUser={l => setUserLocation(l as UserLocation|null)} mapsKey={mapsKey} onClose={() => setStoreOpen(false)} />}
     {userSheet && <LocationSheet apiKey={mapsKey} title="Sizning joylashuvingiz" hint="GPS bilan aniqlang yoki xaritani surib nuqtani qoʻlda tanlang. Joylashuv faqat shu telefonda saqlanadi." notice={userSheet.notice} initial={userLocation ? {lat:userLocation.lat,lng:userLocation.lng,accuracy:userLocation.accuracy,address:userLocation.address} : null} onClose={() => setUserSheet(null)} onConfirm={l => { setUserLocation({lat:l.lat,lng:l.lng,accuracy:l.accuracy,address:l.address||undefined,source:l.accuracy ? 'gps' : 'manual',at:Date.now()}); setUserSheet(null); }} />}
     {locationSheet && <LocationSheet apiKey={mapsKey} initial={dropoff ?? (userLocation ? {lat:userLocation.lat,lng:userLocation.lng,accuracy:userLocation.accuracy} : null)} onClose={() => setLocationSheet(false)} onConfirm={l => { setDropoff(l); setLocationSheet(false); if(l.address && profile.address.trim().length<5) setProfile(old => ({...old,address:l.address!})); }} />}
+    {quickLogin && <PhoneLoginSheet api={api} config={authConfig} onDone={signIn} onClose={() => setQuickLogin(false)} onOther={() => { setQuickLogin(false); setAuthSheet('login'); }} />}
     {authSheet && <AuthSheet api={api} config={authConfig} initialMode={authSheet} onDone={signIn} onClose={() => setAuthSheet(null)} />}
     {linkPhone && <LinkPhoneSheet api={api} config={authConfig} onClose={() => setLinkPhone(false)} onDone={who => { setCustomer(who); setLinkPhone(false); setToast({message:'Telefon tasdiqlandi'}); }} />}
     {tracking && <TrackingSheet api={api} order={tracking} headers={orderHeaders(tracking.id)} apiKey={mapsKey} onClose={() => setTracking(null)} onChanged={() => refreshOrders(true)} />}

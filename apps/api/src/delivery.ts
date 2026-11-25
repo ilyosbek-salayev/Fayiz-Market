@@ -9,7 +9,7 @@ import { notify, pushCustomer } from './push';
 import { customerPaymentView } from './payments';
 import { computeRoute, routingProvider } from './routing';
 
-type OrderRow = { id: number; order_number: string; customer_name: string; phone: string; address: string; note: string; status: string; total: number; created_at: string; customer_id: number | null; delivery_lat: number | null; delivery_lng: number | null; delivery_details: string; fulfillment?: 'delivery' | 'pickup'; payment_method?: 'cash' | 'card_terminal' | 'bank_transfer' | 'payme' | 'click'; payment_status?: string; paid_at?: string | null; payment_note?: string };
+type OrderRow = { id: number; order_number: string; customer_name: string; phone: string; address: string; note: string; status: string; total: number; created_at: string; customer_id: number | null; delivery_lat: number | null; delivery_lng: number | null; delivery_details: string; fulfillment?: 'delivery' | 'pickup'; payment_method?: 'cash' | 'card_terminal' | 'bank_transfer' | 'payme' | 'click'; payment_status?: string; paid_at?: string | null; payment_note?: string; delivery_fee?: number };
 type DeliveryRow = { order_id: number; courier_id: number; status: DeliveryStatus; version: number; assigned_at: string; accepted_at: string | null; picked_up_at: string | null; arrived_at: string | null; handed_over_at: string | null; confirmed_at: string | null; updated_at: string; decline_reason: string; courier_name: string; courier_phone: string };
 const ctxOf = (c: { executionCtx: unknown }) => { try { return c.executionCtx as { waitUntil(p: Promise<unknown>): void }; } catch { return undefined; } };
 /** A location older than this is shown as "last known", never as live. */
@@ -48,7 +48,7 @@ export async function customerOrderView(db: D1Database, row: OrderRow) {
     canConfirm: delivery?.status === 'handed_over' && row.status === 'shipped',
     canReview: confirmed,
     reviewed: { products: reviews.map(r => r.productId), courier: !!rating, courierRatable: confirmed && !!delivery },
-    fulfillment: row.fulfillment ?? 'delivery',
+    fulfillment: row.fulfillment ?? 'delivery', deliveryFee: row.delivery_fee ?? 0,
     payment: customerPaymentView({ ...row, payment_method: method, payment_status: row.payment_status ?? 'pending' }, { bank_transfer_details: bank?.value || '' }),
   };
 }

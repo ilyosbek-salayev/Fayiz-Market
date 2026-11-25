@@ -9,6 +9,7 @@ import { MapView, currentPosition, formatCoords, type LatLng } from '../../../pa
 import { BannerCard, paymentMethodNames, paymentStatusBadge, paymentStatusNames, type Banner } from '../../../packages/ui/src/storefront';
 import { ConfirmDialog, EmptyState, Field, Modal, Panel, Toggle } from './components';
 import { ImagePicker, type Request } from './expansion';
+import { NumberInput } from '../../../packages/ui/src/NumberInput';
 
 export type Upload = (path: string, blob: Blob, progress?: (p: number) => void) => Promise<any>;
 type Result = { ok: boolean; text: string } | null;
@@ -127,7 +128,7 @@ export function StorePanel({ request, canEdit, mapsKey, settings, onSaved }: { r
 
 // ---------------------------------------------------------------- Checkout payment methods
 export function PaymentSettingsPanel({ request, canEdit, settings, onSaved, openIntegrations }: { request: Request; canEdit: boolean; settings: Record<string, string>; onSaved: () => void; openIntegrations: () => void }) {
-  const initial = useMemo(() => ({ cash: (settings.payment_cash ?? '1') === '1', cardTerminal: settings.payment_card_terminal === '1', bankTransfer: settings.payment_bank_transfer === '1', bankTransferDetails: settings.bank_transfer_details || '', pickup: settings.fulfillment_pickup === '1' }), [settings]);
+  const initial = useMemo(() => ({ cash: (settings.payment_cash ?? '1') === '1', cardTerminal: settings.payment_card_terminal === '1', bankTransfer: settings.payment_bank_transfer === '1', bankTransferDetails: settings.bank_transfer_details || '', pickup: settings.fulfillment_pickup === '1', deliveryFee: Number(settings.delivery_fee) || 0, deliveryFreeFrom: Number(settings.delivery_free_from) || 0 }), [settings]);
   const [form, setForm] = useState(initial); const [busy, setBusy] = useState(false); const [result, setResult] = useState<Result>(null);
   useEffect(() => setForm(initial), [initial]);
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
@@ -140,6 +141,10 @@ export function PaymentSettingsPanel({ request, canEdit, settings, onSaved, open
       <Toggle label="Karta — terminal orqali" hint="Kuryer yoki doʻkondagi terminal; chek raqami bilan qayd etiladi" checked={form.cardTerminal} onChange={v => canEdit && setForm({ ...form, cardTerminal: v })} />
       <Toggle label="Bank oʻtkazmasi" hint="Xaridor rekvizitlarga oʻtkazadi; pul tushgach xodim tasdiqlaydi" checked={form.bankTransfer} onChange={v => canEdit && setForm({ ...form, bankTransfer: v })} />
       <Toggle label="Doʻkondan olib ketish" hint="Yetkazib berishdan tashqari, doʻkon manzili koʻrsatiladi" checked={form.pickup} onChange={v => canEdit && setForm({ ...form, pickup: v })} />
+    </div>
+    <div className="form-grid">
+      <Field label="Yetkazib berish narxi (kuryer xizmati)" hint="Buyurtma summasiga alohida qoʻshiladi. 0 — bepul"><NumberInput value={form.deliveryFee} onChange={deliveryFee => canEdit && setForm(f => ({ ...f, deliveryFee }))} readOnly={!canEdit} max={10_000_000} suffix="soʻm" aria-label="Yetkazib berish narxi" /></Field>
+      <Field label="Bepul yetkazib berish chegarasi" hint="Mahsulotlar shu summadan oshsa, yetkazish bepul. 0 — chegara yoʻq"><NumberInput value={form.deliveryFreeFrom} onChange={deliveryFreeFrom => canEdit && setForm(f => ({ ...f, deliveryFreeFrom }))} readOnly={!canEdit} suffix="soʻm" aria-label="Bepul yetkazib berish chegarasi" /></Field>
     </div>
     {form.bankTransfer && <Field label="Bank rekvizitlari" hint="Xaridorga koʻrsatiladi: oluvchi, bank, hisob raqami, MFO, INN"><textarea className="input" rows={4} value={form.bankTransferDetails} onChange={e => setForm({ ...form, bankTransferDetails: e.target.value })} readOnly={!canEdit} maxLength={600} /></Field>}
     <div className="online-methods"><div><strong>Payme</strong>{online('payme')}</div><div><strong>Click</strong>{online('click')}</div><button type="button" className="link-btn" onClick={openIntegrations}>Integratsiyalarda sozlash<Icon name="chevron" size={16} /></button></div>
@@ -208,7 +213,7 @@ function BannerEditor({ banner, categories, upload, busy, onClose, onSave }: { b
           {kind === 'product' && <Field label="Mahsulot slug" hint="Mahsulot havolasidagi nom, masalan: qora-soat"><input className="input" value={ref} onChange={e => setTarget('product', e.target.value.toLowerCase())} pattern="[a-z0-9]+(-[a-z0-9]+)*" /></Field>}
           {kind !== 'none' && <Field label="Tugma matni"><input className="input" value={b.ctaLabel} maxLength={24} onChange={e => setB({ ...b, ctaLabel: e.target.value })} /></Field>}
           <Field label="Rang"><select className="input" value={b.tone} onChange={e => setB({ ...b, tone: e.target.value as Banner['tone'] })}><option value="accent">Sariq</option><option value="dark">Qora</option><option value="light">Oq</option></select></Field>
-          <Field label="Tartib raqami" hint="Kichigi oldinda"><input className="input num" type="number" min={0} max={999} value={b.position ?? 0} onChange={e => setB({ ...b, position: Math.max(0, Math.min(999, Number(e.target.value) || 0)) })} /></Field>
+          <Field label="Tartib raqami" hint="Kichigi oldinda"><NumberInput value={b.position ?? 0} max={999} onChange={position => setB(old => ({ ...old, position }))} aria-label="Tartib raqami" /></Field>
         </div>
         <Toggle label="Faol" hint="Mijoz bosh sahifasida koʻrinadi" checked={b.active ?? true} onChange={v => setB({ ...b, active: v })} />
         <div className="form-stack"><span className="field-label">Rasm (ixtiyoriy)</span><span className="t-caption">Tavsiya: 1200×800 yoki kvadrat, asosiy obyekt markazda. Rasm matn ustiga tushmaydi — alohida ustunda koʻrsatiladi.</span>
@@ -247,7 +252,7 @@ export function OrderPayment({ order, payments, transactions, role, request, onC
     </tbody></table></div>}
     {payments.length > 0 && <ul className="line-items">{payments.map(p => <li key={p.id}><span className="li-name">{paymentMethodNames[p.method] || p.method}{p.reference && <span className="t-caption num"> · {p.reference}</span>}<span className="t-caption"> · {formatDateTime(p.createdAt)}{p.recordedByName || p.recordedByEmail ? ` · ${p.recordedByName || p.recordedByEmail}` : ''}</span></span><span className="num">{money(p.amount)}</span></li>)}</ul>}
     {open && <form className="pay-form" onSubmit={e => { e.preventDefault(); void run(() => request(`/admin/orders/${order.id}/payments`, { method: 'POST', body: JSON.stringify(form) }), 'Toʻlov qayd etildi'); }}>
-      <Field label="Qabul qilingan summa"><input className="input num" type="number" inputMode="numeric" min="1" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} required /></Field>
+      <Field label="Qabul qilingan summa"><NumberInput value={form.amount} onChange={amount => setForm(f => ({ ...f, amount }))} suffix="soʻm" aria-label="Qabul qilingan summa" /></Field>
       <Field label="Usul"><select className="input" value={form.method} onChange={e => setForm({ ...form, method: e.target.value })}><option value="cash">Naqd</option><option value="bank_transfer">Bank oʻtkazmasi</option><option value="card_terminal">Terminal</option></select></Field>
       <Field label="Tranzaksiya / chek raqami" hint={form.method === 'cash' ? 'Ixtiyoriy' : 'Takroriy qayd etilmaydi'}><input className="input" value={form.reference} maxLength={120} onChange={e => setForm({ ...form, reference: e.target.value })} /></Field>
       <button className="btn btn-secondary" disabled={busy || form.amount <= 0}><Icon name="wallet" size={18} />Toʻlovni qayd etish</button>
