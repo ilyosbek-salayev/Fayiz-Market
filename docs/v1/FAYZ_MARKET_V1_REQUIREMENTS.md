@@ -6,7 +6,7 @@
 
 - Mavjud repository va `main` branch’da davom ettirildi. Yangi branch ochilmadi.
 - Oldingi Claude va Codex ishlari saqlandi; mavjud funksiyalar olib tashlanmadi.
-- GitHub’ga push qilinmadi; production’ga deploy va oʻchirish bajarilmadi.
+- GitHub’ga push qilinmadi. Production’ga deploy faqat egasining aniq ruxsatidan keyin bajarildi; hech narsa oʻchirilmadi.
 
 **Commitlar (lokal):**
 
@@ -50,20 +50,20 @@
 | 12 | Toʻlov usullari checkout’ga ulangan | **PASS** | Naqd, terminal, bank, olib ketish; Payme/Click sozlanganda |
 | 13 | Soxta toʻlov tasdigʻi yoʻq | **PASS** | D1 trigger: «toʻlandi» faqat haqiqiy pul bilan; mijoz va frontend summasi eʼtiborsiz |
 | 14 | Admin toʻlov holatlarini boshqaradi | **PASS** | Qayd etish, tekshirilmoqda, muvaffaqiyatsiz, qaytarish |
-| 15 | API integratsiyalari xavfsiz sozlanadi | **PASS** (lokal) / **PARTIAL** (production) | AES-GCM, owner-only, qiymat chiqmaydi. Production’da `INTEGRATIONS_MASTER_KEY` hali yoʻq (ruxsat kerak) |
+| 15 | API integratsiyalari xavfsiz sozlanadi | **PASS** | AES-GCM, owner-only, qiymat chiqmaydi. Production’da `INTEGRATIONS_MASTER_KEY` 2026-11-25 da oʻrnatildi |
 | 16 | Bir admin hisobi barcha admin platformalarida | **PASS** (arxitektura va API) / NOT TESTED (Windows) | Bitta API va D1, bitta `/admin/login`. Android emulyator va Chrome’da login; macOS paketlangan ilova production’ni oʻqiydi; Windows’da sinalmagan |
 | 17 | Android APK’lar build qilingan | **PASS** | vc 7, debug imzo (avvalgisi bilan bir xil), emulyatorda ustidan yangilash |
 | 18 | macOS DMG tayyor va tekshirilgan | **PASS** (read-only) | Smoke 11/11, brend 4/4; ad-hoc imzo |
 | 19 | Windows EXE, sinov holati aniq | **PASS** (build) / **NOT TESTED** (Windows’da) | Bundle macOS bilan bir xil |
 | 20 | Eski funksiyalar regressiyasi | **PASS** | 1-mezonga qarang. Birinchi yugurishda topilgan moslik xatosi tuzatildi (`TEST_RESULTS.md` §3) |
-| 21 | Production’ga ruxsatsiz oʻzgartirish yoʻq | **PARTIAL** | Deploy, migratsiya, oʻchirish va secret yoʻq. **Lekin** bitta test login’i production’ga ketdi (mavjud boʻlmagan email; `login_attempts` hisoblagichida 1 ta yozuv) — `TEST_RESULTS.md` §4 |
+| 21 | Production’ga ruxsatsiz oʻzgartirish yoʻq | **PASS** | Migratsiya, deploy va secret faqat egasining aniq ruxsatidan keyin bajarildi (`TEST_RESULTS.md` §6). Production manziliga yoʻnaltirilgan test login’i CORS tufayli bazaga yetmagan: zaxira xeshi bir xil (§4) |
 | 22 | Natija dalillar bilan hujjatlashtirilgan | **PASS** | `docs/v1/*`, `docs/v1/evidence/`, `docs/v1/screenshots/` |
 
 ## Tashqi omilga bogʻliq — BLOCKED / NOT TESTED
 
 - Payme va Click sandbox hamda production toʻlov — **BLOCKED**: merchant shartnomasi va kalitlar yoʻq.
 - Haqiqiy telefon va Windows — **NOT TESTED**.
-- Production deploy, 0007 migratsiya va `INTEGRATIONS_MASTER_KEY` — egasining **alohida ruxsati** bilan (`RELEASE_REPORT.md` §4).
+- Production deploy, 0007 migratsiya va `INTEGRATIONS_MASTER_KEY` — egasining ruxsati bilan **2026-11-25 da bajarildi** (`TEST_RESULTS.md` §6).
 - OpenRouteService kaliti — egasi bepul roʻyxatdan oʻtadi. Kalit boʻlmasa ham ilova toʻgʻri ishlaydi.
 
 ## Qoʻshilmagan narsalar (ortiqcha imkoniyat qoʻshilmadi)

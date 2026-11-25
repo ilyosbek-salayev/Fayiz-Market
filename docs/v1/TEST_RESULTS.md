@@ -106,12 +106,14 @@ Natijalar va loglar `docs/v1/evidence/`, skrinshotlar `docs/v1/screenshots/` da.
 | regression-ui: versiya yozuvi | Spec boʻyicha «Fayz Market V1 · versiya 1.2.0» | Tekshiruv yangi yozuvga moslandi |
 | V1 UI: 3 ta FAIL (birinchi yugurish) | Test skriptidagi selektorlar: boshqa panelning «Saqlash» tugmasi, katta-kichik harf | Skript tuzatildi; 57/57 |
 
-## 4. Hodisa: bitta test login’i production’ga ketdi
+## 4. Hodisa: test login’i production manziliga yoʻnaltirilgan edi — bazaga yetmagan
 
-- **Nima boʻldi.** Desktop paketlash admin bundle’ini `VITE_API_URL=production` bilan qurdi. Shundan keyin ishga tushgan V1 UI skriptining admin qismi test login’ini production’ga yubordi.
-- **Taʼsir.** Mavjud boʻlmagan `v1-owner@example.invalid` uchun **bitta muvaffaqiyatsiz login**. Production D1’da `login_attempts` va `rate_limits` hisoblagichlariga bittadan yozuv qoʻshildi.
-- **Taʼsir qilmaganlar:** hisob, buyurtma, mahsulot va sozlamalar oʻzgarmadi.
-- **Tozalanmadi** — bu production’ga yozish boʻlardi. Yozuvlar 15 daqiqalik oynadan keyin eʼtiborga olinmaydi.
+- **Nima boʻldi.** Desktop paketlash admin bundle’ini `VITE_API_URL=production` bilan qurdi. Shundan keyin ishga tushgan V1 UI skriptining admin qismi test login’ini production manziliga yubormoqchi boʻldi. Bu mavjud boʻlmagan `v1-owner@example.invalid` email edi.
+- **Natija: production’ga hech narsa yozilmagan.**
+  - Sahifa `http://127.0.0.1` dan ochilgan edi, shuning uchun brauzer avval CORS tekshiruvini (preflight) yuboradi.
+  - Production Worker faqat oʻz origin’iga ruxsat beradi va preflight’ni rad etadi.
+  - Shu sababli POST soʻrov umuman yuborilmagan.
+- **Isbot.** Deploy oldidan olingan production D1 zaxirasi (`fayz-market-before-1.2.0-20261125-055823.sql`) ertalabki `…-before-1.1.2-deploy-20261125-025828.sql` bilan **SHA-256 boʻyicha aynan bir xil** (`a540dcb6…`). Oraliqda bazada hech qanday yozuv paydo boʻlmagan.
 - **Takrorlanmasligi uchun.** `v1-storefront-ui.mjs` endi bundle ichida `*.workers.dev` manzilini koʻrsa, ishga tushmaydi (`exit 2`). Bu tekshirib koʻrilgan.
 
 ## 5. Sinalmagan yoki bloklangan (aniq)
@@ -124,7 +126,7 @@ Natijalar va loglar `docs/v1/evidence/`, skrinshotlar `docs/v1/screenshots/` da.
 | Payme / Click sandbox | **BLOCKED** | Merchant hisobi va test kalitlari yoʻq |
 | Production merchant toʻlovi | **NOT TESTED** | Shartnoma va ruxsat yoʻq |
 | OpenRouteService haqiqiy API | NOT TESTED | Kalit yoʻq. Sinov mock bilan; haqiqiy chaqiruv «Ulanishni tekshirish» tugmasida |
-| Production’da V1 (migratsiya + deploy) | **BAJARILMAGAN** | Egasining alohida ruxsati kerak (`RELEASE_REPORT.md` §4) |
+| Production’da V1 (migratsiya + deploy) | **BAJARILDI** 2026-11-25 (egasining ruxsati bilan) | §6 |
 
 ### Haqiqiy telefon uchun tekshiruv roʻyxati (Samsung A17)
 
@@ -146,3 +148,16 @@ Natijalar va loglar `docs/v1/evidence/`, skrinshotlar `docs/v1/screenshots/` da.
    - admin ilovada tasdiqlash.
 7. Qorongʻi mavzu: logo almashadimi.
 8. Klaviatura ochilganda checkout maydonlari koʻrinib qoladimi; modal va sheet yopiladimi; internet uzilganda ilova nima koʻrsatadi.
+
+## 6. Production’ga chiqarish (2026-11-25, egasining ruxsati bilan)
+
+| Qadam | Natija |
+|---|---|
+| Akkaunt | `Ilyosbeksalayev240@gmail.com's Account`, `8c9b943e…82ca` (`wrangler whoami`) |
+| D1 zaxira | `dist/backups/fayz-market-before-1.2.0-20261125-055823.sql` (20 706 bayt, 0600, SHA-256 `a540dcb6…`) |
+| Migratsiya | `0007_v1_storefront.sql` ✅ (23 buyruq). Undan keyin «No migrations to apply». Eski Worker GET’lari 200. Mavjud 2 ta buyurtmaning toʻlov holati jurnaldan toʻldirildi (1 paid, 1 pending) |
+| Deploy | `fayz-market-api` → Version `43b2cc54-4565-47ff-9d91-c82c042ebce0`; bindinglar: D1 `fayz-market`, R2 `fayz-market-images`, `ENVIRONMENT=production` |
+| Secret | `INTEGRATIONS_MASTER_KEY` qoʻshildi (qiymat hech qayerda koʻrsatilmagan) → faol versiya `90b70a16-42fe-473d-bcea-4e5fe015698f` |
+| Read-only smoke | `production-get.mjs` **11/11**, `/storefront` 200, `DELETE /customer/push-token` kirishsiz 401, `/admin/integrations` kirishsiz 401, Payme (sozlanmagan) → -32504. Dalil: `evidence/production/` |
+| Rollback (kerak boʻlsa) | `cd apps/api && npx wrangler rollback 9ff0b7fb-15b2-4340-b78f-af0ec6a7332c --env production` — eski kod yangi sxemada ishlashi tasdiqlangan |
+| Ortiqcha Worker | `fayz-market-api-production` hali bor (health 200, ishlatilmaydi). Oʻchirish egasining tasdigʻi bilan |

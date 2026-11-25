@@ -59,7 +59,7 @@ Faollashtirish sozlash tugamaguncha rad etiladi (`409 NOT_CONFIGURED`). Tekshiru
 
 ## 3. Bir martalik sozlash (production) — egasining ruxsati bilan
 
-`INTEGRATIONS_MASTER_KEY` hali production’da **yoʻq**. Bu hisobot vaqtidagi holat. Usiz:
+**Holat:** `INTEGRATIONS_MASTER_KEY` production’da **2026-11-25 da oʻrnatildi**, egasining ruxsati bilan (faol versiya `90b70a16…`). Kalit boʻlmagan muhitda (masalan, yangi akkaunt yoki kalit oʻchirilgan boʻlsa):
 
 - panel «Shifrlash kaliti oʻrnatilmagan» deb ogohlantiradi;
 - kalit saqlash `409 MASTER_KEY_MISSING` qaytaradi;

@@ -49,13 +49,21 @@ Ustidan yangilash emulyatorda tasdiqlangan (1.1.1 → 1.2.0, maʼlumot saqlandi)
 | 1.1.x ilovalar + yangi API | Ishlaydi: buyurtmalar yetkazish + naqd sifatida yaratiladi; 1.1.x admin doʻkon manzilini saqlay oladi (testlarda tasdiqlangan) |
 | Eski Worker + yangi D1 sxema (0007) | Ishlaydi: API 129/129, security 11/11. Migratsiya va deploy oraligʻi ham, rollback ham xavfsiz |
 
-## 4. Production’ga chiqarish rejasi — FAQAT egasining alohida ruxsati bilan
+## 4. Production’ga chiqarish
 
-Hozircha **hech biri bajarilmagan.**
+**Holat (2026-11-25):** egasining ruxsati bilan 1–5-qadamlar bajarildi:
 
-Production holati (2026-11-25, faqat GET bilan tekshirilgan):
+- zaxira olindi;
+- 0007 migratsiyasi qoʻllandi;
+- deploy qilindi — Version `43b2cc54…`, faol `90b70a16…`;
+- `INTEGRATIONS_MASTER_KEY` oʻrnatildi;
+- read-only smoke 11/11 PASS.
 
-- `fayz-market-api`: health 200, `/storefront` 404 — hali eski kod (`9ff0b7fb`).
+Batafsil: `TEST_RESULTS.md` §6. 7-qadam (ortiqcha Worker’ni oʻchirish) tasdiqni kutmoqda. Quyidagi buyruqlar maʼlumot uchun saqlanadi.
+
+Deploy’dan oldingi holat (faqat GET bilan tekshirilgan):
+
+- `fayz-market-api`: health 200, `/storefront` 404 — eski kod (`9ff0b7fb`).
 - Ortiqcha `fayz-market-api-production`: 1.1.2 kodi, ishlatilmaydi.
 - Ikkala Worker ham bitta D1 va R2’ga ulangan.
 

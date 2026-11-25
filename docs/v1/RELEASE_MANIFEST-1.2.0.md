@@ -10,7 +10,7 @@ Toʻliq hisobot: `docs/v1/RELEASE_REPORT.md`; sinovlar: `docs/v1/TEST_RESULTS.md
 | Fayz Market Admin (macOS) | `dist/desktop/fayz-market-admin-1.2.0-macos-arm64.dmg` | 1.2.0, arm64 | `9b17653` | 2026-11-25 05:39 | 121761024 | `3b3f8fc58b161d8a07c0f55e1a58f2d6379b0cae2208fd17f9ec339d259624d8` | ad-hoc (Gatekeeper rejected, notarization yoʻq) | Read-only smoke 11/11, brend 4/4; owner login **NOT TESTED** (production’ga yozmaslik) |
 | Fayz Market Admin (Windows) | `dist/desktop/fayz-market-admin-1.2.0-windows-x64-setup.exe` | 1.2.0, x64 | `9b17653` | 2026-11-25 05:40 | 122460787 | `ba056588bbc3d96d521fc3b2199b785d3886732d21c4710db8c81af53aecd99d` | Imzosiz | Build yaxlitligi va bundle macOS bilan bir xil; **Windows’da NOT TESTED** |
 
-Muhim: yangi funksiyalar (toʻlov usullari, olib ketish, bannerlar, marshrut) server tomonda **0007 migratsiya + Worker deploy**dan keyin ishlaydi — u hali bajarilmagan (egasining ruxsati kerak). Ungacha yangi ilovalar eski server bilan avvalgi funksiyalar va yangi brending bilan ishlaydi.
+Server: 0007 migratsiya + Worker deploy + `INTEGRATIONS_MASTER_KEY` 2026-11-25 da bajarildi (Version `43b2cc54…`, faol `90b70a16…`; read-only smoke 11/11). Distributivlarni tarqatish mumkin.
 
 Qolgan papkalar:
 - `archive/v1.1.1/` — telefonlarda boʻlgan oxirgi tasdiqlangan versiya (ustidan yangilash testi uchun).

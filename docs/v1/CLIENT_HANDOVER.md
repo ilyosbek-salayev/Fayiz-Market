@@ -67,7 +67,7 @@ Foydalanuvchiga mahsulot nomi «Fayz Market V1» sifatida koʻrsatiladi. Texnik 
    - Ishga tushirish: `BANNERS_AND_PAYMENTS.md` §3 (hujjatlar roʻyxati shu yerda).
 2. **Marshrut chizigʻi** uchun OpenRouteService kaliti kerak (bepul roʻyxatdan oʻtish).
    - Kalit boʻlmasa, xaritada doʻkon va xaridor koʻrinadi, «Yoʻlga chiqish» esa Google Maps’da haqiqiy yoʻlni ochadi.
-3. **Kalitlarni paneldan saqlash** uchun bir martalik `INTEGRATIONS_MASTER_KEY` kerak (`ADMIN_INTEGRATIONS.md` §3). Ungacha panel ogohlantiradi.
+3. **Kalitlarni paneldan saqlash** uchun kerak boʻlgan `INTEGRATIONS_MASTER_KEY` production’da oʻrnatilgan (2026-11-25).
 4. **Android ikonka, bildirishnoma belgisi va desktop ikonka** faqat yangi APK, DMG yoki EXE bilan oʻzgaradi. Paneldagi logo ilova ichidagi brendingni boshqaradi.
 5. **APK’lar debug imzoli.** Google Play uchun release kalit kerak.
    - Release kalit bilan imzolangan ilova hozirgi debug ilova ustidan yangilanmaydi: bir marta qayta oʻrnatish kerak boʻladi.
@@ -77,7 +77,7 @@ Foydalanuvchiga mahsulot nomi «Fayz Market V1» sifatida koʻrsatiladi. Texnik 
 
 ## 5. Ishga tushirish tartibi
 
-Bularning hammasi egasining ruxsati bilan bajariladi.
+Bularning hammasi egasining ruxsati bilan bajariladi. **1–5-qadamlar 2026-11-25 da bajarildi.** Server tayyor, endi ilovalarni tarqatish mumkin.
 
 1. **D1 zaxira nusxa** (export).
 2. **Migratsiya** `0007_v1_storefront.sql`. U faqat qoʻshimcha jadval va ustunlar yaratadi, mavjud maʼlumotlarni oʻzgartirmaydi.
