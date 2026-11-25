@@ -126,7 +126,7 @@ Natijalar va loglar `docs/v1/evidence/`, skrinshotlar `docs/v1/screenshots/` da.
 | Payme / Click sandbox | **BLOCKED** | Merchant hisobi va test kalitlari yoʻq |
 | Production merchant toʻlovi | **NOT TESTED** | Shartnoma va ruxsat yoʻq |
 | OpenRouteService haqiqiy API | NOT TESTED | Kalit yoʻq. Sinov mock bilan; haqiqiy chaqiruv «Ulanishni tekshirish» tugmasida |
-| Production’da V1 (migratsiya + deploy) | **BAJARILDI** 2026-11-25 (egasining ruxsati bilan) | §6 |
+| Production’da V1 (migratsiya + deploy) | **BAJARILDI** 2026-11-25 (egasining ruxsati bilan): 1.2.0 va 1.2.1 | §6, §7 |
 
 ### Haqiqiy telefon uchun tekshiruv roʻyxati (Samsung A17)
 
@@ -198,4 +198,17 @@ Natijalar va loglar `docs/v1/evidence/`, skrinshotlar `docs/v1/screenshots/` da.
 |---|---|
 | Haqiqiy telefonda 1.2.1 | **NOT TESTED** (tekshiruv roʻyxati: `UX_REFINEMENT_1.2.1.md` §5) |
 | Windows’da oʻrnatish | **NOT TESTED** |
-| Production’da telefon+kod va yetkazish haqi | **Deploy qilinmagan** (0008 migratsiya + deploy egasining ruxsatini kutmoqda). SMS ulanmaguncha telefon+kod production’da ishlamaydi |
+| Telefon+kod bilan kirish production’da (haqiqiy SMS) | **NOT TESTED** — Eskiz (SMS) ulanmagan. Endpoint bor, lekin SMS yuborilmaguncha kod kelmaydi; ilova buni ochiq yozadi |
+| Yetkazish haqi production’da | Server tayyor (`deliveryFee: 0` — admin hali narx belgilamagan). Haqiqiy buyurtma bilan **NOT TESTED** (production’ga yozilmadi) |
+
+### 1.2.1 — production’ga chiqarish (2026-11-25, egasining ruxsati bilan: «Yes, deploy»)
+
+| Qadam | Natija |
+|---|---|
+| Akkaunt | `8c9b943e…82ca` (`wrangler whoami`) |
+| D1 zaxira | `dist/backups/fayz-market-before-1.2.1-20261125-075843.sql` (28 676 bayt, 0600, SHA-256 `f3c1acc3ee710952…`) |
+| Migratsiya | `0008_phone_login_delivery_fee.sql` ✅ (8 buyruq). Undan keyin «No migrations to apply». Eski Worker GET’lari (`/health`, `/storefront`, `/auth/config`, `/products`) 200 |
+| Deploy | `main` `94718f5` → `fayz-market-api` Version **`6955fdd2-e5ac-4cd7-bdc3-0a0ded818e95`** (100%). Bindinglar: D1 `fayz-market`, R2 `fayz-market-images`, `ENVIRONMENT=production`. Secretlar oʻzgarmadi |
+| Read-only smoke | `production-get.mjs` **11/11**; `/storefront` → `checkout.deliveryFee`/`deliveryFreeFrom` bor; `/auth/config` → `phone.codeLogin: true` (`phone.enabled: false` — SMS yoʻq); `POST /auth/phone/login {}` → 400 (validatsiya, endpoint bor); kirishsiz `DELETE /customer/push-token` va `/admin/integrations` → 401. Dalil: `evidence/production/production-get-after-1.2.1.log` |
+| Rollback (kerak boʻlsa) | `cd apps/api && npx wrangler rollback e5f9c48e-7760-4dfa-87af-5a7ca1283718 --env production` — 1.2.0 kodi 0008 sxemasida 136/136 ishlashi tasdiqlangan |
+

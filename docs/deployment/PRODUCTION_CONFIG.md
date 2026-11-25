@@ -125,4 +125,12 @@ Zaxira `dist/backups/fayz-market-before-1.2.0-20261125-055823.sql` → migratsiy
 - Yangi ochiq endpointlar: `GET /storefront`, `POST /store/route`, `POST /payments/payme`, `POST /payments/click/prepare`, `POST /payments/click/complete`.
 - Aniq buyruqlar va rollback: `docs/v1/RELEASE_REPORT.md` §4.
 
+## Fayz Market V1 (1.2.1) — production’ga chiqarildi (2026-11-25)
+
+Zaxira `dist/backups/fayz-market-before-1.2.1-20261125-075843.sql` → migratsiya `0008_phone_login_delivery_fee.sql` ✅ → deploy (`main` `94718f5`) Version `6955fdd2-e5ac-4cd7-bdc3-0a0ded818e95`. Secretlar oʻzgarmadi.
+
+- 0008: `otp_codes` qayta quriladi (`login` maqsadi, barcha qatorlar koʻchiriladi), `orders.delivery_fee` (standart 0), sozlamalar `delivery_fee`, `delivery_free_from`. 1.2.0 Worker shu sxemada 136/136 ishlashi tasdiqlangan.
+- Yangi endpoint: `POST /auth/phone/login`. Ishlashi uchun SMS provayderi (Eskiz: `ESKIZ_EMAIL`, `ESKIZ_PASSWORD` yoki panel orqali) kerak.
+- Rollback: `npx wrangler rollback e5f9c48e-7760-4dfa-87af-5a7ca1283718 --env production`.
+
 2026-11-25: ortiqcha Worker `fayz-market-api-production` (2026-11-25 hodisasi, deploy `eb2fd9e9`) egasining tasdigʻi bilan oʻchirildi. Akkauntda endi faqat `fayz-market-api` bor.

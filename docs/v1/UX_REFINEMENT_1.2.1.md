@@ -5,7 +5,7 @@
 - egasining «REAL ANDROID QA FEEDBACK & ADMIN LOGIN UX FIX» topshirigʻi (2026-11-25);
 - `~/Documents/Work/documents/ilova app.pdf` — 4 bet: matn va Uzum Market skrinshotlari.
 
-**Ish tartibi:** branch `main`. Yangi branch ochilmadi, push qilinmadi, production’ga deploy qilinmadi. Kod commit’i: `625ea54`.
+**Ish tartibi:** branch `main`. Yangi branch ochilmadi, push qilinmadi. Kod commit’i: `625ea54`. Server qismi egasining ruxsati bilan 2026-11-25 da production’ga chiqarildi (§3).
 
 ## 1. Egasining haqiqiy telefon sinovi (qayd uchun)
 
@@ -35,7 +35,9 @@
 
 **Bajarilmagan qism (ataylab):** PDF’dagi «mahsulot xususiyatlari (rang, xarakteristika), aksiyalar» bandi hujjatda **«ixtiyoriy»** deb berilgan. Ortiqcha imkoniyat qoʻshmaslik talabi sababli hozir qilinmadi. Kerak boʻlsa, alohida topshiriq sifatida bajariladi.
 
-## 3. Server tomoni (production’ga hali chiqmagan)
+## 3. Server tomoni (production’ga chiqarildi — 2026-11-25)
+
+Zaxira `dist/backups/fayz-market-before-1.2.1-20261125-075843.sql` → migratsiya 0008 ✅ → Worker Version `6955fdd2-e5ac-4cd7-bdc3-0a0ded818e95` → read-only smoke 11/11. Tafsilot: `TEST_RESULTS.md` §7.
 
 Migratsiya `0008_phone_login_delivery_fee.sql`:
 
@@ -80,4 +82,5 @@ Tafsilot: `TEST_RESULTS.md` §7. Distributivlar: `dist/RELEASE_MANIFEST.md`.
 - login’da server tugmasi yoʻq, ilova production’ga ulanadi;
 - narx maydonida 1 000 000 yozish;
 - Integratsiyalar sahifasi;
-- deploy’dan keyin: yetkazish haqi va telefon+kod bilan kirish (SMS ulangach).
+- yetkazish haqi: admin panelda narx belgilang va sinov buyurtmasida alohida qator chiqishini tekshiring;
+- telefon+kod bilan kirish: SMS (Eskiz) ulangandan keyin.

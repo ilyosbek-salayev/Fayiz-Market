@@ -9,7 +9,7 @@
 >
 > Fayllar, SHA-256 va sinov holati: `dist/RELEASE_MANIFEST.md` (Git nusxasi `docs/v1/RELEASE_MANIFEST-1.2.1.md`). Batafsil: `UX_REFINEMENT_1.2.1.md`.
 >
-> Server tomoni (0008 migratsiya + deploy) egasining ruxsatini kutmoqda. Ungacha 1.2.1 ilovalar joriy production bilan ishlaydi, yangi server funksiyalari koʻrinmaydi.
+> Server tomoni production’ga chiqarildi (2026-11-25, egasining ruxsati bilan): zaxira → migratsiya 0008 → Worker Version `6955fdd2-e5ac-4cd7-bdc3-0a0ded818e95` → read-only smoke 11/11. Rollback: `npx wrangler rollback e5f9c48e-7760-4dfa-87af-5a7ca1283718 --env production` (`apps/api` dan). Telefon+kod bilan kirish SMS (Eskiz) ulangandan keyin ishlaydi.
 >
 > Pastdagi 1.2.0 boʻlimlari tarix uchun saqlangan.
 

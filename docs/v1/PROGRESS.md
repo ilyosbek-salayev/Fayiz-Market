@@ -26,7 +26,7 @@ Next action: connect an Android phone, install both files from `dist/apk/`, keep
 - Faza H (QA): V1 API 136/136, V1 UI 57/57, unit 68/68, oldingi toʻplamlar hammasi PASS (birinchi yugurishda topilgan 1.1.x admin moslik xatosi tuzatildi: `8799a70`), eski Worker + yangi sxema 129/129, emulyator 12/12 + 12/12, desktop 11/11 + 4/4 → `TEST_RESULTS.md`.
 - Faza I (release): APK vc 7 (`8799a70`), DMG/EXE (`9b17653`); 1.1.2 RC fayllari Savatga koʻchirildi → `RELEASE_REPORT.md`, `dist/RELEASE_MANIFEST.md`.
 - Faza J (handover): `CLIENT_HANDOVER.md`, `ADMIN_INTEGRATIONS.md`, `BANNERS_AND_PAYMENTS.md`, `STORE_LOCATION_AND_MAP.md`, `BRANDING_AND_UI.md`.
-- Ochiq: production migratsiya + deploy + `INTEGRATIONS_MASTER_KEY` (egasining ruxsati), GitHub push (egasi), haqiqiy telefon va Windows sinovi, Payme/Click shartnomasi.
+- Ochiq (oʻsha paytda): production migratsiya + deploy + `INTEGRATIONS_MASTER_KEY` (keyin, 2026-11-25 da bajarildi), GitHub push (egasi), haqiqiy telefon va Windows sinovi, Payme/Click shartnomasi.
 
 ## 1.2.1 — 2026-11-25
 
@@ -38,8 +38,8 @@ Next action: connect an Android phone, install both files from `dist/apk/`, keep
   - telefon+kod bilan kirish, GPS, yetkazish haqi (migratsiya 0008).
 - QA: API 154, UI 77, unit 73, oldingi toʻplamlar PASS, emulyator 11 + 14, desktop 11 + 5.
 - dist: faqat 1.2.1. 1.2.0 Savatga koʻchirildi.
+- Production (egasining ruxsati bilan): zaxira → 0008 ✅ → Worker `6955fdd2` → read-only smoke 11/11.
 - Ochiq:
-  - production’ga 0008 + deploy (ruxsat kerak);
   - push;
   - 1.2.1 haqiqiy telefonda;
   - Windows;

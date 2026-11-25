@@ -12,7 +12,7 @@ Hisobotlar: `docs/v1/UX_REFINEMENT_1.2.1.md`, `docs/v1/TEST_RESULTS.md` (§7), `
 
 `23175e0` va `625ea54` orasidagi farq faqat test skriptlari (ilova kodi bir xil).
 
-Server: joriy production (V1 1.2.0, Worker `43b2cc54`/`90b70a16`) bilan 1.2.1 ilovalar ishlaydi; telefon+kod bilan kirish va yetkazish haqi uchun **0008 migratsiya + Worker deploy** kerak — egasining ruxsatini kutmoqda.
+Server: production’da 1.2.1 — migratsiya 0008 + Worker Version `6955fdd2-e5ac-4cd7-bdc3-0a0ded818e95` (2026-11-25, egasining ruxsati bilan; read-only smoke 11/11). Telefon+kod bilan kirish SMS (Eskiz) ulangandan keyin ishlaydi.
 
 Debug APK’lar (ishlab chiquvchi va emulyator sinovi uchun) `apps/android/*/build/outputs/apk/debug/` da; ular tarqatilmaydi.
 
