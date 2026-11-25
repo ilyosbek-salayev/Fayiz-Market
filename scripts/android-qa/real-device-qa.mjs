@@ -210,7 +210,7 @@ try {
     await c.evaluate(() => [...document.querySelectorAll('.pcard-hit')].find(x => x.textContent.includes('Telefon sinov soati')).click()); await pause(1200);
     await c.click('Savatga qoʻshish', '.action-bar button'); await pause(600);
     await c.click('Savat', '.tabbar button'); await pause(800); await c.click('Buyurtma berish', '.action-bar button'); await pause(1200);
-    await c.click('Xaritadan manzil tanlash', '.sheet button');
+    await c.click('Xaritada tanlash', '.sheet button');
     const drawn = await c.waitFor(() => { const cv = document.querySelector('.map-box[data-provider=openfreemap] canvas.maplibregl-canvas'); return !!cv && cv.getBoundingClientRect().height > 200; }, 40000);
     await pause(4000); check(drawn, 'customer: MapLibre + OpenFreeMap map draws on the phone (WebGL, phone internet)'); shot('c-map');
     const fineBefore = grants(C)['android.permission.ACCESS_FINE_LOCATION'];

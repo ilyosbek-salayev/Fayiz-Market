@@ -195,7 +195,7 @@ try {
     await shot(page, 'customer-checkout-delivery', false);
     await click(page, 'Doʻkondan olib ketish', '.segmented button'); await pause(300);
     t = await text(page);
-    check(t.includes('Olib ketish manzili') && !t.includes('Yetkazib berish manzili') && !t.includes('Xaritadan manzil tanlash'), 'pickup: store address shown, delivery address/map hidden');
+    check(t.includes('Olib ketish manzili') && !t.includes('Yetkazib berish manzili') && !t.includes('Xaritada tanlash'), 'pickup: store address shown, delivery address/map hidden');
     await click(page, 'Bank oʻtkazmasi', '.choice'); await pause(200);
     const setValue = (sel, v) => page.evaluate((s, val) => { const el = document.querySelector(s); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, val); el.dispatchEvent(new Event('input', { bubbles: true })); }, sel, v);
     await setValue('.sheet input[autocomplete="name"]', 'Vizual Sinov'); await setValue('.sheet input[type="tel"]', '+998901112233');

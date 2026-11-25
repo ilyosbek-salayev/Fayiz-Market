@@ -150,7 +150,7 @@ const api = async (p, init) => (await fetch(API + p, init)).json();
   check(custOrder.order.status === 'confirmed', 'status change persisted', custOrder.order.status);
   await page.evaluate(() => document.querySelector('.pay-form input').setAttribute('data-q', 'amt'));
   await setValue(page, '[data-q=amt]', '50000'); await click(page, 'Toʻlovni qayd etish', '.pay-form button'); await pause(1200);
-  check((await text(page)).includes('50,000') || (await text(page)).includes('50 000'), 'payment recorded and listed');
+  check(/50[,\s\u00a0]000/.test(await text(page)), 'payment recorded and listed'); // money() groups with no-break spaces since 1.2.1
   await page.keyboard.press('Escape'); await pause(300);
   check(!(await page.$('.modal-backdrop')), 'Escape closes modal');
   // settings save

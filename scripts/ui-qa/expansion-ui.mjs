@@ -56,7 +56,8 @@ try {
   await click(c, 'Profil', '.tabbar button');
   check((await text(c)).includes('Hisobingizga kiring'), 'profile offers sign-in / registration');
   await shot(c, 'c-profile-guest-390');
-  await click(c, 'Roʻyxatdan oʻtish', '.account-cta button');
+  // V1.2.1: the profile leads with phone + code; password registration lives under «Boshqa usullar».
+  await click(c, 'Boshqa usullar', '.account-cta button'); await click(c, 'Roʻyxatdan oʻtish', '.sheet [role=tab]');
   await setValue(c, '.sheet input[type=tel]', '+998901234567');
   await click(c, 'SMS kod olish', '.sheet button'); await pause(800);
   const dev = (await text(c)).match(/kod: (\d{6})/)?.[1];
@@ -78,7 +79,7 @@ try {
   await click(c, 'Savat', '.tabbar button'); await click(c, 'Buyurtma berish', '.action-bar button');
   const sheetText = await text(c);
   check(!/Baholash|yulduz|Sharh/.test(sheetText.split('Buyurtmani rasmiylashtirish')[1] || ''), 'no review/rating UI during checkout');
-  await click(c, 'Xaritadan manzil tanlash', '.sheet button');
+  await click(c, 'Xaritada tanlash', '.sheet button'); // V1.2.1: GPS first, map second
   await mapReady(c, '.sheet');
   check(await c.evaluate(() => !!document.querySelector('.sheet .maplibregl-ctrl-attrib') && /OpenStreetMap/.test(document.querySelector('.sheet .maplibregl-ctrl-attrib').textContent || '')), 'without a Google key: interactive OpenFreeMap map with OSM attribution');
   await click(c, 'Joylashuvimni aniqlash', '.sheet button'); await pause(2500);
@@ -194,7 +195,11 @@ try {
   await shot(a, 'a-settings-staff-1280', true);
   await click(a, 'Integratsiyalar', '.side-nav button'); await pause(1500);
   const it = await text(a);
-  check(it.includes('Google Maps') && it.includes('SMS tasdiqlash') && it.includes('Telegram Login') && it.includes('TELEGRAM_BOT_TOKEN') && !it.includes('AAH-local-qa-token'), 'integrations: status + setup, secret value never shown');
+  // V1.2.1: compact rows; the setup (and the credential state) opens in a step-by-step modal. Env names are no longer shown.
+  await a.evaluate(() => [...document.querySelectorAll('.int-row')].find(r => r.textContent.includes('Telegram Login'))?.click()); await pause(700);
+  const tg = await text(a);
+  check(it.includes('Google Maps') && it.includes('SMS tasdiqlash') && it.includes('Telegram Login') && tg.includes('Bot tokeni') && /Kiritilgan/.test(tg) && tg.includes('@BotFather') && !tg.includes('AAH-local-qa-token') && !it.includes('AAH-local-qa-token'), 'integrations: status + setup, secret value never shown');
+  await click(a, 'Yopish', '.modal-foot button'); await pause(400);
   await shot(a, 'a-integrations-1280', true);
   await click(a, 'Mahsulotlar', '.side-nav button'); await pause(1200);
   await a.evaluate(() => [...document.querySelectorAll('.table tbody tr')].find(x => x.textContent.includes('Klassik')).querySelector('button[title=Tahrirlash]').click()); await pause(800);
@@ -214,7 +219,7 @@ try {
   // ---------- Customer: email registration and passwordless sign-in (local test mode echoes the code) ----------
   {
     const { page: e, ctx: ectx } = await open('customer', 390);
-    await click(e, 'Profil', '.tabbar button'); await click(e, 'Roʻyxatdan oʻtish', '.account-cta button');
+    await click(e, 'Profil', '.tabbar button'); await click(e, 'Boshqa usullar', '.account-cta button'); await click(e, 'Roʻyxatdan oʻtish', '.sheet [role=tab]');
     await click(e, 'Email', '.channel-switch button');
     await setValue(e, '.sheet input[type=email]', 'Mijoz@Example.com');
     await click(e, 'Emailga kod olish', '.sheet button'); await pause(800);
@@ -225,7 +230,7 @@ try {
     await click(e, 'Hisob yaratish', '.sheet button'); await pause(1200);
     check((await text(e)).includes('Email Mijoz') && (await text(e)).includes('mijoz@example.com'), 'email: passwordless account created, email shown in profile');
     await click(e, 'Chiqish'); await pause(1000);
-    await click(e, 'Kirish', '.account-cta button').catch(() => click(e, 'Hisobga kirish'));
+    await click(e, 'Boshqa usullar', '.account-cta button'); // V1.2.1: password / email sign-in sits under «Boshqa usullar»
     await click(e, 'Email', '.channel-switch button');
     await click(e, 'Parolsiz', '.sheet button');
     await setValue(e, '.sheet input[type=email]', 'mijoz@example.com');
