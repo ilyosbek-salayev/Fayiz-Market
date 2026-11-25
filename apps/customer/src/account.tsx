@@ -19,6 +19,9 @@ export type OrderView = {
   location: { lat: number; lng: number; details: string } | null;
   delivery: null | { status: string; courier: { name: string; phone: string | null } | null; pickedUpAt: string | null; arrivedAt: string | null; handedOverAt: string | null };
   canConfirm: boolean; canReview: boolean; reviewed: { products: number[]; courier: boolean; courierRatable: boolean };
+  /** Absent on servers older than V1 (then: delivery, cash). */
+  fulfillment?: 'delivery' | 'pickup';
+  payment?: { method: string; status: string; paidAt: string | null; note: string; bankTransferDetails: string; canClaimTransfer: boolean; canPayOnline: boolean };
 };
 const PHONE = /^\+998\d{9}$/;
 
@@ -156,7 +159,7 @@ export function LinkPhoneSheet({ api, config, onDone, onClose }: { api: Api; con
 }
 
 // ---------------------------------------------------------------- Delivery location
-export function LocationSheet({ apiKey, initial, onConfirm, onClose }: { apiKey?: string; initial: DeliveryLocation | null; onConfirm: (l: DeliveryLocation) => void; onClose: () => void }) {
+export function LocationSheet({ apiKey, initial, onConfirm, onClose, title = 'Yetkazish joyi', hint = 'Xaritani suring — qizil pin yetkazish nuqtasini koʻrsatadi. GPS aniqligi har doim ham toʻliq emas, pinni toʻgʻrilab qoʻying.', notice = '' }: { apiKey?: string; initial: DeliveryLocation | null; onConfirm: (l: DeliveryLocation) => void; onClose: () => void; title?: string; hint?: string; notice?: string }) {
   const [center, setCenter] = useState<LatLng | null>(initial);
   const [picked, setPicked] = useState<DeliveryLocation | null>(initial);
   const [address, setAddress] = useState(initial?.address || ''); const [accuracy, setAccuracy] = useState<number | undefined>(initial?.accuracy);
@@ -167,9 +170,10 @@ export function LocationSheet({ apiKey, initial, onConfirm, onClose }: { apiKey?
     try { const p = await currentPosition(); setCenter({ lat: p.lat, lng: p.lng }); setPicked(p); setAccuracy(p.accuracy); }
     catch (e) { setError(friendlyError(e)); } finally { setLocating(false); }
   };
-  return <Sheet title="Yetkazish joyi" onClose={onClose} footer={<><button className="btn btn-primary btn-lg btn-block" disabled={!picked} onClick={() => picked && onConfirm({ lat: picked.lat, lng: picked.lng, accuracy: picked.accuracy ?? accuracy, address })}><Icon name="check" size={20} />Shu joyni tasdiqlash</button><button className="btn btn-quiet btn-block" onClick={onClose}>Bekor qilish</button></>}>
+  return <Sheet title={title} onClose={onClose} footer={<><button className="btn btn-primary btn-lg btn-block" disabled={!picked} onClick={() => picked && onConfirm({ lat: picked.lat, lng: picked.lng, accuracy: picked.accuracy ?? accuracy, address })}><Icon name="check" size={20} />Shu joyni tasdiqlash</button><button className="btn btn-quiet btn-block" onClick={onClose}>Bekor qilish</button></>}>
     <div className="form-stack">
-      <p className="t-caption">Xaritani suring — qizil pin yetkazish nuqtasini koʻrsatadi. GPS aniqligi har doim ham toʻliq emas, pinni toʻgʻrilab qoʻying.</p>
+      <p className="t-caption">{hint}</p>
+      {notice && <div className="banner banner-warning" role="alert"><Icon name="alert" size={20} /><div>{notice}</div></div>}
       <MapView apiKey={apiKey} center={center} picker onPick={onPick} onAddress={setAddress} className="tall" />
       <button className="btn btn-secondary btn-block" onClick={locate} disabled={locating}>{locating ? <><span className="spinner" />Aniqlanmoqda...</> : <><Icon name="target" size={18} />Joylashuvimni aniqlash</>}</button>
       {error && <div className="banner banner-warning" role="alert"><Icon name="alert" size={20} /><div>{error}</div></div>}

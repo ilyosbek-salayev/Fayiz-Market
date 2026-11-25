@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Category, Product } from '@fayz/shared';
 import { money } from '@fayz/shared';
-import { BrandMark, Icon, type IconName } from '../../../packages/ui/src/Icon';
+import { Icon, type IconName } from '../../../packages/ui/src/Icon';
+import { BrandMark, useBrand } from '../../../packages/ui/src/brand';
+import { paymentMethodNames, paymentStatusBadge, paymentStatusNames } from '../../../packages/ui/src/storefront';
+import { BannersView, BrandPanel, OrderPayment, PaymentSettingsPanel, StorePanel, ThemePanel, useAdminTheme, type PaymentRow } from './storefront-admin';
 import { NETWORK_MESSAGE, formatDateTime, formatDay, friendlyError, nativeDebug, openApiSettings, paintSystemBars } from '../../../packages/ui/src/format';
 import { ConfirmDialog, EmptyState, Field, IconAction, MetricCard, Modal, Panel, Thumb, Toggle } from './components';
 import { CourierApp } from './courier';
@@ -11,18 +14,20 @@ import { biometricDisable, biometricEnable, biometricStatus, biometricStored, bi
 import { deliveryNames } from '../../../packages/ui/src/stages';
 import '../../../packages/ui/src/tokens.css';
 import '../../../packages/ui/src/expansion.css';
+import '../../../packages/ui/src/storefront.css';
 import './style.css';
 
 declare global { interface Window { fayzDesktop?: { request: (input: { path: string; method: string; authorization?: string; contentType?: string; body?: string | Uint8Array }) => Promise<{ status: number; data: any }>; notify?: (input: { title: string; body: string; orderId?: number }) => void; saveSession?: (token: string) => Promise<boolean>; loadSession?: () => Promise<string>; clearSession?: () => Promise<void>; onOpenOrder?: (cb: (id: number) => void) => void } } }
 
 const API = import.meta.env.VITE_API_URL || (window.location.pathname.startsWith('/__app/') ? window.location.origin : 'http://localhost:8787');
-type View = 'dashboard' | 'products' | 'categories' | 'orders' | 'reviews' | 'settings' | 'integrations';
-type Order = { id: number; orderNumber: string; customerName: string; phone: string; address: string; status: string; total: number; createdAt: string; items: { name: string; price: number; quantity: number }[]; location: { lat: number; lng: number; details: string } | null; deliveryStatus?: string | null; courierName?: string | null };
+type View = 'dashboard' | 'products' | 'categories' | 'orders' | 'banners' | 'reviews' | 'settings' | 'integrations';
+type Order = { id: number; orderNumber: string; customerName: string; phone: string; address: string; status: string; total: number; createdAt: string; items: { name: string; price: number; quantity: number }[]; location: { lat: number; lng: number; details: string } | null; deliveryStatus?: string | null; courierName?: string | null; fulfillment?: string; paymentMethod?: string; paymentStatus?: string; paidAt?: string | null; paymentNote?: string };
 type Me = { id: number; email: string; role: string; name: string };
 const BIO_FLAG = 'fayz_admin_bio';
-type Report = { orders: { orders: number; ordered_total: number; delivered_total: number }; payments: { received_total: number }; inventory: { products: number; units: number }; daily: { day: string; orders: number; total: number }[] };
+type Report = { orders: { orders: number; ordered_total: number; delivered_total: number }; payments: { received_total: number; verifying?: number }; inventory: { products: number; units: number }; daily: { day: string; orders: number; total: number }[] };
 const statusNames: Record<string, string> = { new: 'Yangi', confirmed: 'Tasdiqlangan', preparing: 'Tayyorlanmoqda', shipped: 'Yoʻlda', delivered: 'Yetkazildi', cancelled: 'Bekor qilingan' };
-const methodNames: Record<string, string> = { cash: 'Naqd', bank_transfer: 'Bank oʻtkazmasi', card_terminal: 'Terminal' };
+const pickupStatusNames: Record<string, string> = { shipped: 'Olib ketishga tayyor', delivered: 'Topshirildi' };
+const paymentFilters: [string, string][] = [['', 'Hammasi'], ['pending', 'Kutilmoqda'], ['verifying', 'Tekshirilmoqda'], ['paid', 'Toʻlangan'], ['failed', 'Muvaffaqiyatsiz']];
 const roleNames: Record<string, string> = staffRoles;
 const emptyProduct = { name: '', slug: '', description: '', categoryId: 0, price: 0, stock: 0, active: true, featured: false, images: [] as string[] };
 const views: [View, string, IconName, string][] = [
@@ -30,9 +35,10 @@ const views: [View, string, IconName, string][] = [
   ['products', 'Mahsulotlar', 'box', 'Katalog, narx va qoldiq'],
   ['categories', 'Kategoriyalar', 'layers', 'Katalog boʻlimlari'],
   ['orders', 'Buyurtmalar', 'receipt', 'Holat, kuryer va toʻlovlar'],
+  ['banners', 'Bannerlar', 'image', 'Bosh sahifadagi reklama va eʼlonlar'],
   ['reviews', 'Sharhlar', 'star', 'Mijoz baholari va moderatsiya'],
-  ['settings', 'Sozlamalar', 'settings', 'Doʻkon, xodimlar va xavfsizlik'],
-  ['integrations', 'Integratsiyalar', 'plug', 'Xarita, SMS, Telegram, push'],
+  ['settings', 'Sozlamalar', 'settings', 'Brend, doʻkon, toʻlov, xodimlar'],
+  ['integrations', 'Integratsiyalar', 'plug', 'Toʻlov, xarita, SMS, Telegram, push'],
 ];
 const nextStatuses: Record<string, string[]> = { new: ['confirmed', 'cancelled'], confirmed: ['preparing', 'cancelled'], preparing: ['shipped', 'cancelled'], shipped: ['delivered'] };
 type Confirmation = { title: string; text: string; label: string; run: () => void };
@@ -43,8 +49,8 @@ function App() {
   const [view, setView] = useState<View>('dashboard'); const [error, setError] = useState(''); const [message, setMessage] = useState(''); const [busy, setBusy] = useState(false);
   const [products, setProducts] = useState<Product[]>([]); const [categories, setCategories] = useState<Category[]>([]); const [orders, setOrders] = useState<Order[]>([]); const [report, setReport] = useState<Report | null>(null);
   const [product, setProduct] = useState<typeof emptyProduct & { id?: number }>(emptyProduct); const [editingProduct, setEditingProduct] = useState(false);
-  const [category, setCategory] = useState({ id: 0, name: '', slug: '' }); const [selectedOrder, setSelectedOrder] = useState<Order | null>(null); const [payments, setPayments] = useState<any[]>([]);
-  const [payment, setPayment] = useState({ amount: 0, method: 'cash', reference: '', note: '' });
+  const [category, setCategory] = useState({ id: 0, name: '', slug: '' }); const [selectedOrder, setSelectedOrder] = useState<Order | null>(null); const [payments, setPayments] = useState<PaymentRow[]>([]); const [transactions, setTransactions] = useState<any[]>([]);
+  const [paymentFilter, setPaymentFilter] = useState('');
   const [adjust, setAdjust] = useState({ id: 0, delta: 0, reason: '' });
   const [settings, setSettings] = useState({ contact_phone: '', delivery_info: '', banner_title: '', banner_subtitle: '' }); const [role, setRole] = useState('manager');
   const [users, setUsers] = useState<{ id: number; email: string; role: string }[]>([]);
@@ -55,16 +61,21 @@ function App() {
   const debug = useMemo(nativeDebug, []);
   // V1 expansion: role-aware shell, delivery data, notifications, persistent/biometric sessions.
   const [me, setMe] = useState<Me | null>(null); const [extras, setExtras] = useState<OrderExtras | null>(null);
-  const [mapsKey, setMapsKey] = useState(''); const [notices, setNotices] = useState<Notice[]>([]);
+  const [publicSettings, setPublicSettings] = useState<Record<string, string>>({}); const [notices, setNotices] = useState<Notice[]>([]);
+  const mapsKey = publicSettings.google_maps_key || '';
+  const [themeMode, setThemeMode, darkTheme] = useAdminTheme();
+  const brand = useBrand(publicSettings.store_name !== undefined ? { name: publicSettings.store_name || 'Fayz Market', tagline: publicSettings.brand_tagline ?? '', logoLight: publicSettings.brand_logo_light || '', logoDark: publicSettings.brand_logo_dark || '' } : null);
+  const loadPublic = () => request<{ settings: Record<string, string> }>('/settings').then(r => setPublicSettings(r.settings)).catch(() => undefined);
   const [locked, setLocked] = useState(() => !sessionStorage.getItem('fayz_admin_token') && localStorage.getItem(BIO_FLAG) === '1' && biometricStored());
   const [bioOn, setBioOn] = useState(() => localStorage.getItem(BIO_FLAG) === '1');
   const bio = useMemo(biometricStatus, []);
-  useEffect(() => { document.documentElement.dataset.theme = 'yellow'; paintSystemBars(); }, []);
+  useEffect(() => { paintSystemBars(); }, [darkTheme]);
+  useEffect(() => { void loadPublic(); }, []);
   useEffect(() => { if (!token && desktopSession.available()) void desktopSession.load().then(saved => { if (saved) { sessionStorage.setItem('fayz_admin_token', saved); setToken(saved); } }); }, []);
   useEffect(() => {
     if (!token) { setMe(null); return; }
     request<{ admin: Me }>('/admin/me').then(r => { setMe(r.admin); setRole(r.admin.role); }).catch(e => { if (/Sessiya|kirishi kerak/.test(String(e?.message))) { sessionStorage.removeItem('fayz_admin_token'); void desktopSession.clear(); setToken(''); } else setError(friendlyError(e)); });
-    request<{ settings: Record<string, string> }>('/settings').then(r => setMapsKey(r.settings.google_maps_key || '')).catch(() => undefined);
+    void loadPublic();
   }, [token]);
   // Tapping a system notification (Android shell / desktop) opens that order.
   useEffect(() => {
@@ -101,34 +112,37 @@ function App() {
     const [cats, me] = await Promise.all([request<{ categories: Category[] }>('/categories'), request<{ admin: { role: string } }>('/admin/me')]); setCategories(cats.categories); setRole(me.admin.role);
     if (target === 'dashboard') setReport(await request<Report>('/admin/reports/summary'));
     if (target === 'products') { const data = await request<{ products: Product[]; total: number }>(`/admin/products?page=${p}`); setProducts(data.products); setTotal(data.total); }
-    if (target === 'orders') { const data = await request<{ orders: Order[]; total: number }>(`/admin/orders?page=${p}`); setOrders(data.orders); setTotal(data.total); }
+    if (target === 'orders') { const data = await request<{ orders: Order[]; total: number }>(`/admin/orders?page=${p}${paymentFilter ? `&payment=${paymentFilter}` : ''}`); setOrders(data.orders); setTotal(data.total); }
     if (target === 'settings') { const data = await request<{ settings: typeof settings }>('/settings'); setSettings(data.settings); if (me.admin.role === 'owner') { const userData = await request<{ users: typeof users }>('/admin/users'); setUsers(userData.users); } }
     setLoaded(target);
   }
-  useEffect(() => { if (token && me && me.role !== 'courier') execute(() => load(view, page), ''); }, [token, view, page, me]);
+  useEffect(() => { if (token && me && me.role !== 'courier') execute(() => load(view, page), ''); }, [token, view, page, me, paymentFilter]);
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(''), 3200); return () => clearTimeout(timer); }, [message]);
   const changeView = (next: View) => { setPage(1); setView(next); setError(''); setMessage(''); setMenuOpen(false); setLoaded(''); window.scrollTo({ top: 0 }); };
   const login = (event: React.FormEvent) => { event.preventDefault(); execute(async () => { const data = await request<{ token: string }>('/admin/login', { method: 'POST', body: JSON.stringify({ email, password }) }); sessionStorage.setItem('fayz_admin_token', data.token); if (desktopSession.available()) await desktopSession.save(data.token); if (localStorage.getItem(BIO_FLAG) === '1' && biometricStored()) await biometricEnable(data.token); setToken(data.token); setPassword(''); }, ''); };
   const logout = () => execute(async () => { try { await request('/admin/logout', { method: 'POST' }); } finally { sessionStorage.removeItem('fayz_admin_token'); await desktopSession.clear(); biometricDisable(); localStorage.removeItem(BIO_FLAG); setBioOn(false); setMe(null); setToken(''); } }, '');
   const saveProduct = (event: React.FormEvent) => { event.preventDefault(); execute(async () => { await request(product.id ? `/admin/products/${product.id}` : '/admin/products', { method: product.id ? 'PUT' : 'POST', body: JSON.stringify(product) }); setEditingProduct(false); setProduct(emptyProduct); await load('products'); }); };
   /** Uploads a prepared photo to R2 (via the Worker) with progress; the URL is added to the product form. */
-  const uploadImage = async (blob: Blob, progress: (p: number) => void) => {
+  const upload = async (path: string, blob: Blob, progress: (p: number) => void = () => undefined) => {
     const type = blob.type || 'image/jpeg';
     const result: { status: number; data: any } = window.fayzDesktop
-      ? (progress(30), await window.fayzDesktop.request({ path: '/admin/images', method: 'POST', authorization: `Bearer ${token}`, contentType: type, body: new Uint8Array(await blob.arrayBuffer()) }))
+      ? (progress(30), await window.fayzDesktop.request({ path, method: 'POST', authorization: `Bearer ${token}`, contentType: type, body: new Uint8Array(await blob.arrayBuffer()) }))
       : await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest(); xhr.open('POST', API + '/admin/images'); xhr.setRequestHeader('Authorization', `Bearer ${token}`); xhr.setRequestHeader('Content-Type', type);
+        const xhr = new XMLHttpRequest(); xhr.open('POST', API + path); xhr.setRequestHeader('Authorization', `Bearer ${token}`); xhr.setRequestHeader('Content-Type', type);
         xhr.upload.onprogress = e => { if (e.lengthComputable) progress(Math.round((e.loaded / e.total) * 100)); };
         xhr.onload = () => { try { resolve({ status: xhr.status, data: JSON.parse(xhr.responseText) }); } catch { reject(new Error(`Server javobi oʻqilmadi (${xhr.status})`)); } };
         xhr.onerror = () => reject(new Error(NETWORK_MESSAGE)); xhr.send(blob);
       });
     if (result.status < 200 || result.status >= 300) throw new Error(result.data.error?.message || 'Rasm yuklanmadi');
     progress(100);
-    setProduct(current => current.images.includes(result.data.url) ? current : ({ ...current, images: [...current.images, result.data.url] }));
+    return result.data;
+  };
+  const uploadImage = async (blob: Blob, progress: (p: number) => void) => {
+    const data = await upload('/admin/images', blob, progress);
+    setProduct(current => current.images.includes(data.url) ? current : ({ ...current, images: [...current.images, data.url] }));
   };
   const saveCategory = (event: React.FormEvent) => { event.preventDefault(); execute(async () => { await request(category.id ? `/admin/categories/${category.id}` : '/admin/categories', { method: category.id ? 'PUT' : 'POST', body: JSON.stringify({ name: category.name, slug: category.slug }) }); setCategory({ id: 0, name: '', slug: '' }); await load('categories'); }); };
-  const openOrder = (id: number) => execute(async () => { const data = await request<{ order: Order; payments: any[] } & OrderExtras>(`/admin/orders/${id}`); setSelectedOrder(data.order); setPayments(data.payments); setExtras({ delivery: data.delivery, events: data.events, courierLocation: data.courierLocation, courierRating: data.courierRating, reviews: data.reviews }); setPayment({ amount: data.order.total - data.payments.reduce((sum, x) => sum + x.amount, 0), method: 'cash', reference: '', note: '' }); }, '');
-  const savePayment = (event: React.FormEvent) => { event.preventDefault(); if (!selectedOrder) return; execute(async () => { await request(`/admin/orders/${selectedOrder.id}/payments`, { method: 'POST', body: JSON.stringify(payment) }); await openOrder(selectedOrder.id); }); };
+  const openOrder = (id: number) => execute(async () => { const data = await request<{ order: Order; payments: PaymentRow[]; transactions?: any[] } & OrderExtras>(`/admin/orders/${id}`); setSelectedOrder(data.order); setPayments(data.payments); setTransactions(data.transactions || []); setExtras({ delivery: data.delivery, events: data.events, courierLocation: data.courierLocation, courierRating: data.courierRating, reviews: data.reviews }); }, '');
   const status = (next: string) => { if (!selectedOrder) return; execute(async () => { await request(`/admin/orders/${selectedOrder.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: next }) }); await openOrder(selectedOrder.id); await load('orders'); }); };
   const removeProduct = (p: Product) => setConfirmBox({ title: 'Mahsulotni yashirish', text: `«${p.name}» katalogdan yashiriladi. Mavjud buyurtmalar oʻzgarmaydi.`, label: 'Yashirish', run: () => execute(async () => { await request(`/admin/products/${p.id}`, { method: 'DELETE' }); await load('products'); }) });
   const removeCategory = (cat: Category) => setConfirmBox({ title: 'Kategoriyani oʻchirish', text: `«${cat.name}» kategoriyasi oʻchiriladi.`, label: 'Oʻchirish', run: () => execute(async () => { await request(`/admin/categories/${cat.id}`, { method: 'DELETE' }); await load('categories'); }) });
@@ -140,7 +154,7 @@ function App() {
   useEffect(() => { if (!menuOpen) return; const key = (e: KeyboardEvent) => { if (e.key === 'Escape') closeMenu(); }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key); }, [menuOpen, closeMenu]);
 
   if (!token && locked) return <main className="login-page"><div className="login-card">
-    <div className="login-brand"><BrandMark size={52} /><div><h1>Fayz Market</h1><p>Sessiya barmoq izi bilan himoyalangan</p></div></div>
+    <div className="login-brand"><BrandMark size={56} brand={brand} dark={darkTheme} /><div><h1>{brand.name}</h1><p>Sessiya barmoq izi bilan himoyalangan</p></div></div>
     {error && <div className="banner banner-error" role="alert"><Icon name="alert" size={20} /><div>{error}</div></div>}
     <button className="btn btn-primary btn-lg btn-block" onClick={unlock}><Icon name="fingerprint" size={22} />Barmoq izi bilan ochish</button>
     <button className="btn btn-quiet btn-block" onClick={() => setLocked(false)}>Parol bilan kirish</button>
@@ -149,7 +163,7 @@ function App() {
   if (token && me?.role === 'courier') return <CourierApp request={request} me={me} onLogout={logout} mapsKey={mapsKey || undefined} securityPanel={securityPanel} />;
   if (!token) return <main className="login-page">
     <form className="login-card" onSubmit={login}>
-      <div className="login-brand"><BrandMark size={52} /><div><h1>Fayz Market</h1><p>Boshqaruv paneliga kirish</p></div></div>
+      <div className="login-brand"><BrandMark size={56} brand={brand} dark={darkTheme} /><div><h1>{brand.name}</h1><p>Boshqaruv paneliga kirish</p></div></div>
       {error && <div className="banner banner-error" role="alert"><Icon name={error === NETWORK_MESSAGE ? 'wifiOff' : 'alert'} size={20} /><div>{error}</div></div>}
       <p className="t-caption">Administratorlar va kuryerlar shu yerdan kiradi.</p>
       <Field label="Email"><input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="username" placeholder="admin@fayzmarket.uz" /></Field>
@@ -157,21 +171,20 @@ function App() {
       <button className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : 'Kirish'}</button>
       {debug && <button type="button" className="btn btn-quiet btn-block" onClick={openApiSettings}><Icon name="server" size={18} />Server manzili (sinov)</button>}
     </form>
-    <p className="login-foot">Fayz Market V1.0</p>
+    <p className="login-foot">Fayz Market V1 · versiya {import.meta.env.VITE_APP_VERSION || ''}</p>
   </main>;
 
   const current = views.find(v => v[0] === view)!;
   const pages = Math.max(1, Math.ceil(total / 20));
   const loading = busy && loaded !== view;
   const retry = <button className="btn btn-sm btn-secondary" onClick={() => execute(() => load(view, page), '')}><Icon name="refresh" size={16} />Qayta urinish</button>;
-  const paid = payments.reduce((sum, x) => sum + x.amount, 0);
   const maxDay = Math.max(1, ...(report?.daily.map(d => d.total) || [1]));
 
   return <div className="shell">
     {busy && <div className="progress" aria-hidden="true" />}
     <aside className={`sidebar${menuOpen ? ' open' : ''}`} aria-label="Boʻlimlar">
-      <div className="side-brand"><BrandMark size={38} /><div><strong>Fayz Market</strong><span>Boshqaruv paneli</span></div><button className="icon-btn side-close" onClick={closeMenu} aria-label="Menyuni yopish"><Icon name="close" /></button></div>
-      <nav className="side-nav">{views.filter(([key]) => key !== 'integrations' || role === 'owner').map(([key, label, icon]) => <button key={key} className={view === key ? 'active' : ''} aria-current={view === key ? 'page' : undefined} onClick={() => changeView(key)}><Icon name={icon} size={20} /><span>{label}</span></button>)}</nav>
+      <div className="side-brand"><BrandMark size={40} brand={brand} dark={darkTheme} /><div><strong>{brand.name}</strong><span>Boshqaruv paneli</span></div><button className="icon-btn side-close" onClick={closeMenu} aria-label="Menyuni yopish"><Icon name="close" /></button></div>
+      <nav className="side-nav">{views.filter(([key]) => (key !== 'integrations' || role === 'owner')).map(([key, label, icon]) => <button key={key} className={view === key ? 'active' : ''} aria-current={view === key ? 'page' : undefined} onClick={() => changeView(key)}><Icon name={icon} size={20} /><span>{label}</span></button>)}</nav>
       <div className="side-foot"><div className="side-user"><span className="avatar-sm"><Icon name="user" size={18} /></span><div><span className="t-caption">{me?.name || me?.email || 'Rol'}</span><strong>{roleNames[role] || role}</strong></div></div><button className="btn btn-quiet btn-block" onClick={logout} disabled={busy}><Icon name="logout" size={18} />Chiqish</button></div>
     </aside>
     <div className={`drawer-backdrop${menuOpen ? ' show' : ''}`} data-open={menuOpen} onClick={closeMenu} aria-hidden="true" />
@@ -192,7 +205,7 @@ function App() {
           <div className="metrics">
             <MetricCard icon="receipt" label="Buyurtmalar" loading={!report} value={report?.orders.orders ?? '—'} caption="Barcha holatlar" />
             <MetricCard icon="tag" label="Buyurtma summasi" loading={!report} value={report ? money(report.orders.ordered_total) : '—'} caption={report ? <>Yetkazilgan: <span className="num">{money(report.orders.delivered_total)}</span></> : 'Bekor qilinganlarsiz'} />
-            <MetricCard icon="wallet" label="Qayd etilgan toʻlov" loading={!report} value={report ? money(report.payments.received_total) : '—'} caption="Qoʻlda qayd etilgan summalar" />
+            <MetricCard icon="wallet" label="Qabul qilingan toʻlov" loading={!report} value={report ? money(report.payments.received_total) : '—'} caption={report?.payments.verifying ? <>Tekshirilmoqda: <span className="num">{report.payments.verifying}</span> ta buyurtma</> : 'Qayd etilgan va onlayn tasdiqlangan'} />
             <MetricCard icon="box" label="Faol mahsulotlar" loading={!report} value={report?.inventory.products ?? '—'} caption={report ? <>Omborda: <span className="num">{report.inventory.units}</span> dona</> : 'Katalogda koʻrinadi'} />
           </div>
           <Panel title="Kunlik savdo" subtitle="Oxirgi 30 kun, bekor qilingan buyurtmalarsiz">
@@ -246,16 +259,16 @@ function App() {
         </div>}
 
         {view === 'orders' && <>
-          <div className="list-meta"><span className="num">{loading ? 'Yuklanmoqda...' : `${total} ta buyurtma`}</span></div>
+          <div className="list-meta"><span className="num">{loading ? 'Yuklanmoqda...' : `${total} ta buyurtma`}</span><div className="chips-row" role="group" aria-label="Toʻlov holati boʻyicha">{paymentFilters.map(([key, label]) => <button key={key} type="button" className={`chip${paymentFilter === key ? ' active' : ''}`} aria-pressed={paymentFilter === key} onClick={() => { setPage(1); setPaymentFilter(key); }}>{label}</button>)}</div></div>
           {!loading && loaded === 'orders' && !orders.length ? <Panel><EmptyState icon="receipt" title="Buyurtma yoʻq" text="Mijoz ilovasidan tushgan buyurtmalar shu yerda koʻrinadi." /></Panel> : <>
-            <div className="table-wrap desktop-only"><table className="table clickable"><thead><tr><th>Raqam</th><th>Xaridor</th><th>Holat</th><th className="r">Jami</th><th>Sana</th><th /></tr></thead><tbody>
-              {loading && !orders.length && [0, 1, 2].map(i => <tr key={i}><td colSpan={6}><div className="skeleton" style={{ height: 28 }} /></td></tr>)}
-              {orders.map(order => <tr key={order.id} onClick={() => openOrder(order.id)}><td className="num strong nowrap">{order.orderNumber}</td><td><div className="stack"><span>{order.customerName}</span><span className="t-caption num">{order.phone}</span></div></td><td><div className="stack"><span className={`badge badge-${order.status}`}>{statusNames[order.status] || order.status}</span>{order.courierName && <span className="t-caption">{order.courierName} · {deliveryNames[order.deliveryStatus || ''] || ''}</span>}</div></td><td className="r num nowrap strong">{money(order.total)}</td><td className="t-muted nowrap">{formatDateTime(order.createdAt)}</td><td className="r"><button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openOrder(order.id); }} disabled={busy}>Koʻrish</button></td></tr>)}
+            <div className="table-wrap desktop-only"><table className="table clickable"><thead><tr><th>Raqam</th><th>Xaridor</th><th>Holat</th><th>Toʻlov</th><th className="r">Jami</th><th>Sana</th><th /></tr></thead><tbody>
+              {loading && !orders.length && [0, 1, 2].map(i => <tr key={i}><td colSpan={7}><div className="skeleton" style={{ height: 28 }} /></td></tr>)}
+              {orders.map(order => <tr key={order.id} onClick={() => openOrder(order.id)}><td className="num strong nowrap">{order.orderNumber}</td><td><div className="stack"><span>{order.customerName}</span><span className="t-caption num">{order.phone}</span></div></td><td><div className="stack"><span className={`badge badge-${order.status}`}>{(order.fulfillment === 'pickup' && pickupStatusNames[order.status]) || statusNames[order.status] || order.status}</span>{order.fulfillment === 'pickup' ? <span className="t-caption">Olib ketish</span> : order.courierName && <span className="t-caption">{order.courierName} · {deliveryNames[order.deliveryStatus || ''] || ''}</span>}</div></td><td><div className="stack"><span className={`badge plain badge-${paymentStatusBadge[order.paymentStatus || 'pending']}`}>{paymentStatusNames[order.paymentStatus || 'pending']}</span><span className="t-caption">{paymentMethodNames[order.paymentMethod || 'cash']}</span></div></td><td className="r num nowrap strong">{money(order.total)}</td><td className="t-muted nowrap">{formatDateTime(order.createdAt)}</td><td className="r"><button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openOrder(order.id); }} disabled={busy}>Koʻrish</button></td></tr>)}
             </tbody></table></div>
             <div className="cards mobile-only">
               {orders.map(order => <article key={order.id} className="m-card">
                 <div className="m-card-row"><div className="stack"><strong className="num">{order.orderNumber}</strong><span className="t-caption">{formatDateTime(order.createdAt)}</span></div><span className={`badge badge-${order.status}`}>{statusNames[order.status] || order.status}</span></div>
-                <dl className="m-card-facts"><div><dt>Xaridor</dt><dd>{order.customerName}<span className="t-caption num">{order.phone}</span></dd></div><div><dt>Jami</dt><dd className="num">{money(order.total)}</dd></div></dl>
+                <dl className="m-card-facts"><div><dt>Xaridor</dt><dd>{order.customerName}<span className="t-caption num">{order.phone}</span></dd></div><div><dt>Jami</dt><dd className="num">{money(order.total)}</dd></div><div><dt>Toʻlov</dt><dd><span className={`badge plain badge-${paymentStatusBadge[order.paymentStatus || 'pending']}`}>{paymentStatusNames[order.paymentStatus || 'pending']}</span><span className="t-caption">{paymentMethodNames[order.paymentMethod || 'cash']}{order.fulfillment === 'pickup' ? ' · olib ketish' : ''}</span></dd></div></dl>
                 {order.courierName && <span className="t-caption"><Icon name="courier" size={14} /> {order.courierName} · {deliveryNames[order.deliveryStatus || ''] || ''}</span>}
                 <button className="btn btn-secondary btn-block" onClick={() => openOrder(order.id)} disabled={busy}>Koʻrish</button>
               </article>)}
@@ -264,27 +277,25 @@ function App() {
           </>}
         </>}
 
+        {view === 'banners' && <BannersView request={request} upload={upload} categories={categories} settings={publicSettings} onDefaultSaved={() => void loadPublic()} />}
         {view === 'reviews' && <ReviewsView request={request} />}
         {view === 'integrations' && (role === 'owner' ? <IntegrationsView request={request} /> : <Panel><EmptyState icon="lock" title="Ruxsat yoʻq" text="Integratsiyalarni faqat super admin boshqaradi." /></Panel>)}
 
         {view === 'settings' && (error && loaded !== 'settings' ? <Panel><EmptyState icon={error === NETWORK_MESSAGE ? 'wifiOff' : 'alert'} title="Sozlamalar yuklanmadi" text={error} action={retry} /></Panel> : <div className="settings">
-          <form className="settings-form" onSubmit={e => { e.preventDefault(); execute(() => request('/admin/settings', { method: 'PUT', body: JSON.stringify(settings) })); }}>
-            {role !== 'owner' && <div className="banner banner-info"><Icon name="alert" size={20} /><div>Sozlamalarni faqat doʻkon egasi oʻzgartira oladi.</div></div>}
-            <Panel title="Doʻkon maʼlumotlari" subtitle="Mijoz ilovasining Profil va Savat sahifalarida koʻrinadi">
+          {role !== 'owner' && <div className="banner banner-info"><Icon name="alert" size={20} /><div>Sozlamalarni faqat doʻkon egasi (super admin) oʻzgartira oladi.</div></div>}
+          <BrandPanel request={request} upload={upload} canEdit={role === 'owner'} onSaved={() => void loadPublic()} />
+          <StorePanel request={request} canEdit={role === 'owner'} mapsKey={mapsKey || undefined} settings={publicSettings} onSaved={() => void loadPublic()} />
+          <PaymentSettingsPanel request={request} canEdit={role === 'owner'} settings={publicSettings} onSaved={() => void loadPublic()} openIntegrations={() => changeView('integrations')} />
+          <form className="settings-form" onSubmit={e => { e.preventDefault(); execute(() => request('/admin/settings', { method: 'PUT', body: JSON.stringify({ contact_phone: settings.contact_phone, delivery_info: settings.delivery_info }) })); }}>
+            <Panel title="Doʻkon bilan aloqa" subtitle="Mijoz ilovasining Profil, Savat va doʻkon xaritasida koʻrinadi">
               <div className="form-grid">
                 <Field label="Aloqa telefoni"><input className="input" value={settings.contact_phone} onChange={e => setSettings({ ...settings, contact_phone: e.target.value })} readOnly={role !== 'owner'} placeholder="+998 90 123 45 67" inputMode="tel" /></Field>
                 <Field label="Yetkazib berish maʼlumoti" wide><textarea className="input" value={settings.delivery_info} onChange={e => setSettings({ ...settings, delivery_info: e.target.value })} readOnly={role !== 'owner'} /></Field>
               </div>
+              {role === 'owner' && <div className="form-actions end"><button className="btn btn-primary" disabled={busy}>{busy ? <><span className="spinner" />Saqlanmoqda...</> : 'Saqlash'}</button></div>}
             </Panel>
-            <Panel title="Bosh sahifa banneri" subtitle="Mijoz ilovasining bosh sahifasidagi sariq banner">
-              <div className="form-grid">
-                <Field label="Banner sarlavhasi"><input className="input" value={settings.banner_title} onChange={e => setSettings({ ...settings, banner_title: e.target.value })} readOnly={role !== 'owner'} /></Field>
-                <Field label="Banner matni"><input className="input" value={settings.banner_subtitle} onChange={e => setSettings({ ...settings, banner_subtitle: e.target.value })} readOnly={role !== 'owner'} /></Field>
-              </div>
-              <div className="banner-preview" aria-label="Banner koʻrinishi"><span className="t-caption">Koʻrinishi</span><div className="mini-hero"><strong>{settings.banner_title || 'Fayz Market'}</strong><span>{settings.banner_subtitle || 'Siz uchun aksessuarlar'}</span></div></div>
-            </Panel>
-            {role === 'owner' && <div className="form-actions end"><button className="btn btn-primary" disabled={busy}>{busy ? <><span className="spinner" />Saqlanmoqda...</> : 'Saqlash'}</button></div>}
           </form>
+          <ThemePanel mode={themeMode} setMode={setThemeMode} />
           {role === 'owner' && <StaffPanel request={request} meId={me?.id} />}
           <PasswordPanel request={request} />
           {securityPanel}
@@ -324,7 +335,7 @@ function App() {
       </div>
     </Modal>}
 
-    {selectedOrder && <Modal size="lg" title={selectedOrder.orderNumber} badge={<span className={`badge badge-${selectedOrder.status}`}>{statusNames[selectedOrder.status] || selectedOrder.status}</span>} subtitle={formatDateTime(selectedOrder.createdAt)} onClose={closeOrder}>
+    {selectedOrder && <Modal size="lg" title={selectedOrder.orderNumber} badge={<span className={`badge badge-${selectedOrder.status}`}>{(selectedOrder.fulfillment === 'pickup' && pickupStatusNames[selectedOrder.status]) || statusNames[selectedOrder.status] || selectedOrder.status}</span>} subtitle={formatDateTime(selectedOrder.createdAt)} onClose={closeOrder}>
       <div className="order-detail">
         <section className="od-block"><h4>Xaridor</h4><div className="facts">
           <div><Icon name="user" size={18} /><span>{selectedOrder.customerName}</span></div>
@@ -332,19 +343,9 @@ function App() {
           <div><Icon name="pin" size={18} /><span>{selectedOrder.address}</span></div>
         </div></section>
         <OrderDelivery order={selectedOrder} extras={extras} request={request} mapsKey={mapsKey || undefined} onChanged={() => { openOrder(selectedOrder.id); void load('orders'); }} />
-        {nextStatuses[selectedOrder.status] && <section className="od-block"><h4>Holatni oʻzgartirish</h4>{extras?.delivery && !['declined', 'cancelled'].includes(extras.delivery.status) && <p className="t-caption">Kuryer biriktirilgan: «Yoʻlga chiqarildi» va «Yetkazildi» kuryer va mijoz tasdigʻi orqali qoʻyiladi.</p>}<div className="status-actions">{nextStatuses[selectedOrder.status].filter(next => !(extras?.delivery && !['declined', 'cancelled'].includes(extras.delivery.status) && (next === 'shipped' || next === 'delivered'))).map(next => <button key={next} className={`btn ${next === 'cancelled' ? 'btn-danger' : 'btn-primary'}`} onClick={() => status(next)} disabled={busy}>{statusNames[next] || next}</button>)}</div></section>}
+        {nextStatuses[selectedOrder.status] && <section className="od-block"><h4>Holatni oʻzgartirish</h4>{extras?.delivery && !['declined', 'cancelled'].includes(extras.delivery.status) && <p className="t-caption">Kuryer biriktirilgan: «Yoʻlga chiqarildi» va «Yetkazildi» kuryer va mijoz tasdigʻi orqali qoʻyiladi.</p>}<div className="status-actions">{nextStatuses[selectedOrder.status].filter(next => !(extras?.delivery && !['declined', 'cancelled'].includes(extras.delivery.status) && (next === 'shipped' || next === 'delivered'))).map(next => <button key={next} className={`btn ${next === 'cancelled' ? 'btn-danger' : 'btn-primary'}`} onClick={() => status(next)} disabled={busy}>{(selectedOrder.fulfillment === 'pickup' && pickupStatusNames[next]) || statusNames[next] || next}</button>)}</div></section>}
         <section className="od-block"><h4>Mahsulotlar</h4><ul className="line-items">{selectedOrder.items.map((item, i) => <li key={i}><span className="li-name">{item.name}<span className="t-caption num"> × {item.quantity}</span></span><span className="num">{money(item.price * item.quantity)}</span></li>)}</ul><div className="li-total"><span>Jami</span><strong className="num">{money(selectedOrder.total)}</strong></div></section>
-        <section className="od-block"><h4>Toʻlovlar</h4>
-          <div className="pay-summary"><div><span className="t-caption">Toʻlangan</span><strong className="num">{money(paid)}</strong></div><div><span className="t-caption">Qolgan</span><strong className="num">{money(Math.max(0, selectedOrder.total - paid))}</strong></div></div>
-          {payments.length > 0 && <ul className="line-items">{payments.map(pay => <li key={pay.id}><span className="li-name">{methodNames[pay.method] || pay.method}<span className="t-caption"> {formatDateTime(pay.createdAt)}</span></span><span className="num">{money(pay.amount)}</span></li>)}</ul>}
-          <form className="pay-form" onSubmit={savePayment}>
-            <Field label="Qabul qilingan summa"><input className="input num" type="number" inputMode="numeric" min="1" value={payment.amount} onChange={e => setPayment({ ...payment, amount: Number(e.target.value) })} required /></Field>
-            <Field label="Usul"><select className="input" value={payment.method} onChange={e => setPayment({ ...payment, method: e.target.value })}><option value="cash">Naqd</option><option value="bank_transfer">Bank oʻtkazmasi</option><option value="card_terminal">Terminal</option></select></Field>
-            <Field label="Tranzaksiya havolasi" hint="Ixtiyoriy"><input className="input" value={payment.reference} onChange={e => setPayment({ ...payment, reference: e.target.value })} /></Field>
-            <button className="btn btn-secondary" disabled={busy || payment.amount <= 0 || selectedOrder.status === 'cancelled'}><Icon name="wallet" size={18} />Toʻlovni qayd etish</button>
-          </form>
-          {selectedOrder.status === 'cancelled' && <p className="t-caption">Bekor qilingan buyurtmaga toʻlov yozilmaydi.</p>}
-        </section>
+        <OrderPayment order={selectedOrder} payments={payments} transactions={transactions} role={role} request={request} onChanged={() => { openOrder(selectedOrder.id); void load('orders'); }} />
       </div>
     </Modal>}
 

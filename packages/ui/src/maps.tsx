@@ -6,10 +6,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import { cachedBrand, isDarkTheme, markSource } from './brand';
 
 declare global { interface Window { google?: any; __fayzMapsReady?: () => void } }
 export type LatLng = { lat: number; lng: number };
-export type MapMarker = LatLng & { kind: 'destination' | 'courier' | 'store'; title: string };
+export type MapMarker = LatLng & { kind: 'destination' | 'courier' | 'store' | 'user'; title: string };
+/** Road geometry from the routing API, as [lng, lat] pairs. */
+export type RouteLine = [number, number][];
 export type MapProvider = 'google' | 'openfreemap';
 /** Tashkent centre — only the initial view when nothing better is known. */
 export const DEFAULT_CENTER: LatLng = { lat: 41.3111, lng: 69.2797 };
@@ -45,28 +48,40 @@ export const mapsLink = (p: LatLng) => `https://www.google.com/maps/search/?api=
 export const directionsLink = (to: LatLng, from?: LatLng | null) => `https://www.google.com/maps/dir/?api=1${from ? `&origin=${from.lat},${from.lng}` : ''}&destination=${to.lat},${to.lng}&travelmode=driving`;
 export const formatCoords = (p: LatLng) => `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`;
 
-const colors = { destination: '#E5484D', courier: '#2F6FEB', store: '#1E1E1E' };
+const colors = { destination: '#E5484D', courier: '#2F6FEB', store: '#1E1E1E', user: '#2F6FEB' };
+const ROUTE_COLOR = '#2F6FEB';
+const storeIcon = () => markSource(cachedBrand(), isDarkTheme());
+/** Straight-line distance in metres — only ever shown labelled as such, never drawn as a road. */
+export function distanceMeters(a: LatLng, b: LatLng) {
+  const rad = Math.PI / 180, dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+export const formatDistance = (m: number) => m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0).replace('.', ',')} km`;
+export const formatDuration = (s: number) => s < 3600 ? `${Math.max(1, Math.round(s / 60))} daqiqa` : `${Math.floor(s / 3600)} soat ${Math.round((s % 3600) / 60)} daqiqa`;
 
 /** Common surface both providers implement, so markers/fit/picker logic is written once. */
-type Engine = { setMarkers(m: MapMarker[], fit: boolean, picker: boolean): void; panTo(p: LatLng): void; destroy(): void };
+type Engine = { setMarkers(m: MapMarker[], fit: boolean, picker: boolean, route: RouteLine | null): void; panTo(p: LatLng): void; destroy(): void };
 
 async function googleEngine(el: HTMLElement, key: string, center: LatLng | null | undefined, picker: boolean, onIdle: (p: LatLng) => void, onAddress?: (a: string) => void): Promise<Engine> {
   const google = await loadGoogleMaps(key);
   const map = new google.maps.Map(el, { center: center || DEFAULT_CENTER, zoom: center ? 16 : 12, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy', clickableIcons: false });
-  let drawn: any[] = []; let timer: number | undefined;
+  let drawn: any[] = []; let timer: number | undefined; let line: any = null;
   if (picker) map.addListener('idle', () => {
     const c = map.getCenter(); const p = { lat: c.lat(), lng: c.lng() }; onIdle(p);
     if (onAddress) { window.clearTimeout(timer); timer = window.setTimeout(() => new google.maps.Geocoder().geocode({ location: p }).then((r: any) => onAddress(r.results?.[0]?.formatted_address || '')).catch(() => onAddress('')), 700); }
   });
   return {
-    setMarkers(markers, fit) {
-      drawn.forEach(m => m.setMap(null));
-      drawn = markers.map(m => new google.maps.Marker({ map, position: m, title: m.title, icon: { path: google.maps.SymbolPath.CIRCLE, scale: m.kind === 'courier' ? 9 : 8, fillColor: colors[m.kind], fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 } }));
-      if (fit && markers.length > 1) { const b = new google.maps.LatLngBounds(); markers.forEach(m => b.extend(m)); map.fitBounds(b, 56); }
+    setMarkers(markers, fit, _picker, route) {
+      drawn.forEach(m => m.setMap(null)); line?.setMap(null); line = null;
+      if (route?.length) line = new google.maps.Polyline({ map, path: route.map(([lng, lat]) => ({ lat, lng })), strokeColor: ROUTE_COLOR, strokeOpacity: 0.9, strokeWeight: 6 });
+      drawn = markers.map(m => new google.maps.Marker({ map, position: m, title: m.title, icon: m.kind === 'store' ? { url: storeIcon(), scaledSize: new google.maps.Size(40, 40), anchor: new google.maps.Point(20, 20) } : { path: google.maps.SymbolPath.CIRCLE, scale: m.kind === 'courier' ? 9 : 8, fillColor: colors[m.kind], fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 } }));
+      const points: LatLng[] = [...markers, ...(route || []).map(([lng, lat]) => ({ lat, lng }))];
+      if (fit && points.length > 1) { const b = new google.maps.LatLngBounds(); points.forEach(p => b.extend(p)); map.fitBounds(b, 56); }
       else if (!picker && markers[0]) map.setCenter(markers[0]);
     },
     panTo: p => map.panTo(p),
-    destroy: () => { window.clearTimeout(timer); drawn.forEach(m => m.setMap(null)); },
+    destroy: () => { window.clearTimeout(timer); drawn.forEach(m => m.setMap(null)); line?.setMap(null); },
   };
 }
 
@@ -91,14 +106,26 @@ async function openFreeMapEngine(el: HTMLElement, center: LatLng | null | undefi
   if (picker) map.on('moveend', () => { const c = map.getCenter(); onIdle({ lat: c.lat, lng: c.lng }); });
   let drawn: any[] = [];
   return {
-    setMarkers(markers, fit) {
+    setMarkers(markers, fit, _picker, route) {
       drawn.forEach(m => m.remove());
+      // Road geometry from the routing API only (never a straight line between the points).
+      const data = { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: route || [] } };
+      const source = map.getSource('fayz-route');
+      if (source) source.setData(data);
+      else if (route?.length) {
+        map.addSource('fayz-route', { type: 'geojson', data });
+        map.addLayer({ id: 'fayz-route-casing', type: 'line', source: 'fayz-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#FFFFFF', 'line-width': 9 } });
+        map.addLayer({ id: 'fayz-route-line', type: 'line', source: 'fayz-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE_COLOR, 'line-width': 5 } });
+      }
       drawn = markers.map(m => {
         const dot = document.createElement('div');
-        dot.className = `map-dot map-dot-${m.kind}`; dot.title = m.title; dot.setAttribute('aria-label', m.title); dot.style.background = colors[m.kind];
+        dot.className = `map-dot map-dot-${m.kind}`; dot.title = m.title; dot.setAttribute('aria-label', m.title); dot.setAttribute('role', 'img');
+        if (m.kind === 'store') { const img = document.createElement('img'); img.src = storeIcon(); img.alt = ''; dot.appendChild(img); }
+        else dot.style.background = colors[m.kind];
         return new ml.Marker({ element: dot }).setLngLat([m.lng, m.lat]).addTo(map);
       });
-      if (fit && markers.length > 1) { const b = new ml.LngLatBounds(); markers.forEach(m => b.extend([m.lng, m.lat])); map.fitBounds(b, { padding: 56, maxZoom: 16, duration: 0 }); }
+      const points: [number, number][] = [...markers.map(m => [m.lng, m.lat] as [number, number]), ...(route || [])];
+      if (fit && points.length > 1) { const b = new ml.LngLatBounds(); points.forEach(p => b.extend(p)); map.fitBounds(b, { padding: 64, maxZoom: 16, duration: 0 }); }
       else if (!picker && markers[0]) map.jumpTo({ center: [markers[0].lng, markers[0].lat], zoom: Math.max(map.getZoom(), 15) });
     },
     panTo: p => map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16), duration: 400 }),
@@ -110,7 +137,7 @@ async function openFreeMapEngine(el: HTMLElement, center: LatLng | null | undefi
  * Map with markers. In picker mode the map moves under a fixed centre pin and `onPick` receives the centre
  * after each pan; `onAddress` receives a reverse-geocoded address only on Google (OpenFreeMap has no geocoder).
  */
-export function MapView({ apiKey, center, markers = [], picker, onPick, onAddress, fit, className = '' }: { apiKey?: string; center?: LatLng | null; markers?: MapMarker[]; picker?: boolean; onPick?: (p: LatLng) => void; onAddress?: (address: string) => void; fit?: boolean; className?: string }) {
+export function MapView({ apiKey, center, markers = [], route = null, picker, onPick, onAddress, fit, className = '' }: { apiKey?: string; center?: LatLng | null; markers?: MapMarker[]; route?: RouteLine | null; picker?: boolean; onPick?: (p: LatLng) => void; onAddress?: (address: string) => void; fit?: boolean; className?: string }) {
   const box = useRef<HTMLDivElement>(null);
   const engine = useRef<Engine | null>(null);
   const callbacks = useRef({ onPick, onAddress }); callbacks.current = { onPick, onAddress };
@@ -135,7 +162,7 @@ export function MapView({ apiKey, center, markers = [], picker, onPick, onAddres
   }, [apiKey]);
 
   useEffect(() => { if (state === 'ready' && center && picker) engine.current?.panTo(center); }, [state, center?.lat, center?.lng]);
-  useEffect(() => { if (state === 'ready') engine.current?.setMarkers(markers, !!fit, !!picker); }, [state, JSON.stringify(markers)]);
+  useEffect(() => { if (state === 'ready') engine.current?.setMarkers(markers, !!fit, !!picker, route); }, [state, JSON.stringify(markers), route]);
 
   if (state === 'failed') {
     // Every known point is listed with its own link, so courier and destination stay usable without a map.

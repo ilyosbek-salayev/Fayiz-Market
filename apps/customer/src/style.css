@@ -43,14 +43,6 @@
 .block { min-width: 0; }
 
 /* Hero — the one expressive moment: the bag from the Fayz mark, cropped large. */
-.hero { position: relative; overflow: hidden; isolation: isolate; border-radius: var(--r-lg); background: var(--hero); color: var(--on-hero); padding: 24px 22px 22px; min-height: 196px; display: flex; align-items: flex-end; }
-.hero-copy { position: relative; z-index: 1; display: grid; gap: 10px; justify-items: start; max-width: min(74%, 440px); }
-.hero-copy h1 { overflow-wrap: anywhere; hyphens: auto; }
-.hero-copy p { font-size: 14.5px; line-height: 1.45; opacity: .82; max-width: 30ch; }
-.hero-copy .btn { margin-top: 6px; min-height: 42px; padding: 0 16px; font-size: 14px; background: var(--on-hero); color: var(--hero); }
-.hero-mark { position: absolute; z-index: 0; right: -54px; bottom: -78px; width: 196px; height: auto; fill: none; stroke: var(--hero-mark); stroke-width: 34; stroke-linecap: round; stroke-linejoin: round; transform: rotate(-8deg); }
-.hero-mark .hero-f { stroke: var(--hero-line); stroke-width: 40; opacity: .14; }
-.hero-mark path:first-child { fill: var(--hero-mark); fill-opacity: .35; }
 
 /* Category tiles (home) */
 .cat-tile { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px 0 8px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; box-shadow: var(--shadow-1); }
@@ -217,8 +209,6 @@
   .pcard-name { font-size: 13px; }
   .price { font-size: 13.5px; }
   .pcard-add { width: 32px; height: 32px; border-radius: 10px; }
-  .hero { padding: 20px 18px 18px; min-height: 176px; }
-  .hero-copy { max-width: 82%; }
   .tab-label { font-size: 10px; }
   .tab-icon { width: 44px; }
   .action-bar { gap: 8px; }
@@ -233,8 +223,6 @@
   .app { --gutter: 24px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
   .pcard-rail { width: 188px; }
-  .hero { min-height: 240px; padding: 36px; }
-  .hero-mark { width: 280px; right: -20px; bottom: -100px; }
   .slide { max-height: 520px; }
   .detail { max-width: 760px; margin: 0 auto; width: 100%; }
   .gallery { border-radius: 0 0 var(--r-lg) var(--r-lg); }
@@ -293,3 +281,48 @@
 .review-meta { display: flex; align-items: center; gap: 8px; }
 .lock-screen { position: fixed; inset: 0; z-index: 80; display: grid; align-content: center; justify-items: center; gap: 14px; padding: 32px 24px calc(32px + env(safe-area-inset-bottom)); background: var(--bg); text-align: center; }
 .lock-screen .btn { max-width: 360px; }
+
+/* ---------- V1 storefront: header, location strip, store map screen, order payment ---------- */
+.app-header .brand .brand-mark { border-radius: 12px; box-shadow: 0 0 0 1px var(--line); }
+.brand > div { min-width: 0; }
+.brand strong, .brand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-go { width: 48px; height: 48px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-1); color: var(--text); }
+.home-top { display: grid; gap: 10px; }
+.loc-strip { display: grid; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); box-shadow: var(--shadow-1); overflow: hidden; }
+.loc-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px 8px 10px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.loc-row + .loc-row { border-top: 1px solid var(--line); }
+.loc-row:active { background: var(--surface-2); }
+.loc-row > svg { color: var(--subtle); }
+.loc-ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-ink); }
+.loc-ic-user { background: #E6EEFD; color: #1C4CB0; }
+[data-theme='black'] .loc-ic-user { background: #1D2B4A; color: #9DBBFF; }
+.loc-ic .spinner { width: 16px; height: 16px; }
+.loc-text { display: grid; gap: 1px; min-width: 0; }
+.loc-text small { font-size: 12px; color: var(--muted); }
+.loc-text b { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.loc-text b.loc-action { color: #2560D2; }
+[data-theme='black'] .loc-text b.loc-action { color: #8FB2FF; }
+.loc-dist { font-size: 12.5px; font-weight: 600; color: var(--muted); padding: 4px 8px; border-radius: 99px; background: var(--surface-2); }
+.store-screen { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); }
+.store-top { display: flex; align-items: center; gap: 12px; padding: calc(8px + env(safe-area-inset-top)) var(--gutter) 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.store-top-title { display: grid; min-width: 0; }
+.store-top-title strong { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.store-top-title span { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.store-map { position: relative; flex: 1 1 auto; min-height: 200px; }
+.store-map .map-box.full, .store-map .map-fallback { position: absolute; inset: 0; height: 100%; aspect-ratio: auto; max-height: none; border-radius: 0; border: 0; }
+.store-card { flex: none; display: grid; gap: 10px; padding: 14px var(--gutter) calc(14px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0,0,0,.08); border-radius: 20px 20px 0 0; margin-top: -16px; position: relative; z-index: 2; max-height: 56vh; overflow-y: auto; }
+.route-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.route-stats > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.route-stats strong { font-size: 18px; }
+.route-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.store-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.store-actions .btn { min-width: 0; padding: 0 10px; }
+.store-links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.store-links .link-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
+.attribution { font-size: 11px; }
+.store-empty { flex: 1; display: grid; place-content: center; justify-items: center; text-align: center; gap: 10px; padding: 24px; }
+.order-pay { display: grid; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.order-pay .t-caption svg { vertical-align: -3px; }
+.order-pay .btn { justify-self: start; }
+@media (max-width: 359px) { .store-actions { grid-template-columns: 1fr; } .header-go { width: 44px; height: 44px; } }
+@media (min-width: 720px) { .store-card { max-width: 560px; margin: -16px auto 0; width: 100%; border-radius: 20px 20px 0 0; } }

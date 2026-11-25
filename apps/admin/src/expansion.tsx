@@ -11,7 +11,7 @@ import { EmptyState, Field, Modal, Panel } from './components';
 export type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 export type Delivery = { courierId: number; courierName: string; courierPhone: string; status: string; version: number; declineReason: string; assignedAt: string; acceptedAt: string | null; pickedUpAt: string | null; arrivedAt: string | null; handedOverAt: string | null; confirmedAt: string | null };
 export type OrderExtras = { delivery: Delivery | null; events: { event: string; actorType: string; detail: string; createdAt: string }[]; courierLocation: { lat: number; lng: number; ageSeconds: number } | null; courierRating: { rating: number; body: string } | null; reviews: { id: number; rating: number; body: string; status: string; productName: string }[] };
-type OrderBase = { id: number; status: string; address: string; location: { lat: number; lng: number; details: string } | null };
+type OrderBase = { id: number; status: string; address: string; location: { lat: number; lng: number; details: string } | null; fulfillment?: string };
 type Courier = { id: number; name: string; phone: string; active: number; activeDeliveries: number; rating: number | null };
 
 const eventNames: Record<string, string> = {
@@ -26,9 +26,11 @@ export function OrderDelivery({ order, extras, request, mapsKey, onChanged }: { 
   const [couriers, setCouriers] = useState<Courier[]>([]); const [courierId, setCourierId] = useState(0);
   const [reason, setReason] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const d = extras?.delivery;
-  const canAssign = ['confirmed', 'preparing'].includes(order.status) && (!d || REASSIGNABLE.includes(d.status));
+  const pickup = order.fulfillment === 'pickup';
+  const canAssign = !pickup && ['confirmed', 'preparing'].includes(order.status) && (!d || REASSIGNABLE.includes(d.status));
   useEffect(() => { if (canAssign) request<{ couriers: Courier[] }>('/admin/couriers').then(r => setCouriers(r.couriers.filter(c => c.active))).catch(e => setError(friendlyError(e))); }, [canAssign]);
   const run = async (task: () => Promise<unknown>) => { setBusy(true); setError(''); try { await task(); onChanged(); } catch (e) { setError(friendlyError(e)); } finally { setBusy(false); } };
+  if (pickup) return <section className="od-block"><h4>Qabul qilish</h4><div className="facts"><div><Icon name="store" size={18} /><span>Mijoz buyurtmani doʻkondan oʻzi olib ketadi — kuryer kerak emas. Tayyor boʻlganda holatni «Olib ketishga tayyor»ga oʻtkazing.</span></div></div></section>;
   const markers: MapMarker[] = [];
   if (order.location) markers.push({ lat: order.location.lat, lng: order.location.lng, kind: 'destination', title: 'Mijoz manzili' });
   if (extras?.courierLocation) markers.push({ lat: extras.courierLocation.lat, lng: extras.courierLocation.lng, kind: 'courier', title: 'Kuryer' });
@@ -117,34 +119,61 @@ export function PasswordPanel({ request }: { request: Request }) {
 }
 
 // ---------------------------------------------------------------- Integrations
-type Integration = { key: string; name: string; purpose: string; billing: string; setup: string[]; testable: boolean; configured: boolean; fields: { key: string; label: string; placeholder?: string; hint?: string; value: string }[]; secrets: { name: string; present: boolean }[]; lastCheck: { ok: boolean; message: string; at: string } | null };
+type SecretInfo = { name: string; label: string; hint?: string; multiline: boolean; present: boolean; source: 'panel' | 'cloudflare' | null; stored: boolean; unreadable: boolean; updatedAt: string | null };
+type Integration = { key: string; group: 'maps' | 'auth' | 'notify' | 'payments'; name: string; purpose: string; billing: string; setup: string[]; testable: boolean; testKind: 'live' | 'sandbox' | 'internal'; configured: boolean; status: 'configured' | 'not_configured' | 'error'; enabled: boolean; toggleable: boolean; fields: { key: string; label: string; placeholder?: string; hint?: string; options?: [string, string][]; value: string }[]; secrets: SecretInfo[]; lastCheck: { ok: boolean; message: string; at: string; kind?: string } | null };
+const groups: [Integration['group'], string][] = [['payments', 'Toʻlovlar'], ['maps', 'Xarita va marshrut'], ['auth', 'Kirish va tasdiqlash'], ['notify', 'Bildirishnomalar']];
+const statusText = { configured: 'Ulangan', not_configured: 'Sozlanmagan', error: 'Xato' } as const;
+const statusBadge = { configured: 'badge-ok', not_configured: 'badge-preparing', error: 'badge-cancelled' } as const;
+const testKindText: Record<string, string> = { live: 'Haqiqiy ulanish', sandbox: 'Sandbox', internal: 'Ichki tekshiruv' };
 export function IntegrationsView({ request }: { request: Request }) {
-  const [items, setItems] = useState<Integration[] | null>(null); const [error, setError] = useState('');
-  const load = useCallback(() => request<{ integrations: Integration[] }>('/admin/integrations').then(r => setItems(r.integrations)).catch(e => setError(friendlyError(e))), []);
+  const [data, setData] = useState<{ masterKey: { configured: boolean; id: string | null }; integrations: Integration[] } | null>(null); const [error, setError] = useState('');
+  const load = useCallback(() => request<{ masterKey: { configured: boolean; id: string | null }; integrations: Integration[] }>('/admin/integrations').then(r => { setData(r); setError(''); }).catch(e => setError(friendlyError(e))), []);
   useEffect(() => { void load(); }, [load]);
-  if (error && !items) return <Panel><EmptyState icon="alert" title="Integratsiyalar yuklanmadi" text={error} /></Panel>;
-  if (!items) return <div className="integrations">{[0, 1, 2].map(i => <div key={i} className="panel"><div className="skeleton" style={{ height: 90 }} /></div>)}</div>;
+  if (error && !data) return <Panel><EmptyState icon="alert" title="Integratsiyalar yuklanmadi" text={error} /></Panel>;
+  if (!data) return <div className="integrations">{[0, 1, 2].map(i => <div key={i} className="panel"><div className="skeleton" style={{ height: 90 }} /></div>)}</div>;
   return <div className="integrations">
-    <div className="banner banner-info"><Icon name="shield" size={20} /><div><strong>Maxfiy kalitlar bu yerda saqlanmaydi</strong>Ochiq qiymatlar (masalan, cheklangan Google Maps kaliti) shu yerda kiritiladi. Server kalitlari faqat Cloudflare secret sifatida, koʻrsatilgan buyruq bilan qoʻshiladi — panel ularning bor-yoʻqligini koʻrsatadi, qiymatini hech qachon koʻrsatmaydi.</div></div>
-    {items.map(item => <IntegrationCard key={item.key} item={item} request={request} onSaved={load} />)}
+    {data.masterKey.configured
+      ? <div className="banner banner-info"><Icon name="shield" size={20} /><div><strong>Kalitlar shifrlangan holda saqlanadi</strong>Panelda kiritilgan maxfiy kalitlar AES-256-GCM bilan shifrlanadi; shifrlash kaliti Cloudflare secret’da (bazada emas). Kiritilgan qiymat hech qachon qayta koʻrsatilmaydi — faqat «kiritilgan» holati.</div></div>
+      : <div className="banner banner-warning"><Icon name="lock" size={20} /><div><strong>Shifrlash kaliti oʻrnatilmagan</strong>Maxfiy kalitlarni paneldan saqlash uchun bir martalik sozlash kerak (dasturchi yoki egasi bajaradi): <code>openssl rand -base64 32 | npx wrangler secret put INTEGRATIONS_MASTER_KEY --env production</code> (apps/api papkasida). Ungacha kalitlar faqat Cloudflare secret orqali qoʻshiladi; ochiq maydonlar ishlayveradi.</div></div>}
+    {groups.map(([group, title]) => { const items = data.integrations.filter(i => i.group === group); return items.length ? <section key={group} className="integration-group"><h2 className="group-title">{title}</h2>{items.map(item => <IntegrationCard key={item.key} item={item} request={request} canStore={data.masterKey.configured} onSaved={load} />)}</section> : null; })}
   </div>;
 }
-function IntegrationCard({ item, request, onSaved }: { item: Integration; request: Request; onSaved: () => void }) {
+function IntegrationCard({ item, request, canStore, onSaved }: { item: Integration; request: Request; canStore: boolean; onSaved: () => void }) {
   const [values, setValues] = useState(Object.fromEntries(item.fields.map(f => [f.key, f.value])));
-  const [busy, setBusy] = useState(false); const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null); const [open, setOpen] = useState(!item.configured);
-  const save = async () => { setBusy(true); setResult(null); try { await request(`/admin/integrations/${item.key}`, { method: 'PUT', body: JSON.stringify(values) }); setResult({ ok: true, message: 'Saqlandi' }); onSaved(); } catch (e) { setResult({ ok: false, message: friendlyError(e) }); } finally { setBusy(false); } };
-  const test = async () => { setBusy(true); setResult(null); try { const r = await request<{ ok: boolean; message: string }>(`/admin/integrations/${item.key}/test`, { method: 'POST' }); setResult(r); onSaved(); } catch (e) { setResult({ ok: false, message: friendlyError(e) }); } finally { setBusy(false); } };
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false); const [result, setResult] = useState<{ ok: boolean; message: string; kind?: string } | null>(null); const [open, setOpen] = useState(item.status !== 'configured' && item.group === 'payments');
+  useEffect(() => setValues(Object.fromEntries(item.fields.map(f => [f.key, f.value]))), [JSON.stringify(item.fields)]);
+  const fieldsDirty = item.fields.some(f => (values[f.key] ?? '') !== f.value);
+  const run = async (task: () => Promise<{ ok?: boolean; message?: string; kind?: string } | unknown>, done: string) => { setBusy(true); setResult(null); try { const r = await task() as { ok?: boolean; message?: string; kind?: string }; setResult(r && typeof r.ok === 'boolean' && r.message ? { ok: r.ok, message: r.message, kind: r.kind } : { ok: true, message: done }); onSaved(); } catch (e) { setResult({ ok: false, message: friendlyError(e) }); } finally { setBusy(false); } };
+  const typed = Object.fromEntries(Object.entries(secrets).filter(([, v]) => v.trim()));
   return <section className="panel integration">
-    <div className="integration-head"><div><h3>{item.name}</h3><p className="t-caption">{item.purpose}</p></div><span className={`badge ${item.configured ? 'badge-ok' : 'badge-preparing'}`}>{item.configured ? 'Ulangan' : 'Sozlanmagan'}</span></div>
-    {item.lastCheck && <p className={`t-caption check-line ${item.lastCheck.ok ? 'ok' : 'bad'}`}><Icon name={item.lastCheck.ok ? 'check' : 'alert'} size={14} />Oxirgi tekshiruv ({formatDateTime(item.lastCheck.at)}): {item.lastCheck.message}</p>}
+    <div className="integration-head"><div><h3>{item.name}</h3><p className="t-caption">{item.purpose}</p></div><div className="badges"><span className={`badge ${statusBadge[item.status]}`}>{statusText[item.status]}</span>{item.toggleable && <span className={`badge plain ${item.enabled ? 'badge-ok' : ''}`}>{item.enabled ? 'Faol' : 'Oʻchiq'}</span>}</div></div>
+    {item.lastCheck && <p className={`t-caption check-line ${item.lastCheck.ok ? 'ok' : 'bad'}`}><Icon name={item.lastCheck.ok ? 'check' : 'alert'} size={14} />Oxirgi tekshiruv ({formatDateTime(item.lastCheck.at)}{item.lastCheck.kind ? `, ${testKindText[item.lastCheck.kind] || item.lastCheck.kind}` : ''}): {item.lastCheck.message}</p>}
     <button type="button" className="link-btn" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? 'Yopish' : 'Sozlash'}<Icon name="chevron" size={16} /></button>
     {open && <div className="form-stack">
-      <p className="t-caption"><strong>Toʻlov:</strong> {item.billing}</p>
-      {item.fields.length > 0 && <div className="form-grid">{item.fields.map(f => <Field key={f.key} label={f.label} hint={f.hint}><input className="input" value={values[f.key] || ''} placeholder={f.placeholder} onChange={e => setValues({ ...values, [f.key]: e.target.value })} autoComplete="off" spellCheck={false} /></Field>)}</div>}
-      {item.secrets.length > 0 && <ul className="secret-list">{item.secrets.map(s => <li key={s.name}><code>{s.name}</code><span className={`badge plain ${s.present ? 'badge-ok' : ''}`}>{s.present ? 'Oʻrnatilgan' : 'Yoʻq'}</span></li>)}</ul>}
+      <p className="t-caption"><strong>Narx:</strong> {item.billing}</p>
+      {item.fields.length > 0 && <div className="form-grid">{item.fields.map(f => <Field key={f.key} label={f.label} hint={f.hint}>{f.options
+        ? <select className="input" value={values[f.key] || ''} onChange={e => setValues({ ...values, [f.key]: e.target.value })}>{f.options.map(([v, label]) => <option key={v} value={v}>{label}</option>)}</select>
+        : <input className="input" value={values[f.key] || ''} placeholder={f.placeholder} onChange={e => setValues({ ...values, [f.key]: e.target.value })} autoComplete="off" spellCheck={false} />}</Field>)}</div>}
+      {item.fields.length > 0 && <div className="form-actions"><button type="button" className="btn btn-secondary" disabled={busy || !fieldsDirty} onClick={() => run(() => request(`/admin/integrations/${item.key}`, { method: 'PUT', body: JSON.stringify(values) }), 'Saqlandi')}>Maydonlarni saqlash</button></div>}
+      {item.secrets.length > 0 && <div className="secret-block">
+        <span className="field-label">Maxfiy kalitlar</span>
+        <ul className="secret-list">{item.secrets.map(sc => <li key={sc.name}>
+          <div className="secret-head"><div><strong>{sc.label}</strong><code>{sc.name}</code></div>
+            <span className={`badge plain ${sc.unreadable ? 'badge-cancelled' : sc.present ? 'badge-ok' : ''}`}>{sc.unreadable ? 'Shifr kaliti mos emas' : sc.source === 'panel' ? `Kiritilgan · panel${sc.updatedAt ? ' · ' + formatDateTime(sc.updatedAt) : ''}` : sc.source === 'cloudflare' ? 'Kiritilgan · Cloudflare' : 'Kiritilmagan'}</span></div>
+          {canStore && (sc.multiline
+            ? <textarea className="input mono" rows={4} placeholder={sc.present ? 'Almashtirish uchun yangi qiymatni joylang' : sc.hint || 'Qiymatni joylang'} value={secrets[sc.name] || ''} onChange={e => setSecrets({ ...secrets, [sc.name]: e.target.value })} autoComplete="off" spellCheck={false} />
+            : <input className="input mono" type="password" placeholder={sc.present ? '•••••••• (almashtirish uchun yangisini kiriting)' : sc.hint || 'Qiymat'} value={secrets[sc.name] || ''} onChange={e => setSecrets({ ...secrets, [sc.name]: e.target.value })} autoComplete="new-password" spellCheck={false} />)}
+          {canStore && sc.stored && <button type="button" className="link-btn danger-text" disabled={busy} onClick={() => run(() => request(`/admin/integrations/${item.key}/secrets/${sc.name}`, { method: 'DELETE' }), 'Kalit oʻchirildi')}>Paneldagi qiymatni oʻchirish</button>}
+        </li>)}</ul>
+        {canStore && <div className="form-actions"><button type="button" className="btn btn-primary" disabled={busy || !Object.keys(typed).length} onClick={() => run(async () => { await request(`/admin/integrations/${item.key}/secrets`, { method: 'PUT', body: JSON.stringify(typed) }); setSecrets({}); }, 'Kalitlar shifrlangan holda saqlandi')}><Icon name="lock" size={18} />Kalitlarni saqlash</button></div>}
+      </div>}
       <ol className="setup-steps">{item.setup.map((step, i) => <li key={i}>{step}</li>)}</ol>
-      {result && <div className={`banner ${result.ok ? 'banner-success' : 'banner-error'}`}><Icon name={result.ok ? 'check' : 'alert'} size={20} /><div>{result.message}</div></div>}
-      <div className="form-actions">{item.fields.length > 0 && <button type="button" className="btn btn-primary" disabled={busy} onClick={save}>Saqlash</button>}{item.testable && <button type="button" className="btn btn-secondary" disabled={busy || !item.configured} onClick={test}>{busy ? <span className="spinner" /> : <Icon name="plug" size={18} />}Tekshirish</button>}</div>
+      {result && <div className={`banner ${result.ok ? 'banner-success' : 'banner-error'}`}><Icon name={result.ok ? 'check' : 'alert'} size={20} /><div>{result.kind && <strong>{testKindText[result.kind] || result.kind}</strong>}{result.message}</div></div>}
+      <div className="form-actions">
+        {item.testable && <button type="button" className="btn btn-secondary" disabled={busy || !item.configured} onClick={() => run(() => request(`/admin/integrations/${item.key}/test`, { method: 'POST' }), '')}>{busy ? <span className="spinner" /> : <Icon name="plug" size={18} />}Ulanishni tekshirish</button>}
+        {item.toggleable && <button type="button" className={`btn ${item.enabled ? 'btn-quiet' : 'btn-primary'}`} disabled={busy || (!item.enabled && !item.configured)} onClick={() => run(() => request(`/admin/integrations/${item.key}`, { method: 'PUT', body: JSON.stringify({ enabled: !item.enabled }) }), item.enabled ? 'Oʻchirildi — checkoutda koʻrinmaydi' : 'Faollashtirildi — checkoutda koʻrinadi')}>{item.enabled ? 'Oʻchirish' : 'Faollashtirish'}</button>}
+      </div>
     </div>}
   </section>;
 }
