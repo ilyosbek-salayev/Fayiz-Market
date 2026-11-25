@@ -27,6 +27,8 @@ try {
   const mark = await page.$eval('.login-brand img.brand-mark', el => ({ src: el.getAttribute('src'), w: el.naturalWidth }));
   check(mark.w > 0 && /mark-light/.test(mark.src), 'packaged login screen shows the new brand symbol', JSON.stringify(mark));
   check((await page.evaluate(() => document.body.innerText)).includes('Fayz Market V1'), 'login footer reads "Fayz Market V1"');
+  const login = await page.evaluate(() => ({ text: document.body.innerText, inputs: document.querySelectorAll('input').length }));
+  check(login.inputs === 2 && !/server|API|sinov/i.test(login.text), 'desktop login: only email + password + Kirish (no server/API control)');
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
   await browser.disconnect();
 } catch (e) { check(false, 'desktop brand check completed', String(e)); }
