@@ -8,7 +8,7 @@ import puppeteer from 'puppeteer-core';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -21,6 +21,11 @@ const PORT = Number(process.env.QA_WORKER_PORT || 8799), MOCK_PORT = Number(proc
 const API = `http://127.0.0.1:${PORT}`, MOCK = `http://127.0.0.1:${MOCK_PORT}`;
 const SHOTS = path.join(ROOT, process.env.SHOTS || 'docs/v1/screenshots');
 mkdirSync(SHOTS, { recursive: true });
+// Safety: a bundle built for packaging (VITE_API_URL=production) would send this script's test logins to production.
+for (const app of ['customer', 'admin']) {
+  const assets = path.join(ROOT, 'apps', app, 'dist', 'assets');
+  for (const f of readdirSync(assets).filter(f => f.endsWith('.js'))) if (/https:\/\/[a-z0-9.-]+\.workers\.dev/.test(readFileSync(path.join(assets, f), 'utf8'))) { console.error(`apps/${app}/dist has a hard-coded production API URL (${f}). Rebuild without VITE_API_URL: npm run build -w @fayz/${app}`); process.exit(2); }
+}
 const results = []; let failed = 0;
 const check = (ok, label, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${label}${!ok && extra ? ' — ' + extra : ''}`); if (!ok) failed++; console.log(results.at(-1)); };
 const pause = ms => new Promise(r => setTimeout(r, ms));

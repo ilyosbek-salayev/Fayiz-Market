@@ -1,0 +1,14 @@
+PASS uz.fayzmarket.customer: installed 1.2.0 (versionCode 7)
+PASS uz.fayzmarket.admin: installed 1.2.0 (versionCode 7)
+PASS customer APK: adaptive launcher icon (new brand)
+PASS APK WebView: new brand symbol and route-to-store header button
+PASS APK WebView: store location, user location and admin banner
+PASS Android location permission dialog shown on "Aniqlash" (only when asked)
+PASS one-shot GPS location shown on home
+PASS store map (MapLibre in the APK WebView) with road route, distance and time
+PASS Android system Back closes the map and stays in the app
+PASS checkout in the APK: fulfilment and payment choices
+PASS admin APK login: new brand symbol
+PASS admin APK: Brend va koʻrinish + Doʻkon joylashuvi panels
+
+12/12 passed (EMULATOR, not a physical phone)

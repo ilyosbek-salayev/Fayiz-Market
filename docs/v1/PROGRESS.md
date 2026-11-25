@@ -16,3 +16,14 @@
 - 2026-11-22: `adb devices -l` listed no phone. Physical Android UI remains unverified. Production deployment and Google Play untouched.
 
 Next action: connect an Android phone, install both files from `dist/apk/`, keep the local Worker running using `BUILD_INSTRUCTIONS.md`, and perform the listed UI workflow. Fix any device-specific defect found. Then decide separately on HTTPS production and release signing.
+
+## Fayz Market V1 (texnik 1.2.0) — 2026-11-25, `main`
+
+- Faza A (audit): mavjud funksiyalar, 4 ta yangi logo fayli, Workerlar holati (faqat GET) va migratsiyalar oʻrganildi → `FAYZ_MARKET_V1_REQUIREMENTS.md`.
+- Faza B (branding): tasdiqlangan logolar `assets/brand/source/` ga nusxalandi; `scripts/brand/render-brand.mjs` ilova belgisi, splash, Android launcher/status, desktop ikonkasini hosil qiladi; admin «Brend va koʻrinish» (`2724c25`, `04a8033`).
+- Faza C/D (home, xarita): header, doʻkon/joylashuv qatorlari, doʻkon xaritasi + marshrut (ORS/Google), Android Back.
+- Faza E (bannerlar), F (toʻlovlar: naqd/terminal/bank/olib ketish, holat mashinasi, Payme/Click), G (shifrlangan integratsiya kalitlari) — migratsiya `0007_v1_storefront.sql` (`846e3b2`).
+- Faza H (QA): V1 API 136/136, V1 UI 57/57, unit 68/68, oldingi toʻplamlar hammasi PASS (birinchi yugurishda topilgan 1.1.x admin moslik xatosi tuzatildi: `8799a70`), eski Worker + yangi sxema 129/129, emulyator 12/12 + 12/12, desktop 11/11 + 4/4 → `TEST_RESULTS.md`.
+- Faza I (release): APK vc 7 (`8799a70`), DMG/EXE (`9b17653`); 1.1.2 RC fayllari Savatga koʻchirildi → `RELEASE_REPORT.md`, `dist/RELEASE_MANIFEST.md`.
+- Faza J (handover): `CLIENT_HANDOVER.md`, `ADMIN_INTEGRATIONS.md`, `BANNERS_AND_PAYMENTS.md`, `STORE_LOCATION_AND_MAP.md`, `BRANDING_AND_UI.md`.
+- Ochiq: production migratsiya + deploy + `INTEGRATIONS_MASTER_KEY` (egasining ruxsati), GitHub push (egasi), haqiqiy telefon va Windows sinovi, Payme/Click shartnomasi.

@@ -1,0 +1,59 @@
+PASS 360px: header shows the new light symbol
+PASS 360px: right header icon is "route to store" (no duplicate search)
+PASS 360px: no horizontal overflow on home
+PASS 360px: store and user location rows
+PASS 360px: two admin banners with dots
+PASS 360px: no clipped banner/header text
+PASS 390px: header shows the new light symbol
+PASS 390px: right header icon is "route to store" (no duplicate search)
+PASS 390px: no horizontal overflow on home
+PASS 390px: store and user location rows
+PASS 390px: two admin banners with dots
+PASS 390px: no clipped banner/header text
+PASS 412px: header shows the new light symbol
+PASS 412px: right header icon is "route to store" (no duplicate search)
+PASS 412px: no horizontal overflow on home
+PASS 412px: store and user location rows
+PASS 412px: two admin banners with dots
+PASS 412px: no clipped banner/header text
+PASS 768px: header shows the new light symbol
+PASS 768px: right header icon is "route to store" (no duplicate search)
+PASS 768px: no horizontal overflow on home
+PASS 768px: store and user location rows
+PASS 768px: two admin banners with dots
+PASS 768px: no clipped banner/header text
+PASS header icon opens the store map screen
+PASS store screen: name, address, navigation and locate actions
+PASS store screen: MapLibre/OpenFreeMap map rendered
+PASS route: real road distance and time from the routing API
+PASS route: provider attribution shown
+PASS Back closes the map screen
+PASS home scroll position kept after Back
+PASS home shows the detected location and distance to store
+PASS banner CTA "store" opens the map
+PASS map back button returns home
+PASS banner CTA "category" opens the catalogue filtered
+PASS location denied: app keeps working, manual pin sheet opens with explanation
+PASS no routing service: no fake road, straight-line distance labelled, external navigation offered
+PASS map still drawn
+PASS dark theme: header switches to the dark symbol automatically
+PASS checkout: fulfilment and the three enabled payment methods
+PASS checkout: unconfigured online providers are not shown
+PASS checkout: states that ordering is not paying
+PASS pickup: store address shown, delivery address/map hidden
+PASS order placed: pickup + bank transfer details + "I transferred" action
+PASS customer reports transfer → "Toʻlov tekshirilmoqda"
+PASS admin sidebar shows the new symbol
+PASS settings: brand, store location and payment panels
+PASS admin: logo uploaded and previewed before saving
+PASS admin: brand saved with the uploaded light logo (R2)
+PASS customer shows the new logo without a new APK (cached for offline)
+PASS admin: revert to the approved built-in logo
+PASS admin: banner created in the editor appears in the storefront
+PASS integrations: encrypted-key notice, payment providers, no secret values on screen
+PASS admin order: payment method, status and record action
+PASS admin: recording the full amount marks the order paid
+PASS admin 390px: settings without horizontal overflow
+PASS admin dark theme: dark symbol
+
+57/57 passed

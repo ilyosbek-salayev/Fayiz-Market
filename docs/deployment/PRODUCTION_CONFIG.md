@@ -114,3 +114,11 @@ npx wrangler d1 export fayz-market --env production --remote --output <fayl>.sql
 ```
 
 D1 Time Travel ham istalgan oldingi holatga qaytarish imkonini beradi: Free planda oxirgi 7 kun, Paid planda 30 kun.
+
+## Fayz Market V1 (1.2.0) — production uchun kutilayotgan oʻzgarishlar (2026-11-25, hali bajarilmagan)
+
+- Migratsiya `0007_v1_storefront.sql` (faqat qoʻshimcha: bannerlar, logo tarixi, buyurtma toʻlov/qabul ustunlari va trigger’lar, `payment_transactions`, `integration_secrets`). Eski Worker yangi sxemada ishlashi tasdiqlangan (`docs/v1/evidence/old-worker-on-0007/`), shuning uchun tartib: zaxira → migratsiya → deploy.
+- Yangi Cloudflare secret: `INTEGRATIONS_MASTER_KEY` (32 bayt, base64) — paneldan kiritilgan integratsiya kalitlarini AES-256-GCM bilan shifrlaydi; D1’da saqlanmaydi.
+- Ixtiyoriy secretlar (paneldan ham kiritiladi): `ORS_API_KEY`, `PAYME_KEY`, `PAYME_TEST_KEY`, `CLICK_SECRET_KEY`.
+- Yangi ochiq endpointlar: `GET /storefront`, `POST /store/route`, `POST /payments/payme`, `POST /payments/click/prepare`, `POST /payments/click/complete`.
+- Aniq buyruqlar va rollback: `docs/v1/RELEASE_REPORT.md` §4.

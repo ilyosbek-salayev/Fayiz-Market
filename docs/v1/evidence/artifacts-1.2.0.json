@@ -1,0 +1,97 @@
+[
+  {
+    "file": "dist/apk/v1.2.0/fayz-market-customer-debug.apk",
+    "bytes": 1145734,
+    "sha256": "59462ea7690eddc3e98b7447b4afcfa695990485165987f2666692fb8d03e7a9",
+    "packageId": "uz.fayzmarket.customer",
+    "versionCode": 7,
+    "versionName": "1.2.0",
+    "minSdk": 23,
+    "targetSdk": 28,
+    "architecture": "none (Java/WebView only — runs on every ABI)",
+    "signing": {
+      "verified": true,
+      "schemes": [
+        "v1",
+        "v2"
+      ],
+      "dn": "C=US, O=Android, CN=Android Debug",
+      "certSha256": "93f0f84579729ab0348d6910253a85281326811b66c7ad98f788e0a5c2f89851"
+    },
+    "bundledWebAssets": [
+      "index-C2EyrC61.css",
+      "index-CIjzmvan.js",
+      "logo-dark-CEQCOdyE.webp",
+      "logo-light-DyUyFmim.webp",
+      "maplibre-gl-AgMWWGR8.css",
+      "maplibre-gl-CL_19ex-.js",
+      "maplibre-gl-worker-1K9-aB_Z.js",
+      "mark-dark-BD0r5ltP.webp",
+      "mark-light-BtUb2fYW.webp",
+      "onest-cyrillic-B4DTQzs9.woff2",
+      "onest-cyrillic-ext-D3MbBdlY.woff2",
+      "onest-latin-BXvespbm.woff2",
+      "onest-latin-ext-BB1CCQzJ.woff2"
+    ]
+  },
+  {
+    "file": "dist/apk/v1.2.0/fayz-market-admin-debug.apk",
+    "bytes": 1204235,
+    "sha256": "37ff58af11f923ffaf7fa5de0cc2710f446d2e82754f3c2efa7423554a89e6dc",
+    "packageId": "uz.fayzmarket.admin",
+    "versionCode": 7,
+    "versionName": "1.2.0",
+    "minSdk": 23,
+    "targetSdk": 28,
+    "architecture": "none (Java/WebView only — runs on every ABI)",
+    "signing": {
+      "verified": true,
+      "schemes": [
+        "v1",
+        "v2"
+      ],
+      "dn": "C=US, O=Android, CN=Android Debug",
+      "certSha256": "93f0f84579729ab0348d6910253a85281326811b66c7ad98f788e0a5c2f89851"
+    },
+    "bundledWebAssets": [
+      "index-CdguPw4w.js",
+      "index-DfhwTU1_.css",
+      "logo-dark-CEQCOdyE.webp",
+      "logo-light-DyUyFmim.webp",
+      "maplibre-gl-AgMWWGR8.css",
+      "maplibre-gl-CL_19ex-.js",
+      "maplibre-gl-worker-1K9-aB_Z.js",
+      "mark-dark-BD0r5ltP.webp",
+      "mark-light-BtUb2fYW.webp",
+      "onest-cyrillic-B4DTQzs9.woff2",
+      "onest-cyrillic-ext-D3MbBdlY.woff2",
+      "onest-latin-BXvespbm.woff2",
+      "onest-latin-ext-BB1CCQzJ.woff2"
+    ]
+  },
+  {
+    "file": "dist/desktop/fayz-market-admin-1.2.0-macos-arm64.dmg",
+    "bytes": 121761024,
+    "sha256": "3b3f8fc58b161d8a07c0f55e1a58f2d6379b0cae2208fd17f9ec339d259624d8",
+    "app": "Fayz Market Admin.app",
+    "bundleId": "uz.fayzmarket.admin",
+    "version": "1.2.0",
+    "architecture": "arm64",
+    "signing": {
+      "signature": "adhoc",
+      "teamIdentifier": "not set",
+      "gatekeeper": "/var/folders/f8/8gj08s151vvdxm_6v5yrjx400000gn/T/fayz-dmg-XiNQ5M/Fayz Market Admin.app: rejected"
+    },
+    "hdiutilVerify": "VALID"
+  },
+  {
+    "file": "dist/desktop/fayz-market-admin-1.2.0-windows-x64-setup.exe",
+    "bytes": 122460787,
+    "sha256": "ba056588bbc3d96d521fc3b2199b785d3886732d21c4710db8c81af53aecd99d",
+    "format": "PE32 executable (GUI) Intel 80386, for MS Windows, Nullsoft Installer self-extracting archive",
+    "installer": "NSIS",
+    "signing": {
+      "authenticode": "not signed"
+    }
+  }
+]
