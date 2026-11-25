@@ -133,4 +133,8 @@ Zaxira `dist/backups/fayz-market-before-1.2.1-20261125-075843.sql` → migratsiy
 - Yangi endpoint: `POST /auth/phone/login`. Ishlashi uchun SMS provayderi (Eskiz: `ESKIZ_EMAIL`, `ESKIZ_PASSWORD` yoki panel orqali) kerak.
 - Rollback: `npx wrangler rollback e5f9c48e-7760-4dfa-87af-5a7ca1283718 --env production`.
 
+**Git build «Skipped» hodisasi (2026-11-25 03:03Z).** Push’dan keyin `be0e068` va `7c50036` build’lari «Skipped» boʻldi, chunki Workers Builds bitta branch’da eng yangi build’ni qoldirib, oldingilarini oʻtkazib yuboradi. Oxirgi «yangi» build esa **eski** build’dagi «Retry build» edi. U 1.2.0 kodi (`35eaf6f`) ni qayta qurdi va production `31fbb873` da 1.2.0 ga qaytdi. Maʼlumot zarar koʻrmadi: 1.2.0 kodi 0008 sxemasida ishlaydi. Tuzatish: oxirgi `main` commit’i (`7c50036`) build’ida «Retry build» → build `0ef795ce` success → Version `31ac4af9-6b12-45ba-b711-938ce320440f`, read-only smoke 11/11, `phone.codeLogin: true`.
+
+Qoida: «Retry build»ni faqat **eng oxirgi** `main` commit’i build’ida bosing. Eski build’da bosish eski kodni production’ga chiqaradi.
+
 2026-11-25: ortiqcha Worker `fayz-market-api-production` (2026-11-25 hodisasi, deploy `eb2fd9e9`) egasining tasdigʻi bilan oʻchirildi. Akkauntda endi faqat `fayz-market-api` bor.
