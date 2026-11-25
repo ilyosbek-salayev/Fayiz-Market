@@ -150,7 +150,7 @@ try {
   r = await call('/admin/login', { method: 'POST', body: { email: `owner-${stamp}@example.com`, password: 'OwnerPassword-123' } }); const owner = 'Bearer ' + r.data.token;
   await call('/admin/integrations/telegram', { method: 'PUT', auth: owner, body: { telegram_bot_username: 'FayzQaBot' } });
   r = await call('/admin/integrations', { auth: owner });
-  check('integrations: 8 entries, secrets reported only as present', r.data.integrations?.length === 8 && !JSON.stringify(r.data).includes(RESEND_KEY) && !JSON.stringify(r.data).includes('PRIVATE KEY') && r.data.integrations.find(i => i.key === 'email')?.configured === true);
+  check('integrations: all 8 original entries present, secrets reported only as present', ['store_location', 'openfreemap', 'google_maps', 'google_routes', 'telegram', 'sms', 'email', 'fcm'].every(k => r.data.integrations?.some(i => i.key === k)) && !JSON.stringify(r.data).includes(RESEND_KEY) && !JSON.stringify(r.data).includes('PRIVATE KEY') && r.data.integrations.find(i => i.key === 'email')?.configured === true);
   for (const [key, expect] of [['sms', /Eskiz/], ['email', /fayz\.test domeni tasdiqlangan/], ['telegram', /@FayzQaBot/], ['fcm', /fayz-qa-mock/], ['google_routes', /Marshrut/]]) {
     r = await call(`/admin/integrations/${key}/test`, { method: 'POST', auth: owner });
     check(`integration test "${key}" runs against the mock`, r.status === 200 && r.data.ok === true && expect.test(r.data.message), JSON.stringify(r.data));
