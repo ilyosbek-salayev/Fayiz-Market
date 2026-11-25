@@ -53,18 +53,16 @@ const paths = {
   courier: 'M3.5 6.5h10v9h-10zM13.5 9.5h3.8l3.2 3.4v2.6h-7M7 18.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6zM17 18.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6z',
   history: 'M4 12a8 8 0 1 0 2.4-5.7M4 4.5v4h4M12 8v4l2.8 1.8',
   target: 'M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3',
+  directions: 'M12 2.8 21.2 12 12 21.2 2.8 12zM9.5 14v-2.4a1.1 1.1 0 0 1 1.1-1.1h4.2M13 8.4l2 2.1-2 2.1',
+  store: 'M4 9.5V20h16V9.5M3 9.5 5 4h14l2 5.5a2.6 2.6 0 0 1-4.5 1.6 2.6 2.6 0 0 1-4.5 0 2.6 2.6 0 0 1-4.5 0A2.6 2.6 0 0 1 3 9.5zM9.5 20v-5h5v5',
+  card: 'M3.5 6.5h17v11h-17zM3.5 10h17M7 14.5h3',
+  bank: 'M3.5 9.5 12 4l8.5 5.5M5 20h14M6 10.5V17M10 10.5V17M14 10.5V17M18 10.5V17M3.5 20h17',
+  cash: 'M3 7h18v10H3zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 10v.01M18 14v.01',
 } as const;
 export type IconName = keyof typeof paths;
 export function Icon({ name, size = 22, stroke = 1.8, className, filled }: { name: IconName; size?: number; stroke?: number; className?: string; filled?: boolean }) {
   return <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={paths[name]} /></svg>;
 }
 
-/** The Fayz Market mark: the shopping bag with an F, drawn from the launcher icon geometry. */
-export function BrandMark({ size = 36 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 1024 1024" aria-hidden="true" focusable="false" className="brand-mark">
-    <rect width="1024" height="1024" rx="232" fill="var(--accent)" />
-    <path d="M307 379h410l-28 396c-3 42-38 74-80 74H415c-42 0-77-32-80-74z" fill="#fff" stroke="#1E1E1E" strokeWidth="36" strokeLinejoin="round" />
-    <path d="M405 390v-69c0-63 47-112 107-112s107 49 107 112v69" fill="none" stroke="#1E1E1E" strokeWidth="40" strokeLinecap="round" />
-    <path d="M450 487v250m0-250h150m-150 110h124" fill="none" stroke="#1E1E1E" strokeWidth="46" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>;
-}
+/** Brand symbol and lockup moved to brand.tsx (approved artwork, theme-aware, admin-replaceable). */
+export { BrandMark, BrandLogo } from './brand';
