@@ -3,11 +3,13 @@
 import { z } from 'zod';
 import { money } from '@fayz/shared';
 import type { App, Bindings, Staff } from './lib';
-import { audit, coordinates, fail, idFrom, limitOr429, orderEvent, parse, providerBase, sha256 } from './lib';
+import { audit, coordinates, fail, idFrom, limitOr429, orderEvent, parse, sha256 } from './lib';
 import { ACTIVE, FINISHED, REASSIGNABLE, TRACKABLE, courierTransitions, nextDeliveryStatus, stageOf, stepsToShipped, type CourierAction, type DeliveryStatus } from './lifecycle';
 import { notify, pushCustomer } from './push';
+import { customerPaymentView } from './payments';
+import { computeRoute, routingProvider } from './routing';
 
-type OrderRow = { id: number; order_number: string; customer_name: string; phone: string; address: string; note: string; status: string; total: number; created_at: string; customer_id: number | null; delivery_lat: number | null; delivery_lng: number | null; delivery_details: string };
+type OrderRow = { id: number; order_number: string; customer_name: string; phone: string; address: string; note: string; status: string; total: number; created_at: string; customer_id: number | null; delivery_lat: number | null; delivery_lng: number | null; delivery_details: string; fulfillment?: 'delivery' | 'pickup'; payment_method?: 'cash' | 'card_terminal' | 'bank_transfer' | 'payme' | 'click'; payment_status?: string; paid_at?: string | null; payment_note?: string };
 type DeliveryRow = { order_id: number; courier_id: number; status: DeliveryStatus; version: number; assigned_at: string; accepted_at: string | null; picked_up_at: string | null; arrived_at: string | null; handed_over_at: string | null; confirmed_at: string | null; updated_at: string; decline_reason: string; courier_name: string; courier_phone: string };
 const ctxOf = (c: { executionCtx: unknown }) => { try { return c.executionCtx as { waitUntil(p: Promise<unknown>): void }; } catch { return undefined; } };
 /** A location older than this is shown as "last known", never as live. */
@@ -32,6 +34,8 @@ export async function customerOrderView(db: D1Database, row: OrderRow) {
   ]);
   const showCourier = delivery && ['accepted', 'picked_up', 'on_the_way', 'arrived', 'handed_over'].includes(delivery.status);
   const confirmed = row.status === 'delivered';
+  const method = row.payment_method ?? 'cash';
+  const bank = method === 'bank_transfer' ? await db.prepare("SELECT value FROM settings WHERE key='bank_transfer_details'").first<{ value: string }>() : null;
   return {
     id: row.id, orderNumber: row.order_number, customerName: row.customer_name, phone: row.phone, address: row.address, note: row.note,
     status: row.status, total: row.total, createdAt: row.created_at, items: lineItems,
@@ -44,6 +48,8 @@ export async function customerOrderView(db: D1Database, row: OrderRow) {
     canConfirm: delivery?.status === 'handed_over' && row.status === 'shipped',
     canReview: confirmed,
     reviewed: { products: reviews.map(r => r.productId), courier: !!rating, courierRatable: confirmed && !!delivery },
+    fulfillment: row.fulfillment ?? 'delivery',
+    payment: customerPaymentView({ ...row, payment_method: method, payment_status: row.payment_status ?? 'pending' }, { bank_transfer_details: bank?.value || '' }),
   };
 }
 
@@ -146,6 +152,7 @@ export function registerDelivery(app: App) {
     const id = idFrom(c.req.param('id')), admin = c.get('admin');
     const { courierId, version } = await parse(c, z.object({ courierId: z.number().int().positive(), version: z.number().int().optional() }));
     const order = await c.env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first<OrderRow>();
+    if (order?.fulfillment === 'pickup') fail(409, 'PICKUP_ORDER', 'Mijoz buyurtmani doʻkondan olib ketadi — kuryer kerak emas');
     if (!order) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi');
     const current = await getDelivery(c.env.DB, id);
     if (!REASSIGNABLE.includes(current?.status ?? null)) fail(409, 'ALREADY_PICKED_UP', 'Mahsulot kuryerga topshirilgan — qayta tayinlab boʻlmaydi');
@@ -231,18 +238,12 @@ export function registerDelivery(app: App) {
     if (!delivery || delivery.courier_id !== me.id || !ACTIVE.includes(delivery.status)) fail(404, 'NOT_FOUND', 'Faol yetkazish topilmadi');
     const order = (await c.env.DB.prepare('SELECT delivery_lat,delivery_lng FROM orders WHERE id=?').bind(id).first<{ delivery_lat: number | null; delivery_lng: number | null }>())!;
     if (order.delivery_lat == null) fail(409, 'NO_DESTINATION', 'Mijoz xaritada manzil belgilamagan');
-    if (!c.env.GOOGLE_ROUTES_KEY) fail(503, 'ROUTES_NOT_CONFIGURED', 'Marshrut xizmati sozlanmagan — Google Maps navigatsiyasidan foydalaning');
+    if (!routingProvider(c.env)) fail(503, 'ROUTES_NOT_CONFIGURED', 'Marshrut xizmati sozlanmagan — Google Maps navigatsiyasidan foydalaning');
     await limitOr429(c.env.DB, `route:${me.id}`, 20, 3600, 'Marshrut soʻrovlari limiti tugadi');
     const from = await c.env.DB.prepare('SELECT lat,lng FROM delivery_locations WHERE order_id=?').bind(id).first<{ lat: number; lng: number }>() || await storeLocation(c.env.DB);
     if (from.lat == null || from.lng == null) fail(409, 'NO_ORIGIN', 'Joriy joylashuv yoki doʻkon manzili nomaʼlum');
-    const res = await fetch(`${providerBase(c.env, 'routes', 'https://routes.googleapis.com')}/directions/v2:computeRoutes`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': c.env.GOOGLE_ROUTES_KEY!, 'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline' },
-      body: JSON.stringify({ origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } }, destination: { location: { latLng: { latitude: order.delivery_lat, longitude: order.delivery_lng } } }, travelMode: 'DRIVE', routingPreference: 'TRAFFIC_AWARE', languageCode: 'uz' }),
-    });
-    const data = await res.json<any>().catch(() => ({}));
-    const route = data?.routes?.[0];
-    if (!res.ok || !route) fail(502, 'ROUTE_FAILED', 'Marshrut hisoblanmadi');
-    return c.json({ distanceMeters: route.distanceMeters, durationSeconds: Number(String(route.duration).replace('s', '')), polyline: route.polyline?.encodedPolyline || null, origin: from, source: 'google_routes' });
+    const route = await computeRoute(c.env, { lat: from.lat!, lng: from.lng! }, { lat: order.delivery_lat!, lng: order.delivery_lng! });
+    return c.json({ distanceMeters: route.distanceMeters, durationSeconds: route.durationSeconds, polyline: route.polyline, coordinates: route.coordinates, origin: from, source: route.provider === 'google' ? 'google_routes' : 'openrouteservice', attribution: route.attribution });
   });
 
   app.post('/courier/deliveries/:id/:action', async c => {

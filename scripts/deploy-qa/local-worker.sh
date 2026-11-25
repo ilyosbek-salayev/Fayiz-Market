@@ -20,4 +20,5 @@ if [ -n "${QA_ENV_FILE:-}" ]; then EXTRA+=(--env-file "$QA_ENV_FILE"); fi
 exec npx wrangler dev --local --ip 127.0.0.1 --port "$PORT" --inspector-port 0 --persist-to "$DB_DIR" ${EXTRA[@]+"${EXTRA[@]}"} \
   --var ENVIRONMENT:development --var OTP_DEV_ECHO:${QA_OTP_ECHO:-1} --var BOOTSTRAP_SECRET:${QA_BOOTSTRAP:-qa-bootstrap} \
   --var TELEGRAM_BOT_TOKEN:123456789:AAH-local-qa-token \
+  --var INTEGRATIONS_MASTER_KEY:${QA_MASTER_KEY:-$(openssl rand -base64 32)} \
   --var PUBLIC_BASE_URL:http://127.0.0.1:$PORT --var APP_ORIGIN:http://127.0.0.1:$PORT

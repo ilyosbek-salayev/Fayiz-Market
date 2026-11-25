@@ -4,14 +4,17 @@ import { HTTPException } from 'hono/http-exception';
 import { z, ZodError } from 'zod';
 import { DUMMY_PASSWORD_HASH, passwordHash, randomToken, safeEqual, verifyPassword } from './password';
 import { adminLoginSchema, categorySchema, checkoutSchema, paymentSchema, productSchema, statusSchema, money } from '@fayz/shared';
-import { audit, clientIp, limitOr429, coordinates, fail, idFrom, orderEvent, parse, sha256, type Env } from './lib';
+import { audit, clientIp, limitOr429, coordinates, fail, idFrom, orderEvent, parse, settingsMap, sha256, storeLocation, type Env } from './lib';
 import { customerSession, registerCustomers } from './customers';
 import { adminOrderExtras, authorizedOrder, customerOrderView, getDelivery, registerDelivery } from './delivery';
 import { notify, pushCustomer } from './push';
 import { registerStaff } from './staff';
+import { PAYMENT_METHODS, adminPaymentView, checkoutOptions, registerPayments, settleFromLedger } from './payments';
+import { withManagedSecrets } from './secrets';
+import { registerStorefront } from './storefront';
 
 const app = new Hono<Env>();
-app.use('*', (c, next) => bodyLimit({ maxSize: c.req.path === '/admin/images' ? 5_000_000 : 65_536, onError: c => c.json({ error: { code: 'BODY_TOO_LARGE', message: 'Soʻrov hajmi juda katta' } }, 413) })(c, next));
+app.use('*', (c, next) => bodyLimit({ maxSize: c.req.path === '/admin/images' ? 5_000_000 : c.req.path === '/admin/branding/logo' ? 1_100_000 : 65_536, onError: c => c.json({ error: { code: 'BODY_TOO_LARGE', message: 'Soʻrov hajmi juda katta' } }, 413) })(c, next));
 const ctxOf = (c: { executionCtx: unknown }) => { try { return c.executionCtx as { waitUntil(p: Promise<unknown>): void }; } catch { return undefined; } };
 const pageFrom = (raw: string | undefined) => Math.min(1000, Math.max(1, Number(raw) || 1));
 const limitFrom = (raw: string | undefined) => Math.min(50, Math.max(1, Number(raw) || 20));
@@ -34,6 +37,8 @@ app.use('*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return c.body(null, origin === c.env.APP_ORIGIN ? 204 : 403);
   await next();
 });
+// Credentials an owner entered in Admin → Integratsiyalar (encrypted in D1) override same-named Cloudflare secrets.
+app.use('*', withManagedSecrets);
 
 app.onError((error, c) => {
   if (error instanceof ZodError) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Kiritilgan maʼlumot notoʻgʻri', details: error.flatten() } }, 400);
@@ -51,6 +56,10 @@ app.onError((error, c) => {
   if (String(error).includes('OVERPAYMENT')) return c.json({ error: { code: 'OVERPAYMENT', message: 'Toʻlov buyurtma summasidan oshadi' } }, 409);
   if (String(error).includes('CANCELLED_ORDER')) return c.json({ error: { code: 'CANCELLED_ORDER', message: 'Bekor qilingan buyurtmaga toʻlov yozilmaydi' } }, 409);
   if (String(error).includes('PAID_ORDER')) return c.json({ error: { code: 'PAID_ORDER', message: 'Toʻlov qayd etilgan buyurtmani bekor qilib boʻlmaydi' } }, 409);
+  if (String(error).includes('ALREADY_PAID')) return c.json({ error: { code: 'ALREADY_PAID', message: 'Buyurtma allaqachon toʻlangan' } }, 409);
+  if (String(error).includes('DUPLICATE_PAYMENT')) return c.json({ error: { code: 'DUPLICATE_PAYMENT', message: 'Bu tranzaksiya raqami allaqachon qayd etilgan' } }, 409);
+  if (String(error).includes('INVALID_PAYMENT_TRANSITION')) return c.json({ error: { code: 'INVALID_PAYMENT_TRANSITION', message: 'Toʻlov holatini bunday oʻzgartirib boʻlmaydi' } }, 409);
+  if (String(error).includes('PAYMENT_NOT_RECEIVED')) return c.json({ error: { code: 'PAYMENT_NOT_RECEIVED', message: 'Toʻlov summasi toʻliq qabul qilinmagan' } }, 409);
   return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Server xatosi' } }, 500);
 });
 
@@ -105,7 +114,20 @@ app.get('/images/:key', async c => {
 });
 
 app.post('/orders', async c => {
-  const input = await parse(c, checkoutSchema.extend({ location: coordinates.optional(), deliveryDetails: z.string().trim().max(300).default('') }));
+  // `fulfillment` and `paymentMethod` are optional so the 1.1.x apps keep working (delivery + cash, as before).
+  const input = await parse(c, checkoutSchema.extend({
+    address: z.string().trim().max(500).default(''),
+    location: coordinates.optional(), deliveryDetails: z.string().trim().max(300).default(''),
+    fulfillment: z.enum(['delivery', 'pickup']).default('delivery'), paymentMethod: z.enum(PAYMENT_METHODS).optional(),
+  }));
+  const s = await settingsMap(c.env.DB), store = await storeLocation(c.env.DB), options = checkoutOptions(c.env, s, store);
+  if (input.fulfillment === 'delivery' && input.address.length < 5) fail(400, 'VALIDATION_ERROR', 'Yetkazib berish manzilini toʻliq kiriting');
+  if (!(options.fulfillment as readonly string[]).includes(input.fulfillment)) fail(409, 'FULFILLMENT_UNAVAILABLE', 'Doʻkondan olib ketish hozircha mavjud emas');
+  const paymentMethod = input.paymentMethod ?? 'cash';
+  if (input.paymentMethod && !options.payments.some(p => p.method === input.paymentMethod)) fail(409, 'PAYMENT_METHOD_UNAVAILABLE', 'Bu toʻlov usuli hozircha mavjud emas — boshqasini tanlang');
+  const pickup = input.fulfillment === 'pickup';
+  const address = pickup ? `Doʻkondan olib ketish: ${store.address}`.slice(0, 500) : input.address;
+  const location = pickup ? undefined : input.location;
   const customer = c.get('customer');
   const merged = new Map<number, number>();
   for (const item of input.items) merged.set(item.productId, (merged.get(item.productId) || 0) + item.quantity);
@@ -113,19 +135,20 @@ app.post('/orders', async c => {
   const ids = [...merged.keys()];
   const rows = await c.env.DB.prepare(`SELECT id,name,price,stock,active FROM products WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<{ id: number; name: string; price: number; stock: number; active: number }>();
   if (rows.results.length !== ids.length || rows.results.some(row => !row.active || row.stock < (merged.get(row.id) || 0))) fail(409, 'OUT_OF_STOCK', 'Mahsulot qoldigʻi yetarli emas');
+  // The total is always computed here from current prices — a client-sent amount is never used.
   const total = rows.results.reduce((sum, row) => sum + row.price * (merged.get(row.id) || 0), 0);
   const token = randomToken(), orderNumber = 'FM-' + Date.now().toString(36).toUpperCase() + '-' + randomToken().slice(0, 6).toUpperCase();
   await c.env.DB.batch([
-    c.env.DB.prepare('INSERT INTO orders(order_number,access_hash,customer_name,phone,address,note,total,customer_id,delivery_lat,delivery_lng,delivery_details) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(orderNumber, await sha256(token), input.customerName, input.phone, input.address, input.note, total, customer?.id ?? null, input.location?.lat ?? null, input.location?.lng ?? null, input.deliveryDetails),
+    c.env.DB.prepare('INSERT INTO orders(order_number,access_hash,customer_name,phone,address,note,total,customer_id,delivery_lat,delivery_lng,delivery_details,fulfillment,payment_method) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(orderNumber, await sha256(token), input.customerName, input.phone, address, input.note, total, customer?.id ?? null, location?.lat ?? null, location?.lng ?? null, pickup ? '' : input.deliveryDetails, input.fulfillment, paymentMethod),
     ...rows.results.map(row => c.env.DB.prepare('INSERT INTO order_items(order_id,product_id,name,price,quantity) VALUES((SELECT id FROM orders WHERE order_number=?),?,?,?,?)').bind(orderNumber, row.id, row.name, row.price, merged.get(row.id)))
   ]);
   const order = await c.env.DB.prepare('SELECT id FROM orders WHERE order_number=?').bind(orderNumber).first<{ id: number }>();
   if (!order) fail(500, 'ORDER_FAILED', 'Buyurtma yaratilmadi');
-  await orderEvent(c.env.DB, order!.id, 'customer', customer?.id ?? null, 'order_created', { location: !!input.location });
+  await orderEvent(c.env.DB, order!.id, 'customer', customer?.id ?? null, 'order_created', { location: !!location, fulfillment: input.fulfillment, payment: paymentMethod });
   // Lock-screen safe: order reference, item count and total only — no name, phone or address.
   const units = [...merged.values()].reduce((a, b) => a + b, 0);
-  await notify(c.env, ctxOf(c), { audience: 'staff', orderId: order!.id, kind: 'new_order', title: `Yangi buyurtma ${orderNumber}`, body: `${units} dona · ${money(total)}` });
-  return c.json({ order: { id: order!.id, orderNumber, total, status: 'new', accessToken: token } }, 201);
+  await notify(c.env, ctxOf(c), { audience: 'staff', orderId: order!.id, kind: 'new_order', title: `Yangi buyurtma ${orderNumber}`, body: `${units} dona · ${money(total)}${pickup ? ' · olib ketish' : ''}` });
+  return c.json({ order: { id: order!.id, orderNumber, total, status: 'new', accessToken: token, fulfillment: input.fulfillment, paymentMethod, paymentStatus: 'pending' } }, 201);
 });
 app.get('/orders/:id', async c => {
   const row = await authorizedOrder(c, idFrom(c.req.param('id')));
@@ -250,16 +273,20 @@ app.post('/admin/images', async c => {
   return c.json({ url: `${c.env.PUBLIC_BASE_URL}/images/${key}` }, 201);
 });
 
-function orderView(row: Record<string, unknown>, items: unknown[]) { return { id: row.id, orderNumber: row.order_number, customerName: row.customer_name, phone: row.phone, address: row.address, note: row.note, status: row.status, total: row.total, createdAt: row.created_at, items, location: row.delivery_lat != null ? { lat: row.delivery_lat, lng: row.delivery_lng, details: row.delivery_details } : null, deliveryStatus: row.delivery_status ?? null, courierName: row.courier_name ?? null }; }
+function orderView(row: Record<string, unknown>, items: unknown[]) { return { id: row.id, orderNumber: row.order_number, customerName: row.customer_name, phone: row.phone, address: row.address, note: row.note, status: row.status, total: row.total, createdAt: row.created_at, items, location: row.delivery_lat != null ? { lat: row.delivery_lat, lng: row.delivery_lng, details: row.delivery_details } : null, deliveryStatus: row.delivery_status ?? null, courierName: row.courier_name ?? null, fulfillment: row.fulfillment ?? 'delivery', paymentMethod: row.payment_method ?? 'cash', paymentStatus: row.payment_status ?? 'pending', paidAt: row.paid_at ?? null, paymentNote: row.payment_note ?? '' }; }
 app.get('/admin/orders', async c => {
-  const page = pageFrom(c.req.query('page')), limit = limitFrom(c.req.query('limit')), status = c.req.query('status');
+  const page = pageFrom(c.req.query('page')), limit = limitFrom(c.req.query('limit')), status = c.req.query('status'), payment = c.req.query('payment');
   if (status && !statusSchema.safeParse({ status }).success) fail(400, 'INVALID_STATUS', 'Holat notoʻgʻri');
-  const where = status ? 'WHERE status=?' : '';
-  const rows = await c.env.DB.prepare(`SELECT o.*,d.status AS delivery_status,a.name AS courier_name FROM orders o LEFT JOIN deliveries d ON d.order_id=o.id LEFT JOIN admins a ON a.id=d.courier_id ${where.replace('status', 'o.status')} ORDER BY o.id DESC LIMIT ? OFFSET ?`).bind(...(status ? [status] : []), limit, (page - 1) * limit).all();
-  const count = await c.env.DB.prepare(`SELECT COUNT(*) AS total FROM orders ${where}`).bind(...(status ? [status] : [])).first<{ total: number }>();
+  if (payment && !['pending', 'verifying', 'paid', 'failed', 'cancelled', 'refunded'].includes(payment)) fail(400, 'INVALID_STATUS', 'Toʻlov holati notoʻgʻri');
+  const where: string[] = [], binds: string[] = [];
+  if (status) { where.push('o.status=?'); binds.push(status); }
+  if (payment) { where.push('o.payment_status=?'); binds.push(payment); }
+  const sqlWhere = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const rows = await c.env.DB.prepare(`SELECT o.*,d.status AS delivery_status,a.name AS courier_name FROM orders o LEFT JOIN deliveries d ON d.order_id=o.id LEFT JOIN admins a ON a.id=d.courier_id ${sqlWhere} ORDER BY o.id DESC LIMIT ? OFFSET ?`).bind(...binds, limit, (page - 1) * limit).all();
+  const count = await c.env.DB.prepare(`SELECT COUNT(*) AS total FROM orders o ${sqlWhere}`).bind(...binds).first<{ total: number }>();
   return c.json({ orders: rows.results.map(row => orderView(row, [])), page, total: count?.total || 0 });
 });
-app.get('/admin/orders/:id', async c => { const id = idFrom(c.req.param('id')); const row = await c.env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first(); if (!row) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi'); const items = await c.env.DB.prepare('SELECT product_id AS productId,name,price,quantity FROM order_items WHERE order_id=?').bind(id).all(); const payments = await c.env.DB.prepare('SELECT id,amount,method,reference,note,created_at AS createdAt FROM payments WHERE order_id=? ORDER BY id DESC').bind(id).all(); return c.json({ order: orderView(row!, items.results), payments: payments.results, ...(await adminOrderExtras(c.env.DB, id)) }); });
+app.get('/admin/orders/:id', async c => { const id = idFrom(c.req.param('id')); const row = await c.env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first(); if (!row) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi'); const items = await c.env.DB.prepare('SELECT product_id AS productId,name,price,quantity FROM order_items WHERE order_id=?').bind(id).all(); const payments = await c.env.DB.prepare('SELECT p.id,p.amount,p.method,p.reference,p.note,p.created_at AS createdAt,a.name AS recordedByName,a.email AS recordedByEmail FROM payments p LEFT JOIN admins a ON a.id=p.recorded_by WHERE p.order_id=? ORDER BY p.id DESC').bind(id).all(); return c.json({ order: orderView(row!, items.results), payments: payments.results, ...(await adminPaymentView(c.env.DB, id)), ...(await adminOrderExtras(c.env.DB, id)) }); });
 app.patch('/admin/orders/:id/status', async c => {
   const id = idFrom(c.req.param('id')), { status } = await parse(c, statusSchema);
   const row = await c.env.DB.prepare('SELECT status FROM orders WHERE id=?').bind(id).first<{ status: string }>();
@@ -273,6 +300,7 @@ app.patch('/admin/orders/:id/status', async c => {
   if (courierBusy && (status === 'shipped' || status === 'delivered')) fail(409, 'DELIVERY_IN_PROGRESS', 'Buyurtma kuryerda — holat kuryer va mijoz tasdigʻi orqali oʻzgaradi');
   const statements = [c.env.DB.prepare('UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?').bind(status, id, row!.status)];
   if (status === 'cancelled') statements.push(
+    c.env.DB.prepare("UPDATE orders SET payment_status='cancelled' WHERE id=? AND status='cancelled' AND payment_status IN ('pending','verifying','failed')").bind(id),
     c.env.DB.prepare("UPDATE deliveries SET status='cancelled',updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE order_id=? AND status NOT IN ('declined','cancelled') AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status='cancelled')").bind(id, id),
     c.env.DB.prepare("DELETE FROM delivery_locations WHERE order_id=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status='cancelled')").bind(id, id),
   );
@@ -289,26 +317,36 @@ app.patch('/admin/orders/:id/status', async c => {
   return c.json({ ok: true });
 });
 app.post('/admin/orders/:id/payments', async c => {
-  const id = idFrom(c.req.param('id')), input = await parse(c, paymentSchema);
-  const order = await c.env.DB.prepare('SELECT total,status FROM orders WHERE id=?').bind(id).first<{ total: number; status: string }>();
+  const id = idFrom(c.req.param('id')), input = await parse(c, paymentSchema), me = c.get('admin');
+  const order = await c.env.DB.prepare('SELECT total,status,payment_status FROM orders WHERE id=?').bind(id).first<{ total: number; status: string; payment_status: string }>();
   if (!order) fail(404, 'NOT_FOUND', 'Buyurtma topilmadi');
   if (order!.status === 'cancelled') fail(409, 'CANCELLED_ORDER', 'Bekor qilingan buyurtmaga toʻlov yozilmaydi');
+  if (['paid', 'refunded'].includes(order!.payment_status)) fail(409, 'ALREADY_PAID', 'Buyurtma allaqachon toʻlangan');
   const paid = await c.env.DB.prepare('SELECT COALESCE(SUM(amount),0) AS paid FROM payments WHERE order_id=?').bind(id).first<{ paid: number }>();
   if ((paid?.paid || 0) + input.amount > order!.total) fail(409, 'OVERPAYMENT', 'Toʻlov buyurtma summasidan oshadi');
-  const row = await c.env.DB.prepare('INSERT INTO payments(order_id,amount,method,reference,note,recorded_by) VALUES(?,?,?,?,?,?) RETURNING id').bind(id, input.amount, input.method, input.reference, input.note, c.get('admin').id).first<{ id: number }>();
-  return c.json({ id: row?.id }, 201);
+  // Ledger row and (when the total is covered) the "paid" status are written in one transaction.
+  const [row] = await c.env.DB.batch([
+    c.env.DB.prepare('INSERT INTO payments(order_id,amount,method,reference,note,recorded_by) VALUES(?,?,?,?,?,?) RETURNING id').bind(id, input.amount, input.method, input.reference.trim(), input.note, me.id),
+    settleFromLedger(c.env.DB, id),
+  ]);
+  await orderEvent(c.env.DB, id, 'admin', me.id, 'payment_recorded', { amount: input.amount, method: input.method });
+  await audit(c.env.DB, me.id, 'payment.record', `order:${id}`, { amount: input.amount, method: input.method, reference: input.reference ? 'set' : '' });
+  return c.json({ id: (row.results as { id: number }[])[0]?.id }, 201);
 });
 app.get('/admin/reports/summary', async c => {
   const orders = await c.env.DB.prepare("SELECT COUNT(*) AS orders,COALESCE(SUM(CASE WHEN status!='cancelled' THEN total ELSE 0 END),0) AS ordered_total,COALESCE(SUM(CASE WHEN status='delivered' THEN total ELSE 0 END),0) AS delivered_total FROM orders").first();
-  const payments = await c.env.DB.prepare('SELECT COALESCE(SUM(amount),0) AS received_total FROM payments').first();
+  // Money actually received: manual ledger + provider-performed transactions, minus orders marked refunded.
+  const payments = await c.env.DB.prepare("SELECT (SELECT COALESCE(SUM(p.amount),0) FROM payments p JOIN orders o ON o.id=p.order_id WHERE o.payment_status!='refunded') + (SELECT COALESCE(SUM(amount),0) FROM payment_transactions WHERE state='performed') AS received_total, (SELECT COUNT(*) FROM orders WHERE payment_status='verifying') AS verifying").first();
   const inventory = await c.env.DB.prepare('SELECT COUNT(*) AS products,COALESCE(SUM(stock),0) AS units FROM products WHERE active=1').first();
   const daily = await c.env.DB.prepare("SELECT date(created_at) AS day,COUNT(*) AS orders,SUM(total) AS total FROM orders WHERE status!='cancelled' GROUP BY date(created_at) ORDER BY day DESC LIMIT 30").all();
   return c.json({ orders, payments, inventory, daily: daily.results });
 });
-app.put('/admin/settings', async c => { ownerOnly(c); const input = await parse(c, z.object({ contact_phone: z.string().max(40), delivery_info: z.string().max(500), banner_title: z.string().max(120), banner_subtitle: z.string().max(200) }).strip()); await c.env.DB.batch(Object.entries(input).map(([key, value]) => c.env.DB.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key, value))); return c.json({ ok: true }); });
+app.put('/admin/settings', async c => { ownerOnly(c); const input = await parse(c, z.object({ contact_phone: z.string().max(40), delivery_info: z.string().max(500), banner_title: z.string().max(120), banner_subtitle: z.string().max(200) }).partial().strip()); await c.env.DB.batch(Object.entries(input).map(([key, value]) => c.env.DB.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key, value))); return c.json({ ok: true }); });
 
 registerCustomers(app);
 registerDelivery(app);
 registerStaff(app);
+registerStorefront(app);
+registerPayments(app);
 
 export default app;
