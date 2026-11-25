@@ -11,3 +11,12 @@
 **Tuzatish (repo):** ildiz `wrangler.toml` ga `name = "fayz-market-api"` bilan `[env.production]` qo‘shildi; `apps/api/deploy-config.test.ts` uchala deploy yo‘li bitta Worker nomi va bir xil bindinglarga tushishini tekshiradi (eski konfiguratsiyada 2 test yiqiladi). Dry-run: `after-fix.txt`.
 
 **Qolgan amallar (egasi tasdig‘i bilan):** asosiy Worker’ni yangilash → smoke → `fayz-market-api-production` da route/custom domain/service binding yo‘qligini dashboard’da ko‘rish → `cd apps/api && npx wrangler delete --name fayz-market-api-production` (faqat skript va workers.dev manzili o‘chadi; D1/R2 alohida resurs).
+
+## Yakun (2026-11-25)
+
+- V1 production’ga `fayz-market-api` (Version `43b2cc54`, faol `90b70a16`) sifatida chiqarildi.
+- Soʻng egasining tasdigʻi bilan ortiqcha `fayz-market-api-production` oʻchirildi: `wrangler delete --name fayz-market-api-production`, konfiguratsiyasiz papkadan.
+- Tekshiruv natijasi:
+  - uning `/health` → 404;
+  - asosiy Worker read-only 11/11;
+  - D1 va R2 oʻzgarmagan.

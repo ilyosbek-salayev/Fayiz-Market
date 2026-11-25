@@ -124,3 +124,5 @@ Zaxira `dist/backups/fayz-market-before-1.2.0-20261125-055823.sql` → migratsiy
 - Ixtiyoriy secretlar (paneldan ham kiritiladi): `ORS_API_KEY`, `PAYME_KEY`, `PAYME_TEST_KEY`, `CLICK_SECRET_KEY`.
 - Yangi ochiq endpointlar: `GET /storefront`, `POST /store/route`, `POST /payments/payme`, `POST /payments/click/prepare`, `POST /payments/click/complete`.
 - Aniq buyruqlar va rollback: `docs/v1/RELEASE_REPORT.md` §4.
+
+2026-11-25: ortiqcha Worker `fayz-market-api-production` (2026-11-25 hodisasi, deploy `eb2fd9e9`) egasining tasdigʻi bilan oʻchirildi. Akkauntda endi faqat `fayz-market-api` bor.

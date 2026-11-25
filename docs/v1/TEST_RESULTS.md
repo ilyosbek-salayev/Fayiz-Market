@@ -160,4 +160,4 @@ Natijalar va loglar `docs/v1/evidence/`, skrinshotlar `docs/v1/screenshots/` da.
 | Secret | `INTEGRATIONS_MASTER_KEY` qoʻshildi (qiymat hech qayerda koʻrsatilmagan) → faol versiya `90b70a16-42fe-473d-bcea-4e5fe015698f` |
 | Read-only smoke | `production-get.mjs` **11/11**, `/storefront` 200, `DELETE /customer/push-token` kirishsiz 401, `/admin/integrations` kirishsiz 401, Payme (sozlanmagan) → -32504. Dalil: `evidence/production/` |
 | Rollback (kerak boʻlsa) | `cd apps/api && npx wrangler rollback 9ff0b7fb-15b2-4340-b78f-af0ec6a7332c --env production` — eski kod yangi sxemada ishlashi tasdiqlangan |
-| Ortiqcha Worker | `fayz-market-api-production` hali bor (health 200, ishlatilmaydi). Oʻchirish egasining tasdigʻi bilan |
+| Ortiqcha Worker | `fayz-market-api-production` (yagona deploy `eb2fd9e9`) egasining tasdigʻi bilan **oʻchirildi**. Oʻchirish konfiguratsiyasiz papkadan `--name` bilan bajarildi. Natija: uning `/health` → 404; asosiy Worker 11/11, faol versiya `90b70a16` oʻzgarmagan; D1 (2 buyurtma, 2 mahsulot, 1 admin) va R2 joyida |

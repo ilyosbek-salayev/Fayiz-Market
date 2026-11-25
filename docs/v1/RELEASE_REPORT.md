@@ -59,7 +59,7 @@ Ustidan yangilash emulyatorda tasdiqlangan (1.1.1 → 1.2.0, maʼlumot saqlandi)
 - `INTEGRATIONS_MASTER_KEY` oʻrnatildi;
 - read-only smoke 11/11 PASS.
 
-Batafsil: `TEST_RESULTS.md` §6. 7-qadam (ortiqcha Worker’ni oʻchirish) tasdiqni kutmoqda. Quyidagi buyruqlar maʼlumot uchun saqlanadi.
+Batafsil: `TEST_RESULTS.md` §6. 7-qadam ham egasining tasdigʻi bilan bajarildi: `fayz-market-api-production` oʻchirildi (D1 va R2’ga taʼsir qilmadi). Quyidagi buyruqlar maʼlumot uchun saqlanadi.
 
 Deploy’dan oldingi holat (faqat GET bilan tekshirilgan):
 
