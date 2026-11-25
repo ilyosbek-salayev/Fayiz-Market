@@ -194,7 +194,7 @@ try {
   r = await call('/admin/password', { method: 'POST', auth: manager, body: { currentPassword: 'StaffPassword-123', password: 'ManagerNew-123' } }); check('self password change', r.status === 200);
   r = await call('/admin/integrations', { auth: owner });
   const body = JSON.stringify(r.data);
-  check('integrations list: status only, never secret values', r.status === 200 && r.data.integrations.length === 8 && !body.includes('AAH-local-qa-token') && r.data.integrations.find(i => i.key === 'telegram').secrets[0].present === true);
+  check('integrations list: status only, never secret values', r.status === 200 && ['store_location', 'openfreemap', 'google_maps', 'google_routes', 'telegram', 'sms', 'email', 'fcm'].every(k => r.data.integrations.some(i => i.key === k)) && !body.includes('AAH-local-qa-token') && r.data.integrations.find(i => i.key === 'telegram').secrets[0].present === true);
   r = await call('/admin/integrations/google_maps', { method: 'PUT', auth: owner, body: { google_maps_key: 'not-a-key' } }); check('invalid Maps key format rejected', r.status === 400);
   r = await call('/admin/integrations/google_maps', { method: 'PUT', auth: owner, body: { secret_field: 'x' } }); check('unknown integration fields rejected', r.status === 400);
   r = await call('/admin/integrations/store_location', { method: 'PUT', auth: owner, body: { store_address: 'Toshkent, Chorsu', store_lat: '41.3264', store_lng: '69.2286' } }); check('store pickup location saved', r.status === 200);

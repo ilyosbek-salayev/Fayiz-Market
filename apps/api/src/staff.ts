@@ -22,11 +22,19 @@ type IntegrationDef = {
   test?: (env: Bindings, s: Record<string, string>, origin: string) => Promise<string>;
   /** What the test proves: a real provider call, the provider sandbox, or only our own endpoint + stored key. */
   testKind?: 'live' | 'sandbox' | 'internal';
+  /** Kept only for 1.1.x admin apps; the V1 panel edits it in Sozlamalar → Doʻkon joylashuvi and hides it here. */
+  legacy?: boolean;
 };
 const pattern = (re: RegExp, message: string) => (v: string) => re.test(v) ? null : message;
 
 /** Public values live in `settings` (served to apps); credentials in Cloudflare secrets or sealed in D1 (secrets.ts). */
 export const integrations: IntegrationDef[] = [
+  {
+    key: 'store_location', group: 'maps', legacy: true, name: 'Doʻkon joylashuvi', purpose: 'Kuryer buyurtmani olib ketadigan nuqta va marshrut boshlanishi', billing: 'Bepul',
+    publicFields: [{ key: 'store_address', label: 'Manzil', placeholder: 'Toshkent, ...' }, { key: 'store_lat', label: 'Kenglik (lat)', placeholder: '41.311081' }, { key: 'store_lng', label: 'Uzunlik (lng)', placeholder: '69.240562' }],
+    secrets: [], setup: ['Yangi admin ilovada: Sozlamalar → Doʻkon joylashuvi (xaritadan tanlash bilan).'],
+    configured: (_e, s) => !!s.store_lat && !!s.store_lng,
+  },
   {
     key: 'openfreemap', group: 'maps', name: 'Xarita (OpenFreeMap)', purpose: 'Asosiy interaktiv xarita: doʻkon xaritasi, checkoutda pin, kuzatuv, admin va kuryer xaritasi. Kalit va hisob talab qilinmaydi.', billing: 'Bepul (OpenFreeMap, © OpenStreetMap hissadorlari). Manzil nomini avtomatik aniqlash yoʻq.',
     publicFields: [], secrets: [], setup: ['Sozlash shart emas — Google Maps kaliti kiritilmagan boʻlsa ilovalar shu xaritani ishlatadi.', '«Ulanishni tekshirish» xarita uslubi serverdan yuklanishini tekshiradi.'],
@@ -148,6 +156,8 @@ const publicFieldRules: Record<string, (v: string) => string | null> = {
   click_service_id: v => !v || /^\d{1,12}$/.test(v) ? null : 'Faqat raqam',
   click_merchant_id: v => !v || /^\d{1,12}$/.test(v) ? null : 'Faqat raqam',
   click_merchant_user_id: v => !v || /^\d{1,12}$/.test(v) ? null : 'Faqat raqam',
+  store_lat: v => !v || (Number.isFinite(Number(v)) && Math.abs(Number(v)) <= 90) ? null : 'Koordinata notoʻgʻri',
+  store_lng: v => !v || (Number.isFinite(Number(v)) && Math.abs(Number(v)) <= 180) ? null : 'Koordinata notoʻgʻri',
 };
 
 export function registerStaff(app: App) {
@@ -273,7 +283,7 @@ export function registerStaff(app: App) {
         const enabled = def.enabledKey ? s[def.enabledKey] === '1' : configured;
         const status = secrets.some(x => x.unreadable) || (configured && lastCheck && !lastCheck.ok) ? 'error' : configured ? 'configured' : 'not_configured';
         return {
-          key: def.key, group: def.group, name: def.name, purpose: def.purpose, billing: def.billing, setup: def.setup, testable: !!def.test, testKind: def.testKind ?? 'live',
+          key: def.key, group: def.group, legacy: !!def.legacy, name: def.name, purpose: def.purpose, billing: def.billing, setup: def.setup, testable: !!def.test, testKind: def.testKind ?? 'live',
           configured, status, enabled, toggleable: !!def.enabledKey,
           fields: def.publicFields.map(f => ({ ...f, value: s[f.key] ?? (f.options ? f.options[0][0] : '') })),
           secrets, lastCheck,

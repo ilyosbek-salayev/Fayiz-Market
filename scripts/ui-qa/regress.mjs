@@ -192,7 +192,7 @@ const api = async (p, init) => (await fetch(API + p, init)).json();
   check(await page.evaluate(() => JSON.parse(localStorage.getItem('fayz_orders')).length === 2), 'failed order token is retained for later recovery');
   await click(page, 'Profil', '.tabbar button');
   const metadata = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
-  check((await text(page)).includes('Fayz Market v' + metadata.version), 'profile version matches build metadata');
+  check((await text(page)).includes('Fayz Market V1 · versiya ' + metadata.version), 'profile version matches build metadata (V1 label + technical version)');
   await ctx.close();
 }
 check(dialogs.length === 0, 'no native alert/confirm dialogs used', dialogs.join(' | '));
