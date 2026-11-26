@@ -1,0 +1,7 @@
+expansion-api: exit 0
+integration: exit 0
+expansion-ui: exit 1
+regression-seed: exit 0
+regression-ui: exit 1
+security-regression: exit 0
+ALLDONE

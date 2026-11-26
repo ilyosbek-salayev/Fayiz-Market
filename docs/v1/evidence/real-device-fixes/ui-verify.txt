@@ -1,0 +1,124 @@
+Fayz Market V1 1.2.2 — real-device fixes, Chrome UI (built bundles, isolated local Worker)
+2026-11-26T15:44:14.792Z
+
+## U01 — typing keeps focus in admin forms and dialogs (390 px, real key presses)
+PASS staff form «Ism»: every character lands, field keeps focus
+PASS staff form «Telefon»: every character lands, field keeps focus
+PASS staff form «Email (login)»: every character lands, field keeps focus
+PASS staff form «Parol»: every character lands, field keeps focus
+PASS new courier saved from the form
+PASS reset-password dialog: full password typed without re-tapping (was 1 character before the fix)
+PASS courier can sign in with the password typed in that dialog
+PASS product dialog «Nomi»: typing keeps focus
+PASS product dialog description: typing keeps focus
+PASS integration dialog secret field: typing keeps focus
+
+## A01 — admin login, fingerprint lock vs. sign-out (fingerprint bridge imitated in Chrome)
+PASS wrong password: clear message with attempts left
+PASS email typed with capitals and a trailing space → signed in
+PASS fingerprint on → «Ilovani qulflash» and «Hisobdan chiqish» are two separate actions
+PASS lock: session leaves memory, lock screen asks for the fingerprint
+PASS lock does not end the server session (quick reopen)
+PASS fingerprint unlock reopens the same session
+PASS app reload while unlocked stays signed in
+PASS sign-out: server session revoked AND fingerprint sign-in removed from this phone
+PASS after sign-out the fingerprint cannot reopen the account (password required)
+PASS sign in again with the correct password right after sign-out → works
+
+## A06/A03 — admin builds colour × memory variants and characteristics
+PASS editor generates every colour × model combination, no duplicates
+PASS saved: 4 variants, own price, one switched off
+PASS saved: per-variant stock and the characteristic
+PASS products list shows the variant count
+PASS stock change of a variant product asks which variant
+
+## Customer product page, cart and checkout — 360 px
+PASS product card: «… dan» price and variant count
+PASS «+» on a variant product opens the page with colour and memory choices
+PASS first in-stock variant pre-selected: its price, old price, discount and stock
+PASS variant chips are at least 44 px tall (touch target)
+PASS choose «Oq»: price, stock and photo switch to that variant
+PASS «Oq · 256 GB» (0 in stock) is shown crossed out
+PASS characteristics shown, incl. the chosen options
+PASS long description: short first → «Batafsil koʻrish» opens → «Yopish» closes
+PASS related products: same category first, not itself
+PASS product page: no horizontal overflow
+PASS tapping a related product opens that product
+PASS cart: one row per chosen variant, label shown
+PASS cart summary: goods and courier fee lines
+PASS stepper stops at that variant’s stock (2), not the product total
+PASS checkout: both choices clearly shown with what each means
+PASS checkout lines: goods, courier fee, final total
+PASS pickup: store address, no courier fee
+PASS checkout: no horizontal overflow
+PASS checkout sheet: typing the name keeps focus
+
+## Customer product page, cart and checkout — 390 px
+PASS product card: «… dan» price and variant count
+PASS «+» on a variant product opens the page with colour and memory choices
+PASS first in-stock variant pre-selected: its price, old price, discount and stock
+PASS variant chips are at least 44 px tall (touch target)
+PASS choose «Oq»: price, stock and photo switch to that variant
+PASS «Oq · 256 GB» (0 in stock) is shown crossed out
+PASS characteristics shown, incl. the chosen options
+PASS long description: short first → «Batafsil koʻrish» opens → «Yopish» closes
+PASS related products: same category first, not itself
+PASS product page: no horizontal overflow
+PASS tapping a related product opens that product
+PASS cart: one row per chosen variant, label shown
+PASS cart summary: goods and courier fee lines
+PASS stepper stops at that variant’s stock (2), not the product total
+PASS checkout: both choices clearly shown with what each means
+PASS checkout lines: goods, courier fee, final total
+PASS pickup: store address, no courier fee
+PASS checkout: no horizontal overflow
+PASS checkout sheet: typing the name keeps focus
+
+## Customer product page, cart and checkout — 412 px
+PASS product card: «… dan» price and variant count
+PASS «+» on a variant product opens the page with colour and memory choices
+PASS first in-stock variant pre-selected: its price, old price, discount and stock
+PASS variant chips are at least 44 px tall (touch target)
+PASS choose «Oq»: price, stock and photo switch to that variant
+PASS «Oq · 256 GB» (0 in stock) is shown crossed out
+PASS characteristics shown, incl. the chosen options
+PASS long description: short first → «Batafsil koʻrish» opens → «Yopish» closes
+PASS related products: same category first, not itself
+PASS product page: no horizontal overflow
+PASS tapping a related product opens that product
+PASS cart: one row per chosen variant, label shown
+PASS cart summary: goods and courier fee lines
+PASS stepper stops at that variant’s stock (2), not the product total
+PASS checkout: both choices clearly shown with what each means
+PASS checkout lines: goods, courier fee, final total
+PASS pickup: store address, no courier fee
+PASS checkout: no horizontal overflow
+PASS checkout sheet: typing the name keeps focus
+PASS checkout: address confirmed in the sheet (GPS point + text)
+PASS order saved with variants, server total, courier fee, confirmed point and details
+
+## C11/C12 — one address picker on home, profile and checkout
+PASS GPS ±900 m is never accepted as is: confirm blocked with a clear reason
+PASS a precise fix (±15 m) can be confirmed
+PASS home «Sizning joylashuvingiz» shows the confirmed address
+PASS profile shows the same address with «Oʻzgartirish»
+PASS checkout uses the same confirmed address automatically
+PASS discount line shown when a product has an old price (300 000 → 245 000)
+PASS GPS refused: explained, map and written address still offered
+PASS written address saved without GPS
+
+## C14/C15 — no courier tariff: never guessed, staff confirm it
+PASS cart: fee reads «Operator aniqlaydi», total marked «+ yetkazish» (no invented amount)
+PASS checkout explains who sets the fee
+PASS order card: courier fee «Doʻkon aniqlaydi»
+PASS admin sets the fee in the order → total updated on the server
+PASS settings: tariff mode switch (fixed / free / operator)
+
+## C13 — store map: route inside the app
+PASS location already allowed → in-app road route without an extra tap
+PASS without a routing key: says the in-app route needs configuration, Google Maps stays as fallback
+
+## K01 — courier account in the admin app
+PASS courier sees only deliveries — no products, settings or integrations
+
+100/100 passed

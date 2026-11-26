@@ -1,0 +1,13 @@
+PASS uz.fayzmarket.customer: older build installed
+PASS uz.fayzmarket.customer: release 1.2.2 installed over it in place (data kept)
+PASS uz.fayzmarket.customer: release build is not debuggable
+PASS uz.fayzmarket.admin: older build installed
+PASS uz.fayzmarket.admin: release 1.2.2 installed over it in place (data kept)
+PASS uz.fayzmarket.admin: release build is not debuggable
+PASS customer release: opens the production store (stale test-server address ignored)
+PASS customer release: no developer/server controls
+PASS admin release: login screen with email, password, Kirish
+PASS admin release: no server / API / test control on the login screen
+PASS admin release: Android menu has no «API manzili»
+
+11/11 passed (EMULATOR, not a physical phone)

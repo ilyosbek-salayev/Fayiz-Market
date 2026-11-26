@@ -1,6 +1,12 @@
 # Release hisoboti — Fayz Market V1
 
-> **Joriy release: 1.2.1** (Android versionCode 8). Asosiy oʻzgarishlar:
+> **Joriy release: 1.2.2** (Android versionCode 9). Egasining Samsung A17 dagi sinovi boʻyicha tuzatishlar: mahsulot variantlari va xususiyatlari, checkout hisob-kitobi va kuryer tarifi, bitta manzil komponenti, admin fokus xatosi, qulflash va hisobdan chiqish.
+>
+> - Batafsil: `REAL_DEVICE_QA_FIX_REPORT.md`.
+> - Fayllar: `dist/RELEASE_MANIFEST.md` (Git nusxasi `docs/v1/RELEASE_MANIFEST-1.2.2.md`).
+> - Production’ga 0009 + Worker egasining ruxsatini kutmoqda. **0009 dan oldin push qilinmasin.**
+>
+> **1.2.1 (tarix):** Android versionCode 8. Asosiy oʻzgarishlar:
 >
 > - doʻkonga beriladigan Android ilovalar endi **release** build: production’ga qulflangan, server yoki debug tugmasi yoʻq;
 > - narx inputi tuzatildi;

@@ -212,3 +212,26 @@ Natijalar va loglar `docs/v1/evidence/`, skrinshotlar `docs/v1/screenshots/` da.
 | Read-only smoke | `production-get.mjs` **11/11**; `/storefront` → `checkout.deliveryFee`/`deliveryFreeFrom` bor; `/auth/config` → `phone.codeLogin: true` (`phone.enabled: false` — SMS yoʻq); `POST /auth/phone/login {}` → 400 (validatsiya, endpoint bor); kirishsiz `DELETE /customer/push-token` va `/admin/integrations` → 401. Dalil: `evidence/production/production-get-after-1.2.1.log` |
 | Rollback (kerak boʻlsa) | `cd apps/api && npx wrangler rollback e5f9c48e-7760-4dfa-87af-5a7ca1283718 --env production` — 1.2.0 kodi 0008 sxemasida 136/136 ishlashi tasdiqlangan |
 
+## 8. 1.2.2 — haqiqiy qurilma sinovidan keyingi tuzatishlar (`94ac876`)
+
+Toʻliq hisobot: `REAL_DEVICE_QA_FIX_REPORT.md`. Barcha natijalar lokal izolyatsiyalangan muhit, Chrome va **emulyatorda** olingan. 1.2.2 haqiqiy telefonda **NOT TESTED**.
+
+| Toʻplam | Natija | Qayerda | Dalil |
+|---|---|---|---|
+| TypeScript / Unit | PASS / **73/73** | Node | `evidence/regression-1.2.2/` |
+| Yangi API: variantlar, savat/checkout, tarif, login, kuryer RBAC | **85/85** | Lokal Worker | `evidence/real-device-fixes/api-verify.txt` |
+| Yangi UI: fokus, qulflash/chiqish, variantlar, checkout, manzil, xarita, kuryer (360/390/412/1280 px) | **100/100** | Chrome | `evidence/real-device-fixes/ui-verify.txt` |
+| V1 API / V1 UI | **154/154** / **77/77** | Lokal Worker / Chrome | `evidence/regression-1.2.2/` |
+| expansion API, integration, security, provider | **129/129**, **38/38**, **11/11**, **35/35** | Lokal Worker | Xuddi shu |
+| expansion UI, regression UI | **54/54**, **43/43** | Chrome | Xuddi shu |
+| Production’dagi kod 0009 sxemasida | **154/154** | Lokal Worker | `evidence/prod-worker-on-0009/` |
+| Release APK eski 1.2.1 ustidan; V1 oqimlari | **11/11**; **15/15** | **EMULATOR** | `evidence/real-device-fixes/emulator/` |
+| macOS DMG smoke; brend va login | **11/11**; **5/5** | macOS | `evidence/real-device-fixes/desktop/` |
+
+| 1.2.2 da sinalmagan | Holat |
+|---|---|
+| Haqiqiy telefon (Samsung A17) | **NOT TESTED** (roʻyxat: `REAL_DEVICE_QA_FIX_REPORT.md` §8) |
+| Windows’da oʻrnatish | **NOT TESTED** |
+| Production’da 1.2.2 (0009 + Worker) | **Deploy qilinmagan** — egasining ruxsatini kutmoqda |
+| Tashqi integratsiyalar haqiqiy kalitlar bilan | **NOT TESTED** / Payme, Click **BLOCKED** |
+

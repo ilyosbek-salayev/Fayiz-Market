@@ -1,7 +1,7 @@
 -- Fayz Market V1 1.2.2 — product variants and characteristics, sale ("chegirma") prices, delivery tariff mode.
 --
--- ADDITIVE for data: new table, new columns with defaults, new settings rows. Five stock/price triggers are
--- re-created with a `variant_id IS NULL` condition so that simple products behave exactly as before, and new
+-- ADDITIVE for data: new table, new columns with defaults, new settings rows. Six stock/price triggers are
+-- re-created (limited to rows without a variant) so that simple products behave exactly as before, and new
 -- triggers enforce the same rules per variant. The 1.2.1 Worker keeps working on this schema (it never writes
 -- variant_id, so every row it inserts takes the old path).
 --

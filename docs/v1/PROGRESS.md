@@ -44,3 +44,28 @@ Next action: connect an Android phone, install both files from `dist/apk/`, keep
   - 1.2.1 haqiqiy telefonda;
   - Windows;
   - real credentials (SMS va hokazo).
+
+## 1.2.2 — 2026-11-26
+
+- Egasi 1.2.1 ni Samsung A17 da sinadi: 37 ta tekshiruv — 28 PASS, 2 FAIL (C07, A06), 3 QISMAN (A01, A03, U01), 4 SINOVSIZ.
+- `94ac876` — qilingan ishlar:
+  - variantlar va xususiyatlar (migratsiya 0009);
+  - chegirma va tavsiyalar;
+  - checkout: olib ketish yoki kuryer, hisob qatorlari, tarif rejimi;
+  - bitta manzil komponenti;
+  - fokus xatosi (Modal/Sheet);
+  - login normallashtirish, qulflash va hisobdan chiqish;
+  - xarita oʻzi aniqlaydi.
+- QA:
+  - yangi API 85/85, yangi UI 100/100;
+  - V1 154 + 77; oldingi toʻplamlar 129, 38, 11, 35, 54, 43;
+  - production kodi 0009 da 154/154;
+  - emulyator 11 + 15; desktop 11 + 5.
+- dist: faqat 1.2.2. 1.2.1 Savatga koʻchirildi.
+- Ochiq:
+  - production’ga 0009 + deploy (ruxsat kerak; push undan **keyin**);
+  - A17 da qayta sinov;
+  - Windows;
+  - real credentials;
+  - «olib ketish» ni egasi yoqishi.
+

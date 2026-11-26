@@ -1,0 +1,103 @@
+Fayz Market V1 1.2.2 — real-device fixes, API (isolated local Worker, fresh D1)
+2026-11-26T15:41:26.286Z
+PASS isolated local Worker started (fresh D1, migrations 0001–0009)
+
+## Admin login, lock-out, sign-out (A01)
+PASS login: email with spaces and capital letters (phone keyboard) → accepted
+PASS login: password is exact (a trailing space is a different password)
+PASS wrong password → 401 with attempts left (not a silent "server error")
+PASS correct password after a wrong one → 200 (counter reset)
+PASS sign-out revokes that session on the server
+PASS sign-out of one device leaves the other session valid
+PASS sign in again after sign-out → 200 with a NEW token
+PASS after 5 wrong passwords the account is paused: clear 429 message, not "wrong password"
+
+## Product variants and characteristics (C07, A06, A03)
+PASS duplicate colour + memory combination → 409
+PASS value not in the axis list → 400
+PASS variant missing an axis → 400
+PASS variant photo must be this shop’s own upload → 400
+PASS compare-at price below the price → 400
+PASS a refused create leaves no half-made product (slug still free)
+PASS product with 4 variants (2 colours × 2 memory sizes) created
+PASS customer: only ACTIVE variants are returned (3 of 4)
+PASS customer: price = cheapest active variant, range given
+PASS customer: stock = sum of active variants (3 + 2 + 0)
+PASS customer: variant has label, own price, stock and photo
+PASS customer: characteristics returned in order
+PASS customer: option values limited to sellable variants
+PASS catalogue list: variant count and "from" price for the card
+PASS admin: all 4 variants incl. the switched-off one
+
+## Cart and checkout with variants (server checks)
+PASS variant product without a chosen variant → 409 VARIANT_REQUIRED
+PASS variant of ANOTHER product → 409 VARIANT_INVALID
+PASS switched-off variant → 409
+PASS variant with 0 stock → 409 OUT_OF_STOCK
+PASS more than the variant stock (3 > 2) → 409
+PASS same variant split over two lines is merged (1 + 2 > 2) → 409
+PASS valid mixed order → 201; total from D1 prices (client price/total ignored)
+PASS discount computed on the server: (2 300 000 − 2 000 000)×2 + (400 000 − 300 000)
+PASS order lines keep variant id, label, and "Name (label)" for every screen
+PASS stock taken from the chosen variants only (3→1, 2→1; others untouched)
+PASS simple product stock still decremented as before (10→9)
+PASS customer order view: variant label on the line, discount
+PASS admin order view: variant label on the line
+PASS cancel restores the VARIANT stock (1→3, 1→2) and the simple product (9→10)
+PASS product stock after cancel = 5 again
+
+## Variant stock adjustments and editing
+PASS stock change of a variant product without the variant → 400
+PASS stock +4 for «Oq · 64 GB» → applied to that variant only
+PASS variant stock cannot go below 0 → 409
+PASS variant id on a simple product → 400
+PASS update from an OLDER admin app (no variant fields) keeps variants, axes and characteristics
+PASS save edited variants → 200
+PASS variant used by an order is switched off, not deleted (history stays intact)
+PASS never-ordered variant left out → deleted
+PASS edited variant keeps its id and stock, new price saved
+PASS customer now sees 2 variants, from 2 050 000
+PASS report: units in stock count variant stock (phone 2+4, lite 4, watch 10)
+
+## Related products (C05/C06)
+PASS related: same category first, itself excluded, sold-out excluded
+PASS related: other categories fill the list
+PASS related for an unknown product → 404
+
+## Checkout: pickup vs courier, courier fee tariff (C14, C15)
+PASS storefront: both choices (delivery + pickup) and the tariff mode
+PASS no tariff: courier order accepted, fee NOT guessed (0, marked pending)
+PASS pickup: no courier fee and not pending
+PASS customer sees "fee pending" on the order
+PASS staff confirm the courier fee → total 325 000
+PASS customer order now shows fee 25 000 and total 325 000
+PASS fee cannot change once a payment is recorded → 409
+PASS fee of a cancelled order cannot change → 409
+PASS fixed tariff without an amount → 400
+PASS older admin app sends only an amount → fixed tariff
+PASS fixed: fee added on top (300 000 + 20 000)
+PASS fixed: free above the threshold (1 800 000 ≥ 1 000 000)
+PASS free delivery: fee 0, not pending
+PASS every payment method off is still refused
+
+## Courier RBAC with a separate courier account (K01–K04)
+PASS courier signs in to the same app with role "courier"
+PASS courier is refused every staff endpoint (14 checked) → 403
+PASS owner assigns the order to courier 1
+PASS courier 1 sees the assigned delivery
+PASS courier 2 does NOT see it
+PASS courier 2 opening it directly → 404
+PASS courier 1 sees the customer phone, address, details and point while working on it (K02/K03)
+PASS stage order enforced: pick up before accepting → 409
+PASS courier 2 cannot act on courier 1’s delivery → 404
+PASS courier stage «accept» → 200 (K04)
+PASS courier stage «pickup» → 200 (K04)
+PASS courier stage «depart» → 200 (K04)
+PASS courier stage «arrive» → 200 (K04)
+PASS courier stage «handover» → 200 (K04)
+PASS order is "shipped" after pickup, waiting for the customer
+PASS customer confirmation → delivered
+PASS after completion the courier no longer sees the phone/address
+PASS switched-off courier is signed out everywhere → 401
+
+85/85 passed

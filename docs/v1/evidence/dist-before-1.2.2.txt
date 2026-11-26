@@ -1,0 +1,6 @@
+dist/ before 1.2.2 clean-up (2026-11-26T15:48:38Z) — moved to macOS Trash, recoverable
+bc1c58d467d7a60d  1081011  dist/apk/v1.2.1/fayz-market-admin.apk
+c9967222410d1801  1033337  dist/apk/v1.2.1/fayz-market-customer.apk
+6dd5c7fb827c00b2  121767111  dist/desktop/fayz-market-admin-1.2.1-macos-arm64.dmg
+f0d008ca46b99a68  122462366  dist/desktop/fayz-market-admin-1.2.1-windows-x64-setup.exe
+Trash folder: ~/.Trash/fayz-dist-1.2.1-20261126-204838/
