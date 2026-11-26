@@ -9,14 +9,14 @@ import { notify, pushCustomer } from './push';
 import { customerPaymentView } from './payments';
 import { computeRoute, routingProvider } from './routing';
 
-type OrderRow = { id: number; order_number: string; customer_name: string; phone: string; address: string; note: string; status: string; total: number; created_at: string; customer_id: number | null; delivery_lat: number | null; delivery_lng: number | null; delivery_details: string; fulfillment?: 'delivery' | 'pickup'; payment_method?: 'cash' | 'card_terminal' | 'bank_transfer' | 'payme' | 'click'; payment_status?: string; paid_at?: string | null; payment_note?: string; delivery_fee?: number };
+type OrderRow = { id: number; order_number: string; customer_name: string; phone: string; address: string; note: string; status: string; total: number; created_at: string; customer_id: number | null; delivery_lat: number | null; delivery_lng: number | null; delivery_details: string; delivery_fee_pending?: number; discount_total?: number; fulfillment?: 'delivery' | 'pickup'; payment_method?: 'cash' | 'card_terminal' | 'bank_transfer' | 'payme' | 'click'; payment_status?: string; paid_at?: string | null; payment_note?: string; delivery_fee?: number };
 type DeliveryRow = { order_id: number; courier_id: number; status: DeliveryStatus; version: number; assigned_at: string; accepted_at: string | null; picked_up_at: string | null; arrived_at: string | null; handed_over_at: string | null; confirmed_at: string | null; updated_at: string; decline_reason: string; courier_name: string; courier_phone: string };
 const ctxOf = (c: { executionCtx: unknown }) => { try { return c.executionCtx as { waitUntil(p: Promise<unknown>): void }; } catch { return undefined; } };
 /** A location older than this is shown as "last known", never as live. */
 export const LIVE_SECONDS = 120;
 
 export const getDelivery = (db: D1Database, orderId: number) => db.prepare('SELECT d.*,a.name AS courier_name,a.phone AS courier_phone FROM deliveries d JOIN admins a ON a.id=d.courier_id WHERE d.order_id=?').bind(orderId).first<DeliveryRow>();
-const items = (db: D1Database, orderId: number) => db.prepare('SELECT product_id AS productId,name,price,quantity FROM order_items WHERE order_id=?').bind(orderId).all<{ productId: number; name: string; price: number; quantity: number }>().then(r => r.results);
+const items = (db: D1Database, orderId: number) => db.prepare('SELECT product_id AS productId,variant_id AS variantId,variant_label AS variant,name,price,quantity FROM order_items WHERE order_id=?').bind(orderId).all<{ productId: number; name: string; price: number; quantity: number }>().then(r => r.results);
 const storeLocation = async (db: D1Database) => {
   const rows = (await db.prepare("SELECT key,value FROM settings WHERE key IN ('store_lat','store_lng','store_address')").all<{ key: string; value: string }>()).results;
   const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
@@ -48,7 +48,7 @@ export async function customerOrderView(db: D1Database, row: OrderRow) {
     canConfirm: delivery?.status === 'handed_over' && row.status === 'shipped',
     canReview: confirmed,
     reviewed: { products: reviews.map(r => r.productId), courier: !!rating, courierRatable: confirmed && !!delivery },
-    fulfillment: row.fulfillment ?? 'delivery', deliveryFee: row.delivery_fee ?? 0,
+    fulfillment: row.fulfillment ?? 'delivery', deliveryFee: row.delivery_fee ?? 0, deliveryFeePending: Boolean(row.delivery_fee_pending), discountTotal: Number(row.discount_total ?? 0),
     payment: customerPaymentView({ ...row, payment_method: method, payment_status: row.payment_status ?? 'pending' }, { bank_transfer_details: bank?.value || '' }),
   };
 }

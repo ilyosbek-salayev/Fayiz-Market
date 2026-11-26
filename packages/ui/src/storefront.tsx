@@ -11,7 +11,7 @@ export type Storefront = {
   store: { name: string; address: string; lat: number | null; lng: number | null; configured: boolean; phone: string };
   banners: Banner[];
   defaultBanner: { title: string; subtitle: string };
-  checkout: { fulfillment: ('delivery' | 'pickup')[]; payments: PaymentOption[]; bankTransferDetails: string; pickupAddress: string; deliveryFee?: number; deliveryFreeFrom?: number };
+  checkout: { fulfillment: ('delivery' | 'pickup')[]; payments: PaymentOption[]; bankTransferDetails: string; pickupAddress: string; deliveryFee?: number; deliveryFreeFrom?: number; /** 1.2.2+: 'quote' = no tariff yet, staff confirm the fee */ deliveryFeeMode?: 'fixed' | 'free' | 'quote' };
   routing: { available: boolean };
 };
 

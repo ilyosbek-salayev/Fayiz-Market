@@ -10,6 +10,7 @@ import { BannersView, BrandPanel, OrderPayment, PaymentSettingsPanel, StorePanel
 import { NETWORK_MESSAGE, formatDateTime, formatDay, friendlyError, nativeDebug, openApiSettings, paintSystemBars } from '../../../packages/ui/src/format';
 import { ConfirmDialog, EmptyState, Field, IconAction, MetricCard, Modal, Panel, Thumb, Toggle } from './components';
 import { CourierApp } from './courier';
+import { CharacteristicsEditor, VariantsEditor, emptyExtras, syncVariants, type VariantDraft } from './variants';
 import { ImagePicker, IntegrationsView, OrderDelivery, PasswordPanel, ReviewsView, StaffPanel, roleNames as staffRoles, useNotifications, type Notice, type OrderExtras } from './expansion';
 import { biometricDisable, biometricEnable, biometricStatus, biometricStored, biometricUnlock, desktopSession } from '../../../packages/ui/src/native';
 import { deliveryNames } from '../../../packages/ui/src/stages';
@@ -22,7 +23,7 @@ declare global { interface Window { fayzDesktop?: { request: (input: { path: str
 
 const API = import.meta.env.VITE_API_URL || (window.location.pathname.startsWith('/__app/') ? window.location.origin : 'http://localhost:8787');
 type View = 'dashboard' | 'products' | 'categories' | 'orders' | 'banners' | 'reviews' | 'settings' | 'integrations';
-type Order = { id: number; orderNumber: string; customerName: string; phone: string; address: string; status: string; total: number; createdAt: string; items: { name: string; price: number; quantity: number }[]; location: { lat: number; lng: number; details: string } | null; deliveryStatus?: string | null; courierName?: string | null; fulfillment?: string; paymentMethod?: string; paymentStatus?: string; paidAt?: string | null; paymentNote?: string; deliveryFee?: number };
+type Order = { id: number; orderNumber: string; customerName: string; phone: string; address: string; status: string; total: number; createdAt: string; items: { name: string; price: number; quantity: number }[]; location: { lat: number; lng: number; details: string } | null; deliveryStatus?: string | null; courierName?: string | null; fulfillment?: string; paymentMethod?: string; paymentStatus?: string; paidAt?: string | null; paymentNote?: string; deliveryFee?: number; deliveryFeePending?: boolean; discountTotal?: number };
 type Me = { id: number; email: string; role: string; name: string };
 const BIO_FLAG = 'fayz_admin_bio';
 type Report = { orders: { orders: number; ordered_total: number; delivered_total: number }; payments: { received_total: number; verifying?: number }; inventory: { products: number; units: number }; daily: { day: string; orders: number; total: number }[] };
@@ -30,7 +31,7 @@ const statusNames: Record<string, string> = { new: 'Yangi', confirmed: 'Tasdiqla
 const pickupStatusNames: Record<string, string> = { shipped: 'Olib ketishga tayyor', delivered: 'Topshirildi' };
 const paymentFilters: [string, string][] = [['', 'Hammasi'], ['pending', 'Kutilmoqda'], ['verifying', 'Tekshirilmoqda'], ['paid', 'Toʻlangan'], ['failed', 'Muvaffaqiyatsiz']];
 const roleNames: Record<string, string> = staffRoles;
-const emptyProduct = { name: '', slug: '', description: '', categoryId: 0, price: 0, stock: 0, active: true, featured: false, images: [] as string[] };
+const emptyProduct = { name: '', slug: '', description: '', categoryId: 0, price: 0, stock: 0, active: true, featured: false, images: [] as string[], ...emptyExtras };
 const views: [View, string, IconName, string][] = [
   ['dashboard', 'Boshqaruv', 'chart', 'Savdo va ombor holati'],
   ['products', 'Mahsulotlar', 'box', 'Katalog, narx va qoldiq'],
@@ -51,8 +52,8 @@ function App() {
   const [products, setProducts] = useState<Product[]>([]); const [categories, setCategories] = useState<Category[]>([]); const [orders, setOrders] = useState<Order[]>([]); const [report, setReport] = useState<Report | null>(null);
   const [product, setProduct] = useState<typeof emptyProduct & { id?: number }>(emptyProduct); const [editingProduct, setEditingProduct] = useState(false);
   const [category, setCategory] = useState({ id: 0, name: '', slug: '' }); const [selectedOrder, setSelectedOrder] = useState<Order | null>(null); const [payments, setPayments] = useState<PaymentRow[]>([]); const [transactions, setTransactions] = useState<any[]>([]);
-  const [paymentFilter, setPaymentFilter] = useState('');
-  const [adjust, setAdjust] = useState({ id: 0, delta: 0, reason: '' });
+  const [paymentFilter, setPaymentFilter] = useState(''); const [feeDraft, setFeeDraft] = useState(0);
+  const [adjust, setAdjust] = useState<{ id: number; delta: number; reason: string; variantId?: number; variants?: VariantDraft[] }>({ id: 0, delta: 0, reason: '' });
   const [settings, setSettings] = useState({ contact_phone: '', delivery_info: '', banner_title: '', banner_subtitle: '' }); const [role, setRole] = useState('manager');
   const [users, setUsers] = useState<{ id: number; email: string; role: string }[]>([]);
   const [newUser, setNewUser] = useState({ email: '', password: '', role: 'manager' });
@@ -75,7 +76,7 @@ function App() {
   useEffect(() => { if (!token && desktopSession.available()) void desktopSession.load().then(saved => { if (saved) { sessionStorage.setItem('fayz_admin_token', saved); setToken(saved); } }); }, []);
   useEffect(() => {
     if (!token) { setMe(null); return; }
-    request<{ admin: Me }>('/admin/me').then(r => { setMe(r.admin); setRole(r.admin.role); }).catch(e => { if (/Sessiya|kirishi kerak/.test(String(e?.message))) { sessionStorage.removeItem('fayz_admin_token'); void desktopSession.clear(); setToken(''); } else setError(friendlyError(e)); });
+    request<{ admin: Me }>('/admin/me').then(r => { setMe(r.admin); setRole(r.admin.role); }).catch(e => { if (/Sessiya|kirishi kerak/.test(String(e?.message))) { sessionStorage.removeItem('fayz_admin_token'); void desktopSession.clear(); setToken(''); setError('Sessiya muddati tugagan yoki boshqa joydan yopilgan. Parol bilan qayta kiring.'); } else setError(friendlyError(e)); });
     void loadPublic();
   }, [token]);
   // Tapping a system notification (Android shell / desktop) opens that order.
@@ -93,7 +94,7 @@ function App() {
     if (r.value !== 'cancelled') setError('Barmoq izi tasdiqlanmadi');
   };
   const toggleBio = async () => { if (bioOn) { biometricDisable(); localStorage.removeItem(BIO_FLAG); setBioOn(false); return; } const r = await biometricEnable(token); if (r.ok) { localStorage.setItem(BIO_FLAG, '1'); setBioOn(true); setMessage('Barmoq izi bilan kirish yoqildi'); } else setError('Barmoq izini yoqib boʻlmadi'); };
-  const securityPanel = bio === 'unsupported' ? null : <Panel title="Xavfsizlik" subtitle="Ushbu telefon uchun"><Toggle label="Barmoq izi bilan kirish" hint={bio === 'none' ? 'Avval telefon sozlamalarida barmoq izini qoʻshing' : 'Sessiya Android Keystore’da shifrlanadi; ilova ochilganda barmoq izi soʻraladi'} checked={bioOn} onChange={() => { if (bio === 'available') void toggleBio(); }} /></Panel>;
+  const securityPanel = bio === 'unsupported' ? null : <Panel title="Xavfsizlik" subtitle="Ushbu telefon uchun"><Toggle label="Barmoq izi bilan kirish" hint={bio === 'none' ? 'Avval telefon sozlamalarida barmoq izini qoʻshing' : 'Faqat shu telefonda. Sessiya Android Keystore’da shifrlanadi. «Ilovani qulflash» — barmoq izi bilan qayta ochiladi; «Hisobdan chiqish» — sessiya yopiladi va parol talab qilinadi'} checked={bioOn} onChange={() => { if (bio === 'available') void toggleBio(); }} /></Panel>;
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (window.fayzDesktop) {
       const result = await window.fayzDesktop.request({ path, method: init?.method || 'GET', authorization: token ? `Bearer ${token}` : undefined, contentType: 'application/json', body: typeof init?.body === 'string' ? init.body : undefined });
@@ -120,9 +121,33 @@ function App() {
   useEffect(() => { if (token && me && me.role !== 'courier') execute(() => load(view, page), ''); }, [token, view, page, me, paymentFilter]);
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(''), 3200); return () => clearTimeout(timer); }, [message]);
   const changeView = (next: View) => { setPage(1); setView(next); setError(''); setMessage(''); setMenuOpen(false); setLoaded(''); window.scrollTo({ top: 0 }); };
-  const login = (event: React.FormEvent) => { event.preventDefault(); if (password.length < 10) { setError('Email yoki parol notoʻgʻri'); return; } execute(async () => { const data = await request<{ token: string }>('/admin/login', { method: 'POST', body: JSON.stringify({ email, password }) }); sessionStorage.setItem('fayz_admin_token', data.token); if (desktopSession.available()) await desktopSession.save(data.token); if (localStorage.getItem(BIO_FLAG) === '1' && biometricStored()) await biometricEnable(data.token); setToken(data.token); setPassword(''); }, ''); };
-  const logout = () => execute(async () => { try { await request('/admin/logout', { method: 'POST' }); } finally { sessionStorage.removeItem('fayz_admin_token'); await desktopSession.clear(); biometricDisable(); localStorage.removeItem(BIO_FLAG); setBioOn(false); setMe(null); setToken(''); } }, '');
-  const saveProduct = (event: React.FormEvent) => { event.preventDefault(); execute(async () => { await request(product.id ? `/admin/products/${product.id}` : '/admin/products', { method: product.id ? 'PUT' : 'POST', body: JSON.stringify(product) }); setEditingProduct(false); setProduct(emptyProduct); await load('products'); }); };
+  const login = (event: React.FormEvent) => {
+    event.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail !== email) setEmail(cleanEmail);
+    if (password.length < 10) { setError('Parol kamida 10 ta belgidan iborat. Katta-kichik harflarni «koʻrsatish» tugmasi bilan tekshiring.'); return; }
+    // A token left over from an earlier session must never ride along with a fresh sign-in.
+    sessionStorage.removeItem('fayz_admin_token');
+    execute(async () => { const data = await request<{ token: string }>('/admin/login', { method: 'POST', body: JSON.stringify({ email: cleanEmail, password }) }); sessionStorage.setItem('fayz_admin_token', data.token); if (desktopSession.available()) await desktopSession.save(data.token); if (localStorage.getItem(BIO_FLAG) === '1' && biometricStored()) await biometricEnable(data.token); setToken(data.token); setPassword(''); }, ''); };
+  /** Lock: the session stays valid but leaves memory; only this phone's fingerprint (Android Keystore) reopens it. */
+  const lockApp = () => { sessionStorage.removeItem('fayz_admin_token'); setMe(null); setToken(''); setError(''); setMessage(''); setLocked(true); };
+  const canLock = bioOn && biometricStored();
+  /** Sign out: the server session is revoked and the fingerprint sign-in on this phone is switched off. */
+  const logout = () => execute(async () => { try { await request('/admin/logout', { method: 'POST' }); } catch { /* offline: still forget it here */ } finally { sessionStorage.removeItem('fayz_admin_token'); await desktopSession.clear(); biometricDisable(); localStorage.removeItem(BIO_FLAG); setBioOn(false); setMe(null); setToken(''); } }, '');
+  /** Edit: load the full product (variants incl. switched-off ones) before the editor opens. */
+  const openProduct = (p?: Product) => execute(async () => {
+    if (!p) { setProduct(emptyProduct); setEditingProduct(true); return; }
+    const { product: full } = await request<{ product: Product & { variants?: VariantDraft[] } }>(`/admin/products/${p.id}`);
+    setProduct({ ...emptyProduct, ...full, comparePrice: full.comparePrice || 0, options: full.options || [], attributes: full.attributes || [], variants: (full.variants || []).map(v => ({ id: v.id, options: v.options, price: v.price, comparePrice: v.comparePrice, stock: v.stock, image: v.image, active: v.active })) });
+    setEditingProduct(true);
+  }, '');
+  /** Stock change of a variant product needs the variant: its list is fetched when the dialog opens. */
+  const openAdjust = (p: Product) => { if (!p.variantCount && !p.options?.length) { setAdjust({ id: p.id, delta: 0, reason: '' }); return; } execute(async () => { const { product: full } = await request<{ product: { variants: VariantDraft[] } }>(`/admin/products/${p.id}`); setAdjust({ id: p.id, delta: 0, reason: '', variants: full.variants, variantId: full.variants[0]?.id }); }, ''); };
+  const productBody = () => {
+    const options = product.options.map(o => ({ name: o.name.trim(), values: o.values })).filter(o => o.name && o.values.length);
+    return { ...product, attributes: product.attributes.map(a => ({ name: a.name.trim(), value: a.value.trim() })).filter(a => a.name && a.value), options, variants: options.length ? syncVariants(options, product.variants, product.price) : [] };
+  };
+  const saveProduct = (event: React.FormEvent) => { event.preventDefault(); execute(async () => { await request(product.id ? `/admin/products/${product.id}` : '/admin/products', { method: product.id ? 'PUT' : 'POST', body: JSON.stringify(productBody()) }); setEditingProduct(false); setProduct(emptyProduct); await load('products'); }); };
   /** Uploads a prepared photo to R2 (via the Worker) with progress; the URL is added to the product form. */
   const upload = async (path: string, blob: Blob, progress: (p: number) => void = () => undefined) => {
     const type = blob.type || 'image/jpeg';
@@ -155,19 +180,19 @@ function App() {
   useEffect(() => { if (!menuOpen) return; const key = (e: KeyboardEvent) => { if (e.key === 'Escape') closeMenu(); }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key); }, [menuOpen, closeMenu]);
 
   if (!token && locked) return <main className="login-page"><div className="login-card">
-    <div className="login-brand"><BrandMark size={56} brand={brand} dark={darkTheme} /><div><h1>{brand.name}</h1><p>Sessiya barmoq izi bilan himoyalangan</p></div></div>
+    <div className="login-brand"><BrandMark size={56} brand={brand} dark={darkTheme} /><div><h1>{brand.name}</h1><p>Ilova qulflangan. Shu telefonda yoqilgan barmoq izi bilan oching.</p></div></div>
     {error && <div className="banner banner-error" role="alert"><Icon name="alert" size={20} /><div>{error}</div></div>}
     <button className="btn btn-primary btn-lg btn-block" onClick={unlock}><Icon name="fingerprint" size={22} />Barmoq izi bilan ochish</button>
-    <button className="btn btn-quiet btn-block" onClick={() => setLocked(false)}>Parol bilan kirish</button>
+    <button className="btn btn-quiet btn-block" onClick={() => { setLocked(false); setError(''); }}>Parol bilan kirish</button>
   </div></main>;
   if (token && !me) return <main className="login-page"><div className="login-card center-card">{error ? <><div className="banner banner-error" role="alert"><Icon name="alert" size={20} /><div>{error}</div></div><button className="btn btn-secondary" onClick={() => { setError(''); const t = token; setToken(''); setTimeout(() => setToken(t)); }}>Qayta urinish</button><button className="btn btn-quiet" onClick={() => { sessionStorage.removeItem('fayz_admin_token'); void desktopSession.clear(); setToken(''); setError(''); }}>Chiqish</button></> : <><span className="spinner" /><span className="t-muted">Yuklanmoqda...</span></>}</div></main>;
-  if (token && me?.role === 'courier') return <CourierApp request={request} me={me} onLogout={logout} mapsKey={mapsKey || undefined} securityPanel={securityPanel} />;
+  if (token && me?.role === 'courier') return <CourierApp request={request} me={me} onLogout={logout} onLock={canLock ? lockApp : undefined} mapsKey={mapsKey || undefined} securityPanel={securityPanel} />;
   if (!token) return <main className="login-page">
     <form className="login-card" onSubmit={login}>
       <div className="login-brand"><BrandMark size={56} brand={brand} dark={darkTheme} /><div><h1>{brand.name}</h1><p>Boshqaruv paneliga kirish</p></div></div>
       {error && <div className="banner banner-error" role="alert"><Icon name={error === NETWORK_MESSAGE ? 'wifiOff' : 'alert'} size={20} /><div>{error}</div></div>}
-      <Field label="Email"><input className="input" type="email" inputMode="email" autoCapitalize="off" spellCheck={false} value={email} onChange={e => setEmail(e.target.value)} required autoComplete="username" placeholder="ism@fayzmarket.uz" /></Field>
-      <Field label="Parol"><span className="password-field"><input className="input" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" /><button type="button" className="icon-btn" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Parolni yashirish' : 'Parolni koʻrsatish'} aria-pressed={showPassword}><Icon name="eye" size={20} /></button></span></Field>
+      <Field label="Email"><input className="input" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={e => setEmail(e.target.value)} onBlur={() => setEmail(v => v.trim().toLowerCase())} required autoComplete="username" placeholder="ism@fayzmarket.uz" /></Field>
+      <Field label="Parol"><span className="password-field"><input className="input" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} /><button type="button" className="icon-btn" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Parolni yashirish' : 'Parolni koʻrsatish'} aria-pressed={showPassword}><Icon name="eye" size={20} /></button></span></Field>
       <button className="btn btn-primary btn-lg btn-block" disabled={busy}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : 'Kirish'}</button>
     </form>
     <p className="login-foot">Fayz Market V1 · versiya {import.meta.env.VITE_APP_VERSION || ''}</p>
@@ -184,7 +209,7 @@ function App() {
     <aside className={`sidebar${menuOpen ? ' open' : ''}`} aria-label="Boʻlimlar">
       <div className="side-brand"><BrandMark size={40} brand={brand} dark={darkTheme} /><div><strong>{brand.name}</strong><span>Boshqaruv paneli</span></div><button className="icon-btn side-close" onClick={closeMenu} aria-label="Menyuni yopish"><Icon name="close" /></button></div>
       <nav className="side-nav">{views.filter(([key]) => (key !== 'integrations' || role === 'owner')).map(([key, label, icon]) => <button key={key} className={view === key ? 'active' : ''} aria-current={view === key ? 'page' : undefined} onClick={() => changeView(key)}><Icon name={icon} size={20} /><span>{label}</span></button>)}</nav>
-      <div className="side-foot"><div className="side-user"><span className="avatar-sm"><Icon name="user" size={18} /></span><div><span className="t-caption">{me?.name || me?.email || 'Rol'}</span><strong>{roleNames[role] || role}</strong></div></div><button className="btn btn-quiet btn-block" onClick={logout} disabled={busy}><Icon name="logout" size={18} />Chiqish</button></div>
+      <div className="side-foot"><div className="side-user"><span className="avatar-sm"><Icon name="user" size={18} /></span><div><span className="t-caption">{me?.name || me?.email || 'Rol'}</span><strong>{roleNames[role] || role}</strong></div></div>{canLock && <button className="btn btn-secondary btn-block" onClick={lockApp} disabled={busy}><Icon name="lock" size={18} />Ilovani qulflash</button>}<button className="btn btn-quiet btn-block" onClick={logout} disabled={busy} title="Sessiya yopiladi, barmoq izi bilan kirish oʻchadi"><Icon name="logout" size={18} />Hisobdan chiqish</button></div>
     </aside>
     <div className={`drawer-backdrop${menuOpen ? ' show' : ''}`} data-open={menuOpen} onClick={closeMenu} aria-hidden="true" />
     <div className="content">
@@ -192,7 +217,7 @@ function App() {
         <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Menyu" aria-expanded={menuOpen}><Icon name="menu" /></button>
         <div className="topbar-title"><h1>{current[1]}</h1><p>{current[3]}</p></div>
         <div className="topbar-actions">
-          {view === 'products' && <button className="btn btn-primary" onClick={() => { setProduct(emptyProduct); setEditingProduct(true); }} disabled={busy}><Icon name="plus" size={18} /><span className="hide-xs">Mahsulot qoʻshish</span><span className="visually-hidden show-xs-sr">Mahsulot qoʻshish</span></button>}
+          {view === 'products' && <button className="btn btn-primary" onClick={() => openProduct()} disabled={busy}><Icon name="plus" size={18} /><span className="hide-xs">Mahsulot qoʻshish</span><span className="visually-hidden show-xs-sr">Mahsulot qoʻshish</span></button>}
           {(view === 'dashboard' || view === 'orders') && <button className="icon-btn filled" onClick={() => execute(() => load(view, page), '')} disabled={busy} aria-label="Yangilash"><Icon name="refresh" size={20} /></button>}
         </div>
       </header>
@@ -218,12 +243,12 @@ function App() {
 
         {view === 'products' && <>
           <div className="list-meta"><span className="num">{loading ? 'Yuklanmoqda...' : `${total} ta mahsulot`}</span>{pages > 1 && <span className="num">{page}-sahifa</span>}</div>
-          {!loading && loaded === 'products' && !products.length ? <Panel><EmptyState icon="box" title="Mahsulot yoʻq" text="Birinchi mahsulotni qoʻshing — u mijoz ilovasida koʻrinadi." action={<button className="btn btn-primary" onClick={() => { setProduct(emptyProduct); setEditingProduct(true); }}><Icon name="plus" size={18} />Mahsulot qoʻshish</button>} /></Panel> : <>
+          {!loading && loaded === 'products' && !products.length ? <Panel><EmptyState icon="box" title="Mahsulot yoʻq" text="Birinchi mahsulotni qoʻshing — u mijoz ilovasida koʻrinadi." action={<button className="btn btn-primary" onClick={() => openProduct()}><Icon name="plus" size={18} />Mahsulot qoʻshish</button>} /></Panel> : <>
             <div className="table-wrap desktop-only"><table className="table"><thead><tr><th>Mahsulot</th><th className="r">Narx</th><th className="r">Qoldiq</th><th>Holat</th><th className="r">Amallar</th></tr></thead><tbody>
               {loading && !products.length && [0, 1, 2, 3].map(i => <tr key={i}><td colSpan={5}><div className="skeleton" style={{ height: 40 }} /></td></tr>)}
-              {products.map(p => <tr key={p.id}><td><div className="prod-cell"><Thumb src={p.images[0]} /><div><strong>{p.name}</strong><span className="t-caption">{p.categoryName}</span></div></div></td><td className="r num nowrap">{money(p.price)}</td><td className={`r num${p.stock ? '' : ' danger-text'}`}>{p.stock}</td><td><div className="badges"><span className={`badge ${p.active ? 'badge-ok' : ''}`}>{p.active ? 'Faol' : 'Yashirin'}</span>{p.featured && <span className="badge badge-confirmed plain">Tanlangan</span>}</div></td><td className="r"><div className="acts">
-                <IconAction icon="edit" label="Tahrirlash" onClick={() => { setProduct(p); setEditingProduct(true); }} disabled={busy} compact />
-                <IconAction icon="box" label="Qoldiq" onClick={() => setAdjust({ id: p.id, delta: 0, reason: '' })} disabled={busy} compact />
+              {products.map(p => <tr key={p.id}><td><div className="prod-cell"><Thumb src={p.images[0]} /><div><strong>{p.name}</strong><span className="t-caption">{p.categoryName}</span></div></div></td><td className="r num nowrap">{p.variantCount ? <>{money(p.priceFrom ?? p.price)}<span className="t-caption">{p.priceTo && p.priceTo !== p.priceFrom ? ` – ${money(p.priceTo)}` : ''}</span></> : money(p.price)}</td><td className={`r num${p.stock ? '' : ' danger-text'}`}>{p.stock}{p.variantCount ? <span className="t-caption"> · {p.variantCount} variant</span> : null}</td><td><div className="badges"><span className={`badge ${p.active ? 'badge-ok' : ''}`}>{p.active ? 'Faol' : 'Yashirin'}</span>{p.featured && <span className="badge badge-confirmed plain">Tanlangan</span>}</div></td><td className="r"><div className="acts">
+                <IconAction icon="edit" label="Tahrirlash" onClick={() => openProduct(p)} disabled={busy} compact />
+                <IconAction icon="box" label="Qoldiq" onClick={() => openAdjust(p)} disabled={busy} compact />
                 {p.active && <IconAction icon="trash" label="Oʻchirish" tone="danger" onClick={() => removeProduct(p)} disabled={busy} compact />}
               </div></td></tr>)}
             </tbody></table></div>
@@ -233,8 +258,8 @@ function App() {
                 <div className="m-card-top"><Thumb src={p.images[0]} size={64} /><div className="m-card-main"><strong>{p.name}</strong><span className="t-caption">{p.categoryName}</span><div className="badges"><span className={`badge ${p.active ? 'badge-ok' : ''}`}>{p.active ? 'Faol' : 'Yashirin'}</span>{p.featured && <span className="badge badge-confirmed plain">Tanlangan</span>}</div></div></div>
                 <dl className="m-card-facts"><div><dt>Narx</dt><dd className="num">{money(p.price)}</dd></div><div><dt>Qoldiq</dt><dd className={`num${p.stock ? '' : ' danger-text'}`}>{p.stock} dona</dd></div></dl>
                 <div className="acts">
-                  <IconAction icon="edit" label="Tahrirlash" onClick={() => { setProduct(p); setEditingProduct(true); }} disabled={busy} />
-                  <IconAction icon="box" label="Qoldiq" onClick={() => setAdjust({ id: p.id, delta: 0, reason: '' })} disabled={busy} />
+                  <IconAction icon="edit" label="Tahrirlash" onClick={() => openProduct(p)} disabled={busy} />
+                  <IconAction icon="box" label="Qoldiq" onClick={() => openAdjust(p)} disabled={busy} />
                   {p.active && <IconAction icon="trash" label="Oʻchirish" tone="danger" onClick={() => removeProduct(p)} disabled={busy} />}
                 </div>
               </article>)}
@@ -311,9 +336,12 @@ function App() {
         <Field label="Kategoriya"><select className="input" value={product.categoryId} onChange={e => setProduct({ ...product, categoryId: Number(e.target.value) })} required><option value="0">Tanlang</option>{categories.map(cat => <option value={cat.id} key={cat.id}>{cat.name}</option>)}</select></Field>
       </div></section>
       <section className="form-section"><h4>Narx va qoldiq</h4><div className="form-grid">
-        <Field label="Narx" hint="Faqat raqam — boʻshliqlar oʻzi qoʻyiladi, masalan: 1 000 000"><NumberInput value={product.price} onChange={price => setProduct(p => ({ ...p, price }))} suffix="soʻm" aria-label="Narx, soʻm" /></Field>
-        <Field label="Qoldiq" hint={product.id ? 'Mavjud mahsulot qoldigʻi «Qoldiq» tugmasi orqali oʻzgaradi' : 'Omborda nechta bor'}><NumberInput value={product.stock} onChange={stock => setProduct(p => ({ ...p, stock }))} disabled={!!product.id} suffix="dona" max={1_000_000} aria-label="Qoldiq, dona" /></Field>
+        <Field label={product.options.length ? 'Asosiy narx' : 'Narx'} hint={product.options.length ? 'Yangi variantlar shu narx bilan boshlanadi. Mijozga eng arzon variant narxi koʻrinadi.' : 'Faqat raqam — boʻshliqlar oʻzi qoʻyiladi, masalan: 1 000 000'}><NumberInput value={product.price} onChange={price => setProduct(p => ({ ...p, price }))} suffix="soʻm" aria-label="Narx, soʻm" /></Field>
+        {!product.options.length && <Field label="Qoldiq" hint={product.id ? 'Mavjud mahsulot qoldigʻi «Qoldiq» tugmasi orqali oʻzgaradi' : 'Omborda nechta bor'}><NumberInput value={product.stock} onChange={stock => setProduct(p => ({ ...p, stock }))} disabled={!!product.id} suffix="dona" max={1_000_000} aria-label="Qoldiq, dona" /></Field>}
+        {!product.options.length && <Field label="Chegirmagacha narx" hint="Ixtiyoriy. Toʻldirilsa, mijoz eski narxni chizilgan holda va chegirmani koʻradi."><NumberInput value={product.comparePrice} onChange={comparePrice => setProduct(p => ({ ...p, comparePrice }))} suffix="soʻm" placeholder="ixtiyoriy" aria-label="Chegirmagacha narx, soʻm" /></Field>}
       </div></section>
+      <section className="form-section"><h4>Variantlar <span className="t-caption">ixtiyoriy</span></h4><VariantsEditor value={product} onChange={next => setProduct(p => ({ ...p, ...next }))} images={product.images} basePrice={product.price} existing={!!product.id} /></section>
+      <section className="form-section"><h4>Xususiyatlar <span className="t-caption">ixtiyoriy</span></h4><CharacteristicsEditor value={product.attributes} onChange={attributes => setProduct(p => ({ ...p, attributes }))} /></section>
       <section className="form-section"><h4>Tavsif</h4><Field label="Mahsulot haqida"><textarea className="input" rows={4} value={product.description} onChange={e => setProduct({ ...product, description: e.target.value })} /></Field></section>
       <section className="form-section"><h4>Rasmlar <span className="t-caption num">{product.images.length}/8</span></h4>
         <div className="image-grid">
@@ -327,9 +355,10 @@ function App() {
       </div></section>
     </Modal>}
 
-    {adjust.id > 0 && <Modal as="form" size="sm" title="Qoldiqni oʻzgartirish" subtitle={products.find(p => p.id === adjust.id)?.name} onClose={closeAdjust} onSubmit={e => { e.preventDefault(); execute(async () => { await request(`/admin/products/${adjust.id}/adjust-stock`, { method: 'POST', body: JSON.stringify({ delta: adjust.delta, reason: adjust.reason }) }); setAdjust({ id: 0, delta: 0, reason: '' }); await load('products'); }); }} footer={<><button type="button" className="btn btn-quiet" onClick={closeAdjust}>Bekor qilish</button><button className="btn btn-primary" disabled={busy}>Saqlash</button></>}>
+    {adjust.id > 0 && <Modal as="form" size="sm" title="Qoldiqni oʻzgartirish" subtitle={products.find(p => p.id === adjust.id)?.name} onClose={closeAdjust} onSubmit={e => { e.preventDefault(); execute(async () => { await request(`/admin/products/${adjust.id}/adjust-stock`, { method: 'POST', body: JSON.stringify({ delta: adjust.delta, reason: adjust.reason, ...(adjust.variantId ? { variantId: adjust.variantId } : {}) }) }); setAdjust({ id: 0, delta: 0, reason: '' }); await load('products'); }); }} footer={<><button type="button" className="btn btn-quiet" onClick={closeAdjust}>Bekor qilish</button><button className="btn btn-primary" disabled={busy}>Saqlash</button></>}>
       <div className="form-stack">
-        <p className="t-muted">Hozirgi qoldiq: <strong className="num">{products.find(p => p.id === adjust.id)?.stock ?? '—'} dona</strong></p>
+        {adjust.variants?.length ? <Field label="Variant"><select className="input" value={adjust.variantId} onChange={e => setAdjust(a => ({ ...a, variantId: Number(e.target.value) }))}>{adjust.variants.map(v => <option key={v.id} value={v.id}>{Object.values(v.options).join(' · ')} — {v.stock} dona{v.active ? '' : ' (sotuvda emas)'}</option>)}</select></Field>
+          : <p className="t-muted">Hozirgi qoldiq: <strong className="num">{products.find(p => p.id === adjust.id)?.stock ?? '—'} dona</strong></p>}
         <Field label="Farq (+/−)" hint="Kirim uchun musbat (5), chiqim uchun manfiy (−2) son"><NumberInput value={adjust.delta} onChange={delta => setAdjust(a => ({ ...a, delta }))} allowNegative max={1_000_000} suffix="dona" aria-label="Qoldiq farqi" /></Field>
         <Field label="Sabab"><input className="input" value={adjust.reason} onChange={e => setAdjust({ ...adjust, reason: e.target.value })} required minLength={3} placeholder="Masalan: yangi partiya keldi" /></Field>
       </div>
@@ -344,7 +373,11 @@ function App() {
         </div></section>
         <OrderDelivery order={selectedOrder} extras={extras} request={request} mapsKey={mapsKey || undefined} onChanged={() => { openOrder(selectedOrder.id); void load('orders'); }} />
         {nextStatuses[selectedOrder.status] && <section className="od-block"><h4>Holatni oʻzgartirish</h4>{extras?.delivery && !['declined', 'cancelled'].includes(extras.delivery.status) && <p className="t-caption">Kuryer biriktirilgan: «Yoʻlga chiqarildi» va «Yetkazildi» kuryer va mijoz tasdigʻi orqali qoʻyiladi.</p>}<div className="status-actions">{nextStatuses[selectedOrder.status].filter(next => !(extras?.delivery && !['declined', 'cancelled'].includes(extras.delivery.status) && (next === 'shipped' || next === 'delivered'))).map(next => <button key={next} className={`btn ${next === 'cancelled' ? 'btn-danger' : 'btn-primary'}`} onClick={() => status(next)} disabled={busy}>{(selectedOrder.fulfillment === 'pickup' && pickupStatusNames[next]) || statusNames[next] || next}</button>)}</div></section>}
-        <section className="od-block"><h4>Mahsulotlar</h4><ul className="line-items">{selectedOrder.items.map((item, i) => <li key={i}><span className="li-name">{item.name}<span className="t-caption num"> × {item.quantity}</span></span><span className="num">{money(item.price * item.quantity)}</span></li>)}{!!selectedOrder.deliveryFee && <li><span className="li-name">Yetkazib berish (kuryer)</span><span className="num">{money(selectedOrder.deliveryFee)}</span></li>}</ul><div className="li-total"><span>Jami</span><strong className="num">{money(selectedOrder.total)}</strong></div></section>
+        <section className="od-block"><h4>Mahsulotlar</h4><ul className="line-items">{selectedOrder.items.map((item, i) => <li key={i}><span className="li-name">{item.name}<span className="t-caption num"> × {item.quantity}</span></span><span className="num">{money(item.price * item.quantity)}</span></li>)}{!!selectedOrder.discountTotal && <li><span className="li-name t-muted">Chegirma (maʼlumot uchun)</span><span className="num t-muted">−{money(selectedOrder.discountTotal)}</span></li>}{!!selectedOrder.deliveryFee && <li><span className="li-name">Yetkazib berish (kuryer)</span><span className="num">{money(selectedOrder.deliveryFee)}</span></li>}{selectedOrder.deliveryFeePending && <li><span className="li-name">Yetkazib berish (kuryer)</span><span className="badge plain badge-new">Aniqlanmagan</span></li>}</ul><div className="li-total"><span>Jami</span><strong className="num">{money(selectedOrder.total)}</strong></div>
+          {selectedOrder.deliveryFeePending && selectedOrder.fulfillment !== 'pickup' && !['shipped', 'delivered', 'cancelled'].includes(selectedOrder.status) && <form className="fee-pending" onSubmit={e => { e.preventDefault(); const id = selectedOrder.id; execute(async () => { await request(`/admin/orders/${id}/delivery-fee`, { method: 'PATCH', body: JSON.stringify({ fee: feeDraft }) }); await openOrder(id); await load('orders'); }, 'Yetkazish narxi saqlandi'); }}>
+            <span className="t-caption">Doʻkonda belgilangan tarif yoʻq. Mijoz bilan kelishilgan kuryer narxini kiriting — u buyurtma summasiga qoʻshiladi va mijozga koʻrinadi.</span>
+            <div className="fee-form"><NumberInput value={feeDraft} onChange={setFeeDraft} suffix="soʻm" aria-label="Yetkazish narxi" /><button className="btn btn-primary" disabled={busy}>Saqlash</button></div>
+          </form>}</section>
         <OrderPayment order={selectedOrder} payments={payments} transactions={transactions} role={role} request={request} onChanged={() => { openOrder(selectedOrder.id); void load('orders'); }} />
       </div>
     </Modal>}

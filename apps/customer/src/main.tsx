@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { money } from '@fayz/shared';
-import type { Category, Product } from '@fayz/shared';
+import type { Category, Product, ProductVariant } from '@fayz/shared';
 import { Icon } from '../../../packages/ui/src/Icon';
 import { BrandMark, useBrand } from '../../../packages/ui/src/brand';
 import { BannerCarousel, paymentMethodNames, paymentStatusBadge, paymentStatusNames, type PaymentOption } from '../../../packages/ui/src/storefront';
-import { LocationStrip, StoreScreen, detectLocation, useStorefront, useUserLocation, type UserLocation } from './storefront';
+import { LocationStrip, StoreScreen, useStorefront, useUserLocation, type UserLocation } from './storefront';
 import { formatDateTime, friendlyError, isNetworkFailure, nativeDebug, nativeReload, openApiSettings, paintSystemBars } from '../../../packages/ui/src/format';
 import { EmptyState, Field, ProductCard, ProductImage, ProductSkeleton, SectionHeader, Sheet, Toast, revealOnFocus } from './components';
-import { AuthSheet, ConfirmDelivery, LinkPhoneSheet, LocationSheet, PhoneLoginSheet, ProductReviews, ReviewSheet, TrackingSheet, startTelegram, takeTelegramResult, type AuthConfig, type Customer, type DeliveryLocation, type OrderView } from './account';
+import { AuthSheet, ConfirmDelivery, LinkPhoneSheet, PhoneLoginSheet, ReviewSheet, TrackingSheet, startTelegram, takeTelegramResult, type AuthConfig, type Customer, type OrderView } from './account';
 import { biometricDisable, biometricEnable, biometricStatus, biometricStored, biometricUnlock, openExternal, systemNotify } from '../../../packages/ui/src/native';
 import { formatCoords } from '../../../packages/ui/src/maps';
 import { stageBadge, stageNames } from '../../../packages/ui/src/stages';
 import { loadOrderHistory } from './order-history';
+import { ProductDetail, discountPercent, hasVariants, lineKey } from './product';
+import { AddressSheet, addressTitle, hasPoint, useAddresses, type SavedAddress } from './address';
 import '../../../packages/ui/src/tokens.css';
 import '../../../packages/ui/src/expansion.css';
 import '../../../packages/ui/src/storefront.css';
@@ -81,7 +83,8 @@ function App() {
   const [authSheet,setAuthSheet] = useState<'login'|'register'|null>(null); const [linkPhone,setLinkPhone] = useState(false);
   const [locked,setLocked] = useState(() => localStorage.getItem(BIO_FLAG)==='1' && biometricStored());
   const [accountError,setAccountError] = useState('');
-  const [dropoff,setDropoff] = useState<DeliveryLocation|null>(null); const [locationSheet,setLocationSheet] = useState(false);
+  const addresses = useAddresses(read<Profile>('fayz_profile',{customerName:'',phone:'+998',address:''}).address);
+  const [addressSheet,setAddressSheet] = useState<{for:'home'|'profile'|'checkout';locate?:boolean}|null>(null);
   const [deliveryDetails,setDeliveryDetails] = useState('');
   const [accountOrders,setAccountOrders] = useState<OrderView[]>([]);
   const [tracking,setTracking] = useState<OrderView|null>(null); const [reviewing,setReviewing] = useState<OrderView|null>(null);
@@ -91,11 +94,10 @@ function App() {
   const { storefront } = useStorefront(api);
   const brand = useBrand(storefront?.brand);
   const [userLocation,setUserLocation] = useUserLocation();
-  const [locating,setLocating] = useState(false); const [storeOpen,setStoreOpen] = useState(false);
-  const [userSheet,setUserSheet] = useState<{notice:string}|null>(null);
+  const locating = false; const [storeOpen,setStoreOpen] = useState(false);
   const [fulfillment,setFulfillment] = useState<'delivery'|'pickup'>('delivery');
   const [paymentMethod,setPaymentMethod] = useState('cash');
-  const [paying,setPaying] = useState(0); const [quickLogin,setQuickLogin] = useState(false); const [locatingDrop,setLocatingDrop] = useState(false);
+  const [paying,setPaying] = useState(0); const [quickLogin,setQuickLogin] = useState(false);
   const checkoutOptions = storefront?.checkout;
   const payOptions: PaymentOption[] = checkoutOptions?.payments?.length ? checkoutOptions.payments : [{ method:'cash', label:'Naqd pul', online:false }];
   const pickupOffered = !!checkoutOptions?.fulfillment?.includes('pickup');
@@ -155,13 +157,31 @@ function App() {
     const handler=(event:Event) => { const slug=(event as CustomEvent<string>).detail; if(slug) void open(slug); };
     window.addEventListener('fayz-product',handler); return () => window.removeEventListener('fayz-product',handler);
   },[]);
-  const cartItems = useMemo(() => Object.entries(cart).map(([id,quantity]) => ({ product:cartProducts[id] || products.find(p => p.id===Number(id)),quantity })).filter((x):x is {product:Product;quantity:number} => !!x.product),[cart,cartProducts,products]);
-  const cartTotal = cartItems.reduce((sum,x) => sum+x.product.price*x.quantity,0);
+  // Cart keys: "<productId>" for a simple product, "<productId>:<variantId>" for a chosen variant.
+  const cartItems = useMemo(() => Object.entries(cart).flatMap(([key,quantity]) => {
+    const [pid,vid] = key.split(':').map(Number);
+    const product = cartProducts[pid] || products.find(p => p.id===pid);
+    if(!product) return [];
+    const variant: ProductVariant|null = vid ? product.variants?.find(v => v.id===vid) ?? null : null;
+    if(vid && !variant) return [];
+    return [{ key, product, variant, quantity, price: variant ? variant.price : product.price, compare: variant ? variant.comparePrice : product.comparePrice || 0, stock: variant ? variant.stock : product.stock, image: variant?.image || product.images[0] }];
+  }),[cart,cartProducts,products]);
+  const cartTotal = cartItems.reduce((sum,x) => sum+x.price*x.quantity,0);
+  const cartDiscount = cartItems.reduce((sum,x) => sum+(x.compare>x.price ? (x.compare-x.price)*x.quantity : 0),0);
   const cartCount = Object.values(cart).reduce((a,b)=>a+b,0);
+  const inCartOf = (productId:number) => Object.entries(cart).reduce((n,[k,q]) => n+(k===String(productId) || k.startsWith(productId+':') ? q : 0),0);
   // Courier fee: a separate line on top of the goods, as the shop set it (the server recomputes it on the order).
-  const feeRule = { fee: storefront?.checkout?.deliveryFee || 0, freeFrom: storefront?.checkout?.deliveryFreeFrom || 0 };
-  const feeFor = (isPickup:boolean) => isPickup || !feeRule.fee || (feeRule.freeFrom>0 && cartTotal>=feeRule.freeFrom) ? 0 : feeRule.fee;
-  function quantity(product:Product, delta:number) { setCartProducts(old => ({...old,[product.id]:product})); setCart(old => { const next={...old}; const count=Math.min(product.stock,Math.max(0,(next[product.id]||0)+delta)); if(count) next[product.id]=count; else delete next[product.id]; return next; }); }
+  // Without a tariff ('quote') nothing is guessed: the line reads "aniqlanadi" and staff confirm the amount.
+  const feeRule = { mode: storefront?.checkout?.deliveryFeeMode || ((storefront?.checkout?.deliveryFee || 0)>0 ? 'fixed' : 'quote'), fee: storefront?.checkout?.deliveryFee || 0, freeFrom: storefront?.checkout?.deliveryFreeFrom || 0 };
+  const freeByThreshold = feeRule.freeFrom>0 && cartTotal>=feeRule.freeFrom;
+  const feeFor = (isPickup:boolean) => isPickup || feeRule.mode!=='fixed' || freeByThreshold ? 0 : feeRule.fee;
+  const feePending = (isPickup:boolean) => !isPickup && feeRule.mode==='quote' && !freeByThreshold;
+  const feeText = (isPickup:boolean) => isPickup ? 'Qoʻshilmaydi' : feePending(false) ? 'Operator aniqlaydi' : feeFor(false) ? money(feeFor(false)) : 'Bepul';
+  function quantity(product:Product, delta:number, variant:ProductVariant|null=null) {
+    const key = lineKey(product.id, variant?.id), limit = variant ? variant.stock : product.stock;
+    setCartProducts(old => ({...old,[product.id]:product}));
+    setCart(old => { const next={...old}; const count=Math.min(limit,Math.max(0,(next[key]||0)+delta)); if(count) next[key]=count; else delete next[key]; return next; });
+  }
   const orderHeaders = useCallback((id:number):Record<string,string> => { const saved=savedOrders.find(o => o.id===id); return saved ? {Authorization:`Order ${saved.accessToken}`} : {}; },[savedOrders]);
   const refreshOrders = useCallback(async (quiet=false) => {
     if(!quiet) { setOrderError(''); setOrdersLoading(true); }
@@ -200,35 +220,44 @@ function App() {
     if(!cartItems.length) return;
     setSubmitting(true); setCheckoutError('');
     try {
-      const latest=await Promise.all(cartItems.map(x => api<{product:Product}>('/products/'+encodeURIComponent(x.product.slug)).then(r => r.product)));
-      setCartProducts(Object.fromEntries(latest.map(p => [p.id,p])));
-      if(latest.some((p,i) => p.price!==cartItems[i].product.price || p.stock<cartItems[i].quantity)) { setCheckout(false); setCartNotice('Narx yoki qoldiq oʻzgardi. Savatni qayta tekshiring.'); await load(); return; }
+      const slugs=[...new Set(cartItems.map(x => x.product.slug))];
+      const latest=new Map((await Promise.all(slugs.map(slug => api<{product:Product}>('/products/'+encodeURIComponent(slug)).then(r => r.product)))).map(p => [p.id,p]));
+      setCartProducts(old => ({...old,...Object.fromEntries([...latest.values()].map(p => [p.id,p]))}));
+      const changed=cartItems.some(x => { const fresh=latest.get(x.product.id); if(!fresh) return true; const v=x.variant ? fresh.variants?.find(f => f.id===x.variant!.id) : null; if(x.variant && !v) return true; if(!x.variant && hasVariants(fresh)) return true; return (v ? v.price : fresh.price)!==x.price || (v ? v.stock : fresh.stock)<x.quantity; });
+      if(changed) { setCheckout(false); setCartNotice('Narx, variant yoki qoldiq oʻzgardi. Savatni qayta tekshiring.'); await load(); return; }
       // Pickup still sends a readable address so a server that predates pickup accepts the order unchanged.
       const address = pickup ? `Doʻkondan olib ketish: ${storefront?.store.address || storefront?.store.name || 'Fayz Market'}` : profile.address.trim();
-      const result=await api<{order:StoredOrder}>('/orders',{method:'POST',body:JSON.stringify({customerName:profile.customerName.trim(),phone:profile.phone,address,note,items:cartItems.map(x => ({productId:x.product.id,quantity:x.quantity})),...(!pickup && dropoff ? {location:{lat:dropoff.lat,lng:dropoff.lng,...(dropoff.accuracy ? {accuracy:dropoff.accuracy} : {})}} : {}),deliveryDetails:pickup ? '' : deliveryDetails.trim(),fulfillment,paymentMethod})});
+      const result=await api<{order:StoredOrder}>('/orders',{method:'POST',body:JSON.stringify({customerName:profile.customerName.trim(),phone:profile.phone,address,note,items:cartItems.map(x => ({productId:x.product.id,...(x.variant ? {variantId:x.variant.id} : {}),quantity:x.quantity})),...(!pickup && hasPoint(dropoff) ? {location:{lat:dropoff.lat,lng:dropoff.lng,...(dropoff.accuracy ? {accuracy:dropoff.accuracy} : {})}} : {}),deliveryDetails:pickup ? '' : deliveryDetails.trim(),fulfillment,paymentMethod})});
       setSavedOrders(old => [{...result.order,paymentMethod},...old]); setCart({}); setCartProducts({}); setCheckout(false); setConfirmation(result.order.orderNumber); setTab('orders'); setCartNotice(''); setAttempted(false); setDeliveryDetails('');
     } catch(e) { setCheckoutError('Buyurtma yuborilmadi: '+friendlyError(e)); } finally { setSubmitting(false); }
   }
   const go = (next:Tab) => { setSelected(null); setTab(next); window.scrollTo({top:0}); };
   const openSearch = () => { go('catalog'); setFocusSearch(true); };
   useEffect(() => { if(focusSearch && tab==='catalog') { searchRef.current?.focus(); setFocusSearch(false); } },[focusSearch,tab]);
-  const addToCart = (product:Product) => { quantity(product,1); setToast({message:'Savatga qoʻshildi',action:'Savatni ochish',onAction:() => go('cart')}); };
-  const openProduct = (product:Product) => { setSelected(product); window.scrollTo({top:0}); };
+  /** Opens the product page; the full product (variants included) is fetched in the background. */
+  const openProduct = (product:Product) => {
+    setSelected(product); window.scrollTo({top:0});
+    void api<{product:Product}>('/products/'+encodeURIComponent(product.slug)).then(r => setSelected(cur => cur && cur.id===r.product.id ? r.product : cur)).catch(() => undefined);
+  };
+  /** A product with variants is added from its page (the variant must be chosen); the card opens that page. */
+  const addToCart = (product:Product, variant:ProductVariant|null=null) => {
+    if(hasVariants(product) && !variant) { openProduct(product); return; }
+    quantity(product,1,variant); setToast({message:variant ? `Savatga qoʻshildi: ${variant.label}` : 'Savatga qoʻshildi',action:'Savatni ochish',onAction:() => go('cart')});
+  };
   const closeCheckout = useCallback(() => setCheckout(false),[]);
   const hideToast = useCallback(() => setToast(null),[]);
-  const locateUser = async () => {
-    if(userLocation) { setUserSheet({notice:''}); return; }
-    setLocating(true);
-    try { setUserLocation(await detectLocation()); setToast({message:'Joylashuvingiz aniqlandi'}); }
-    catch(e) { setUserSheet({notice:friendlyError(e)}); } finally { setLocating(false); }
+  // One address everywhere: home ("Sizning joylashuvingiz"), profile and checkout use the confirmed current address.
+  const dropoff = addresses.current;
+  const locateUser = () => setAddressSheet({for:'home',locate:!addresses.current});
+  const confirmAddress = (a:SavedAddress) => {
+    addresses.save(a);
+    if(a.text) setProfile(old => ({...old,address:a.text}));
+    if(a.details) setDeliveryDetails(a.details);
+    if(hasPoint(a)) setUserLocation({lat:a.lat,lng:a.lng,accuracy:a.accuracy,address:a.text,source:a.source==='gps' ? 'gps' : 'manual',at:Date.now()});
+    setAddressSheet(null); setToast({message:'Manzil saqlandi'});
   };
-  /** Checkout: the phone's GPS point is attached by itself; the map stays available for a different spot. */
-  const openCheckout = () => { setCheckoutError(''); if(!dropoff && userLocation) setDropoff({lat:userLocation.lat,lng:userLocation.lng,accuracy:userLocation.accuracy,address:userLocation.address}); setCheckout(true); };
-  const locateDropoff = async () => {
-    setLocatingDrop(true);
-    try { const here = await detectLocation(); setUserLocation(here); setDropoff({lat:here.lat,lng:here.lng,accuracy:here.accuracy}); }
-    catch(e) { setCheckoutError(friendlyError(e)+' Xaritadan nuqtani tanlashingiz mumkin.'); } finally { setLocatingDrop(false); }
-  };
+  /** Checkout uses the address the customer confirmed earlier — never a raw, unconfirmed GPS fix. */
+  const openCheckout = () => { setCheckoutError(''); if(dropoff && !deliveryDetails) setDeliveryDetails(dropoff.details); if(dropoff?.text && profile.address.trim().length<5) setProfile(old => ({...old,address:dropoff.text})); setCheckout(true); };
   const bannerAction = (target:string) => {
     if(target==='store') setStoreOpen(true);
     else if(target==='catalog') go('catalog');
@@ -239,7 +268,7 @@ function App() {
   const claimTransfer = async (order:OrderView) => { setPaying(order.id); try { await api(`/orders/${order.id}/payment/claim`,{method:'POST',headers:orderHeaders(order.id)}); setToast({message:'Doʻkon toʻlovni tekshiradi'}); await refreshOrders(true); } catch(e) { setOrderError(friendlyError(e)); } finally { setPaying(0); } };
   const share = (product:Product) => { const text=`Fayz Market: ${product.name} — ${API}/p/${product.slug}`; if(window.FayzNative) window.FayzNative.share(text); else navigator.share?.({text}).catch(() => navigator.clipboard?.writeText(text)); };
 
-  const card = (p:Product, rail=false) => <ProductCard key={p.id} product={p} rail={rail} inCart={cart[p.id]||0} onOpen={() => openProduct(p)} onAdd={() => addToCart(p)} />;
+  const card = (p:Product, rail=false) => <ProductCard key={p.id} product={p} rail={rail} inCart={inCartOf(p.id)} onOpen={() => openProduct(p)} onAdd={() => addToCart(p)} />;
   const errorState = error && <div className="state-card" role="alert">
     <div className="empty-icon"><Icon name={offline?'wifiOff':'alert'} size={30} stroke={1.6} /></div>
     <h2 className="t-h2">{offline?'Aloqa yoʻq':'Maʼlumot yuklanmadi'}</h2><p className="t-body t-muted">{error}</p>
@@ -254,34 +283,18 @@ function App() {
   const profileFields = (inSheet:boolean, withAddress=true) => <>
     <Field label="Ism" error={inSheet && attempted && nameInvalid ? 'Ismingizni kiriting (kamida 2 ta harf)' : undefined}><input className="input" value={profile.customerName} onChange={e => setProfile({...profile,customerName:e.target.value})} onFocus={revealOnFocus} autoComplete="name" placeholder="Ismingiz" aria-invalid={inSheet && attempted && nameInvalid} /></Field>
     <Field label="Telefon" error={inSheet && attempted && phoneInvalid ? 'Raqamni +998 va 9 ta raqam bilan kiriting' : undefined} hint="Masalan: +998901234567"><input className="input num" type="tel" inputMode="tel" value={profile.phone} onChange={e => setProfile({...profile,phone:e.target.value})} onFocus={revealOnFocus} placeholder="+998901234567" autoComplete="tel" aria-invalid={inSheet && attempted && phoneInvalid} /></Field>
-    {withAddress && <Field label="Yetkazib berish manzili" error={inSheet && attempted && addressInvalid ? 'Manzilni toʻliq kiriting' : undefined}><textarea className="input" value={profile.address} onChange={e => setProfile({...profile,address:e.target.value})} onFocus={revealOnFocus} autoComplete="street-address" placeholder="Shahar, tuman, koʻcha, uy" aria-invalid={inSheet && attempted && addressInvalid} /></Field>}
+    {withAddress && inSheet && <Field label="Yetkazib berish manzili" error={inSheet && attempted && addressInvalid ? 'Manzilni toʻliq kiriting' : undefined}><textarea className="input" value={profile.address} onChange={e => setProfile({...profile,address:e.target.value})} onFocus={revealOnFocus} autoComplete="street-address" placeholder="Shahar, tuman, koʻcha, uy" aria-invalid={inSheet && attempted && addressInvalid} /></Field>}
   </>;
 
   let screen;
   if (selected) {
-    const inCart = cart[selected.id]||0;
-    screen = <div className="detail">
-      <div className="detail-bar"><button className="icon-btn filled" onClick={() => setSelected(null)} aria-label="Orqaga"><Icon name="back" /></button><button className="icon-btn filled" onClick={() => share(selected)} aria-label="Ulashish"><Icon name="share" size={20} /></button></div>
-      <Gallery product={selected} />
-      <div className="detail-info">
-        <span className="t-caption">{selected.categoryName}</span>
-        <h1 className="t-h1">{selected.name}</h1>
-        <p className="detail-price num">{money(selected.price)}</p>
-        <span className={`badge ${selected.stock?'badge-ok':'badge-danger'}`}>{selected.stock ? `${selected.stock} dona mavjud` : 'Hozir sotuvda yoʻq'}</span>
-        {selected.description && <div className="detail-desc"><h2 className="t-label">Tavsif</h2><p className="t-body">{selected.description}</p></div>}
-        <ProductReviews api={api} slug={selected.slug} />
-      </div>
-      <div className="action-bar">
-        <div className="action-meta"><span className="t-caption">{inCart ? `Savatda: ${inCart} dona` : 'Narxi'}</span><strong className="num">{money(selected.price)}</strong></div>
-        <button className="btn btn-primary btn-lg" disabled={!selected.stock || inCart>=selected.stock} onClick={() => addToCart(selected)}><Icon name="bag" size={20} />Savatga qoʻshish</button>
-      </div>
-    </div>;
+    screen = <ProductDetail api={api} product={selected} inCart={inCartOf} cartQty={key => cart[key]||0} onAdd={(p,v) => addToCart(p,v)} onBack={() => setSelected(null)} onShare={share} onOpen={openProduct} onQuickAdd={p => addToCart(p)} />;
   } else if (tab==='home') {
     screen = <div className="screen">
       {awaiting.map(order => <ConfirmDelivery key={order.id} compact busy={orderBusy===order.id} onConfirm={() => confirmOrder(order)} onDispute={reason => disputeOrder(order,reason)} />)}
       <div className="home-top">
         <button className="search-trigger" onClick={openSearch}><Icon name="search" size={20} /><span>Mahsulot qidirish</span></button>
-        <LocationStrip storefront={storefront} user={userLocation} locating={locating} onStore={() => setStoreOpen(true)} onUser={locateUser} />
+        <LocationStrip storefront={storefront} user={userLocation} address={addresses.current?.text} locating={locating} onStore={() => setStoreOpen(true)} onUser={locateUser} />
       </div>
       <BannerCarousel banners={storefront?.banners || []} fallback={storefront?.defaultBanner || {title:settings.banner_title||'Fayz Market',subtitle:settings.banner_subtitle||'Siz uchun aksessuarlar'}} onCta={bannerAction} dark={dark} />
       {categories.length>0 && <section className="block"><SectionHeader title="Kategoriyalar" /><div className="rail cats">{categories.map(c => <button key={c.id} className="cat-tile" onClick={() => { setCategory(c.slug); go('catalog'); }}><span className="cat-initial" aria-hidden="true">{c.name.slice(0,1)}</span><span>{c.name}</span></button>)}</div></section>}
@@ -303,13 +316,13 @@ function App() {
       <header className="page-head"><h1 className="t-h1">Savat</h1>{cartItems.length>0 && <span className="t-caption num">{cartCount} dona mahsulot</span>}</header>
       {cartNotice && <div className="banner banner-warning" role="alert"><Icon name="alert" size={20} /><div>{cartNotice}</div></div>}
       {cartItems.length ? <>
-        <div className="cart-list">{cartItems.map(({product,quantity:count}) => <div className="cart-row" key={product.id}>
-          <button className="cart-thumb" onClick={() => openProduct(product)} aria-label={product.name}><ProductImage src={product.images[0]} /></button>
-          <div className="cart-info"><span className="cart-name">{product.name}</span><span className="t-caption num">{money(product.price)} / dona</span>
-            <div className="cart-bottom"><div className="stepper" role="group" aria-label={`${product.name} miqdori`}><button onClick={() => quantity(product,-1)} aria-label={count===1?'Savatdan olib tashlash':'Kamaytirish'}><Icon name={count===1?'trash':'minus'} size={17} /></button><b className="num" aria-live="polite">{count}</b><button onClick={() => quantity(product,1)} disabled={count>=product.stock} aria-label="Koʻpaytirish"><Icon name="plus" size={17} /></button></div><strong className="num">{money(product.price*count)}</strong></div>
+        <div className="cart-list">{cartItems.map(({key,product,variant,quantity:count,price,compare,stock,image}) => <div className="cart-row" key={key}>
+          <button className="cart-thumb" onClick={() => openProduct(product)} aria-label={product.name}><ProductImage src={image} /></button>
+          <div className="cart-info"><span className="cart-name">{product.name}</span>{variant && <span className="cart-variant">{variant.label}</span>}<span className="t-caption num">{money(price)} / dona{discountPercent(price,compare) ? <s className="old-price"> {money(compare)}</s> : null}</span>
+            <div className="cart-bottom"><div className="stepper" role="group" aria-label={`${product.name}${variant ? ' '+variant.label : ''} miqdori`}><button onClick={() => quantity(product,-1,variant)} aria-label={count===1?'Savatdan olib tashlash':'Kamaytirish'}><Icon name={count===1?'trash':'minus'} size={17} /></button><b className="num" aria-live="polite">{count}</b><button onClick={() => quantity(product,1,variant)} disabled={count>=stock} aria-label="Koʻpaytirish"><Icon name="plus" size={17} /></button></div><strong className="num">{money(price*count)}</strong></div>
           </div>
         </div>)}</div>
-        <div className="summary"><div><span>Mahsulotlar</span><span className="num">{cartCount} dona</span></div>{feeRule.fee>0 && <div><span>Yetkazib berish</span><span className="num">{feeFor(false) ? money(feeFor(false)) : 'bepul'}</span></div>}{feeRule.fee>0 && feeRule.freeFrom>0 && feeFor(false)>0 && <div className="t-caption summary-note"><Icon name="truck" size={16} /><span><span className="num">{money(feeRule.freeFrom)}</span> dan oshsa — yetkazib berish bepul</span></div>}{settings.delivery_info && <div className="t-caption summary-note"><Icon name="truck" size={16} />{settings.delivery_info}</div>}<div className="summary-total"><span>Jami</span><strong className="num">{money(cartTotal+feeFor(false))}</strong></div></div>
+        <div className="summary"><div><span>Mahsulotlar ({cartCount} dona)</span><span className="num">{money(cartTotal+cartDiscount)}</span></div>{cartDiscount>0 && <div className="discount-line"><span>Chegirma</span><span className="num">−{money(cartDiscount)}</span></div>}<div><span>Yetkazib berish (kuryer)</span><span className="num">{feeText(false)}</span></div>{feeRule.mode==='fixed' && feeRule.freeFrom>0 && feeFor(false)>0 && <div className="t-caption summary-note"><Icon name="truck" size={16} /><span><span className="num">{money(feeRule.freeFrom)}</span> dan oshsa — yetkazib berish bepul</span></div>}{feePending(false) && <div className="t-caption summary-note"><Icon name="truck" size={16} /><span>Kuryer narxi doʻkon tomonidan tasdiqlanadi va buyurtmangizda koʻrsatiladi. Doʻkondan olib ketsangiz — qoʻshilmaydi.</span></div>}{settings.delivery_info && <div className="t-caption summary-note"><Icon name="truck" size={16} />{settings.delivery_info}</div>}<div className="summary-total"><span>Jami</span><strong className="num">{money(cartTotal+feeFor(false))}{feePending(false) ? <small> + yetkazish</small> : null}</strong></div></div>
         <div className="action-bar"><div className="action-meta"><span className="t-caption">Jami</span><strong className="num">{money(cartTotal+feeFor(false))}</strong></div><button className="btn btn-primary btn-lg" onClick={openCheckout}>Buyurtma berish</button></div>
       </> : <EmptyState icon="bag" title="Savat boʻsh" text="Yoqqan mahsulotni savatga qoʻshing — u shu yerda saqlanadi." action={<button className="btn btn-primary" onClick={() => go('catalog')}>Katalogga oʻtish</button>} />}
     </div>;
@@ -324,7 +337,9 @@ function App() {
         {order ? <>
           <span className="t-caption">{formatDateTime(order.createdAt)}</span>
           <ul className="order-items">{order.items.map((item,i) => <li key={i}><span>{item.name}</span><span className="num">× {item.quantity}</span></li>)}</ul>
+          {!!order.discountTotal && <div className="order-fee discount-line"><span>Chegirma</span><span className="num">−{money(order.discountTotal)}</span></div>}
           {!!order.deliveryFee && <div className="order-fee"><span>Yetkazib berish</span><span className="num">{money(order.deliveryFee)}</span></div>}
+          {order.deliveryFeePending && order.status!=='cancelled' && <div className="order-fee"><span>Yetkazib berish</span><span className="badge plain badge-new">Doʻkon aniqlaydi</span></div>}
           <div className="order-total"><span>Jami</span><strong className="num">{money(order.total)}</strong></div>
           {order.payment && <div className="order-pay">
             <div className="pay-line"><span className="t-caption"><Icon name={paymentIcons[order.payment.method]||'wallet'} size={15} /> {paymentMethodNames[order.payment.method]||order.payment.method}</span><span className={`badge plain badge-${paymentStatusBadge[order.payment.status]||'new'}`}>{paymentStatusNames[order.payment.status]||order.payment.status}</span></div>
@@ -363,7 +378,11 @@ function App() {
         <p className="t-caption">Hisobsiz ham buyurtma berishingiz mumkin.</p>
       </section>}
       <div className="profile-card"><div className="avatar" aria-hidden="true">{profile.customerName.trim() ? profile.customerName.trim().slice(0,1).toUpperCase() : <Icon name="user" size={26} />}</div><div><strong>{profile.customerName.trim() || 'Ismingizni kiriting'}</strong><span className="t-caption num">{profile.phone.length>4 ? profile.phone : 'Telefon raqami kiritilmagan'}</span></div></div>
-      <section className="panel"><SectionHeader title="Yetkazib berish maʼlumotlari" /><p className="t-caption panel-note">Maʼlumotlar faqat shu telefonda saqlanadi va buyurtma berishda avtomatik toʻldiriladi.</p><div className="form-stack">{profileFields(false)}</div></section>
+      <section className="panel"><SectionHeader title="Yetkazib berish maʼlumotlari" /><p className="t-caption panel-note">Maʼlumotlar faqat shu telefonda saqlanadi va buyurtma berishda avtomatik toʻldiriladi.</p><div className="form-stack">{profileFields(false)}
+        <div className="field"><span className="field-label">Manzil</span>{dropoff ? <div className="loc-summary"><Icon name={hasPoint(dropoff) ? 'pin' : 'home'} size={20} /><div><strong>{addressTitle(dropoff)}</strong><span className="t-caption">{dropoff.details || (hasPoint(dropoff) ? 'Xaritada belgilangan' : 'Faqat matn')}</span></div><button className="link-btn" onClick={() => setAddressSheet({for:'profile'})}>Oʻzgartirish</button></div>
+          : <div className="loc-choice"><button className="btn btn-secondary btn-block loc-btn" onClick={() => setAddressSheet({for:'profile',locate:true})}><Icon name="target" size={20} />Joylashuvimni aniqlash (GPS)</button><button className="btn btn-quiet btn-block loc-btn" onClick={() => setAddressSheet({for:'profile'})}><Icon name="map" size={20} />Xaritada tanlash yoki yozish</button></div>}
+          {addresses.list.length>1 && <span className="field-hint">Saqlangan manzillar: {addresses.list.length} ta — «Oʻzgartirish» orqali tanlang</span>}</div>
+      </div></section>
       <section className="panel"><SectionHeader title="Koʻrinish" /><div className="themes" role="radiogroup" aria-label="Rang mavzusi">{Object.entries(themes).map(([key,t]) => <button key={key} role="radio" aria-checked={theme===key} className={`theme-opt${theme===key?' active':''}`} onClick={() => setTheme(key)}><span className="swatch" style={{background:`linear-gradient(135deg, ${t.swatch[0]} 0 50%, ${t.swatch[1]} 50% 100%)`}}>{theme===key && <Icon name="check" size={16} stroke={2.6} />}</span><span>{t.label}</span></button>)}</div></section>
       <section className="panel"><SectionHeader title="Doʻkon bilan aloqa" /><div className="info-rows">{storefront?.store.configured && <button className="info-row as-btn" onClick={() => setStoreOpen(true)}><Icon name="store" size={20} /><div><span className="t-caption">Doʻkon manzili</span><span>{storefront.store.address||storefront.store.name}</span></div><Icon name="chevron" size={18} /></button>}<div className="info-row"><Icon name="phone" size={20} /><div><span className="t-caption">Telefon</span><span className="num">{settings.contact_phone||'Aloqa raqami kiritilmagan'}</span></div></div>{settings.delivery_info && <div className="info-row"><Icon name="truck" size={20} /><div><span className="t-caption">Yetkazib berish</span><span>{settings.delivery_info}</span></div></div>}</div></section>
       {debug && <section className="panel"><SectionHeader title="Texnik sozlamalar" /><p className="t-caption panel-note">Faqat sinov (debug) ilovasida koʻrinadi.</p><div className="info-rows"><button className="info-row as-btn" onClick={openApiSettings}><Icon name="server" size={20} /><div><span>Server (API) manzili</span><span className="t-caption">Server manzilini oʻzgartirish</span></div><Icon name="chevron" size={18} /></button><button className="info-row as-btn" onClick={nativeReload}><Icon name="refresh" size={20} /><div><span>Ilovani qayta yuklash</span><span className="t-caption">Serverdan maʼlumotlarni qaytadan olish</span></div><Icon name="chevron" size={18} /></button></div></section>}
@@ -377,29 +396,34 @@ function App() {
     {showHeader && <header className="app-header"><div className="brand"><BrandMark size={40} brand={brand} dark={dark} /><div><strong>{brand.name}</strong><span>{brand.tagline || storefront?.store.address || 'Fayz Market'}</span></div></div><button className="icon-btn header-go" onClick={() => setStoreOpen(true)} aria-label="Doʻkonga yoʻl — xaritada"><Icon name="directions" size={24} /></button></header>}
     <main key={selected ? 'p'+selected.id : tab} className="main">{screen}</main>
     <nav className="tabbar" aria-label="Asosiy menyu"><div className="tabbar-inner">{navItems.map(([key,label,icon]) => { const current = tab===key && !selected; return <button key={key} className={current?'current':''} aria-current={current?'page':undefined} aria-label={key==='cart' ? `Savat, ${cartCount} ta mahsulot` : undefined} onClick={() => go(key)}><span className="tab-icon"><Icon name={icon} size={22} stroke={current?2:1.8} />{key==='cart' && cartCount>0 && <span className="tab-badge num">{cartCount>99?'99+':cartCount}</span>}</span><span className="tab-label">{label}</span></button>; })}</div></nav>
-    {checkout && <Sheet title="Buyurtmani rasmiylashtirish" onClose={closeCheckout} footer={<><button className="btn btn-primary btn-lg btn-block" onClick={submit} disabled={submitting}>{submitting ? <><span className="spinner" />Yuborilmoqda...</> : <>Buyurtmani yuborish<span className="btn-total num">{money(cartTotal+feeFor(pickup))}</span></>}</button><button className="btn btn-quiet btn-block" onClick={closeCheckout} disabled={submitting}>Bekor qilish</button></>}>
-      <div className="co-summary"><div className="co-items">{cartItems.map(({product,quantity:count}) => <div key={product.id} className="co-item"><span className="co-thumb"><ProductImage src={product.images[0]} /></span><span className="co-name">{product.name}<span className="t-caption num"> × {count}</span></span><span className="num">{money(product.price*count)}</span></div>)}</div>{(feeRule.fee>0 || pickup) && <div className="co-lines"><div><span>Mahsulotlar</span><span className="num">{money(cartTotal)}</span></div><div><span>{pickup ? 'Olib ketish' : 'Yetkazib berish (kuryer)'}</span><span className="num">{feeFor(pickup) ? money(feeFor(pickup)) : 'bepul'}</span></div></div>}<div className="summary-total"><span>Jami</span><strong className="num">{money(cartTotal+feeFor(pickup))}</strong></div></div>
+    {checkout && <Sheet title="Buyurtmani rasmiylashtirish" onClose={closeCheckout} footer={<><button className="btn btn-primary btn-lg btn-block" onClick={submit} disabled={submitting}>{submitting ? <><span className="spinner" />Yuborilmoqda...</> : <>Buyurtmani yuborish<span className="btn-total num">{money(cartTotal+feeFor(pickup))}{feePending(pickup) ? ' +' : ''}</span></>}</button><button className="btn btn-quiet btn-block" onClick={closeCheckout} disabled={submitting}>Bekor qilish</button></>}>
+      <div className="co-summary"><div className="co-items">{cartItems.map(({key,product,variant,quantity:count,price,image}) => <div key={key} className="co-item"><span className="co-thumb"><ProductImage src={image} /></span><span className="co-name"><span className="co-title">{product.name}<span className="t-caption num"> × {count}</span></span>{variant && <span className="co-variant">{variant.label}</span>}</span><span className="num">{money(price*count)}</span></div>)}</div>
+        <div className="co-lines"><div><span>Mahsulotlar summasi</span><span className="num">{money(cartTotal+cartDiscount)}</span></div>{cartDiscount>0 && <div className="discount-line"><span>Chegirma</span><span className="num">−{money(cartDiscount)}</span></div>}<div><span>{pickup ? 'Yetkazish haqi' : 'Kuryer / yetkazish haqi'}</span><span className="num">{feeText(pickup)}</span></div></div>
+        <div className="summary-total"><span>Yakuniy jami</span><strong className="num">{money(cartTotal+feeFor(pickup))}{feePending(pickup) ? <small> + yetkazish</small> : null}</strong></div>
+        {feePending(pickup) && <p className="t-caption">Doʻkonda yetkazish tarifi belgilanmagan: kuryer narxini doʻkon tasdiqlaydi va u buyurtmangizda alohida qator boʻlib koʻrinadi. Taxminiy narx koʻrsatilmaydi.</p>}</div>
       {checkoutError && <div className="banner banner-error" role="alert"><Icon name="alert" size={20} /><div>{checkoutError}</div></div>}
-      {pickupOffered && <div className="form-stack"><h3 className="t-h2">Qabul qilish usuli</h3>
-        <div className="segmented" role="group" aria-label="Qabul qilish usuli"><button type="button" aria-pressed={!pickup} onClick={() => setFulfillment('delivery')}><Icon name="truck" size={18} />Yetkazib berish</button><button type="button" aria-pressed={pickup} onClick={() => setFulfillment('pickup')}><Icon name="store" size={18} />Doʻkondan olib ketish</button></div>
-      </div>}
+      <div className="form-stack"><h3 className="t-h2">Qabul qilish usuli</h3>
+        <div className="choice-list fulfil-choices" role="radiogroup" aria-label="Qabul qilish usuli">
+          <button type="button" role="radio" aria-checked={pickup} className="choice" disabled={!pickupOffered} onClick={() => setFulfillment('pickup')}><span className="choice-icon"><Icon name="store" size={20} /></span><span className="choice-body"><strong>Doʻkondan olib ketish</strong><span>{pickupOffered ? `${storefront?.store.address || checkoutOptions?.pickupAddress || 'Doʻkon manzili'} · yetkazish haqi qoʻshilmaydi` : 'Doʻkon bu usulni hozircha yoqmagan'}</span></span><span className="choice-radio" aria-hidden="true" /></button>
+          <button type="button" role="radio" aria-checked={!pickup} className="choice" onClick={() => setFulfillment('delivery')}><span className="choice-icon"><Icon name="truck" size={20} /></span><span className="choice-body"><strong>Kuryer orqali yetkazish</strong><span>{feePending(false) ? 'Kuryer narxi: doʻkon tasdiqlaydi' : feeFor(false) ? `Kuryer narxi: ${money(feeFor(false))}` : 'Yetkazish bepul'}</span></span><span className="choice-radio" aria-hidden="true" /></button>
+        </div>
+      </div>
       {pickup ? <div className="form-stack"><h3 className="t-h2">Olib ketish manzili</h3>
         <div className="loc-summary"><Icon name="store" size={20} /><div><strong>{storefront?.store.name||'Fayz Market'}</strong><span className="t-caption">{checkoutOptions?.pickupAddress||storefront?.store.address}</span></div><button className="link-btn" onClick={() => setStoreOpen(true)}>Xaritada</button></div>
         <p className="t-caption">Buyurtma tayyor boʻlganda holati «Olib ketishga tayyor» boʻladi.</p>
-      </div> : <div className="form-stack"><h3 className="t-h2">Yetkazish joyi</h3>
-        {dropoff ? <><div className="loc-summary"><Icon name="pin" size={20} /><div><strong>{dropoff.address || (dropoff.accuracy ? 'Joriy joylashuvingiz (GPS)' : 'Xaritada belgilangan nuqta')}</strong><span className="t-caption num">{formatCoords(dropoff)}{dropoff.accuracy ? ` · ±${dropoff.accuracy} m` : ''}</span></div><button className="link-btn" onClick={() => setLocationSheet(true)}>Oʻzgartirish</button></div><p className="t-caption">Kuryer shu nuqtaga keladi va yetib kelganda sizga qoʻngʻiroq qiladi.</p></>
-          : <div className="loc-choice"><button className="btn btn-primary btn-block loc-btn" onClick={locateDropoff} disabled={locatingDrop}>{locatingDrop ? <><span className="spinner" />Aniqlanmoqda...</> : <><Icon name="target" size={20} />Joylashuvimni aniqlash (GPS)</>}</button><button className="btn btn-secondary btn-block loc-btn" onClick={() => setLocationSheet(true)}><Icon name="map" size={20} />Xaritada tanlash</button><p className="t-caption">Ixtiyoriy, lekin kuryer sizni tezroq topadi. Manzilni pastda matn bilan ham yozing.</p></div>}
+      </div> : <div className="form-stack"><h3 className="t-h2">Yetkazish manzili</h3>
+        {dropoff ? <><div className="loc-summary"><Icon name={hasPoint(dropoff) ? 'pin' : 'home'} size={20} /><div><strong>{dropoff.text || 'Tanlangan nuqta'}</strong><span className="t-caption num">{hasPoint(dropoff) ? <>{dropoff.source==='gps' ? 'GPS' : 'Xaritada'} · {formatCoords(dropoff)}{dropoff.accuracy ? ` · ±${dropoff.accuracy} m` : ''}</> : 'Xaritada belgilanmagan — kuryer matn boʻyicha topadi'}</span></div><button className="link-btn" onClick={() => setAddressSheet({for:'checkout'})}>Oʻzgartirish</button></div><p className="t-caption">{hasPoint(dropoff) ? 'Kuryer shu nuqtaga keladi va yetib kelganda sizga qoʻngʻiroq qiladi.' : 'Aniqroq boʻlishi uchun xaritada belgilashingiz mumkin.'}</p></>
+          : <div className="loc-choice"><button className="btn btn-primary btn-block loc-btn" onClick={() => setAddressSheet({for:'checkout',locate:true})}><Icon name="target" size={20} />Joylashuvimni aniqlash (GPS)</button><button className="btn btn-secondary btn-block loc-btn" onClick={() => setAddressSheet({for:'checkout'})}><Icon name="map" size={20} />Xaritada tanlash</button><p className="t-caption">GPS nuqtasi siz tasdiqlagandan keyingina yetkazish manzili boʻladi. Manzilni pastda matn bilan ham yozishingiz mumkin.</p></div>}
         <Field label="Podyezd, qavat, moʻljal" hint="Ixtiyoriy — kuryerga yordam beradi"><input className="input" value={deliveryDetails} maxLength={300} onChange={e => setDeliveryDetails(e.target.value)} onFocus={revealOnFocus} placeholder="Masalan: 3-podyezd, 5-qavat, doʻkon yonida" /></Field>
       </div>}
       <div className="form-stack"><h3 className="t-h2">Toʻlov usuli</h3>
-        <div className="choice-list" role="radiogroup" aria-label="Toʻlov usuli">{payOptions.map(o => <button type="button" key={o.method} role="radio" aria-checked={paymentMethod===o.method} className="choice" onClick={() => setPaymentMethod(o.method)}><span className="choice-icon"><Icon name={paymentIcons[o.method]||'wallet'} size={20} /></span><span className="choice-body"><strong>{o.label}</strong><span>{paymentHints[o.method]?.(pickup)||''}</span></span><span className="choice-radio" aria-hidden="true" /></button>)}</div>
+        <div className="choice-list" role="radiogroup" aria-label="Toʻlov usuli">{payOptions.filter(o => !(o.online && feePending(pickup))).map(o => <button type="button" key={o.method} role="radio" aria-checked={paymentMethod===o.method} className="choice" onClick={() => setPaymentMethod(o.method)}><span className="choice-icon"><Icon name={paymentIcons[o.method]||'wallet'} size={20} /></span><span className="choice-body"><strong>{o.label}</strong><span>{paymentHints[o.method]?.(pickup)||''}</span></span><span className="choice-radio" aria-hidden="true" /></button>)}</div>
         <p className="t-caption">Buyurtma yuborilgani toʻlov qilingani emas: toʻlov doʻkon yoki toʻlov tizimi tasdiqlagandan keyin «Toʻlandi» boʻladi.</p>
       </div>
       <div className="form-stack"><h3 className="t-h2">Qabul qiluvchi</h3>{profileFields(true,!pickup)}<Field label="Izoh" hint="Ixtiyoriy: qulay vaqt va boshqalar"><textarea className="input" value={note} onChange={e => setNote(e.target.value)} onFocus={revealOnFocus} /></Field></div>
     </Sheet>}
     {storeOpen && <StoreScreen api={api} storefront={storefront} user={userLocation} onUser={l => setUserLocation(l as UserLocation|null)} mapsKey={mapsKey} onClose={() => setStoreOpen(false)} />}
-    {userSheet && <LocationSheet apiKey={mapsKey} title="Sizning joylashuvingiz" hint="GPS bilan aniqlang yoki xaritani surib nuqtani qoʻlda tanlang. Joylashuv faqat shu telefonda saqlanadi." notice={userSheet.notice} initial={userLocation ? {lat:userLocation.lat,lng:userLocation.lng,accuracy:userLocation.accuracy,address:userLocation.address} : null} onClose={() => setUserSheet(null)} onConfirm={l => { setUserLocation({lat:l.lat,lng:l.lng,accuracy:l.accuracy,address:l.address||undefined,source:l.accuracy ? 'gps' : 'manual',at:Date.now()}); setUserSheet(null); }} />}
-    {locationSheet && <LocationSheet apiKey={mapsKey} initial={dropoff ?? (userLocation ? {lat:userLocation.lat,lng:userLocation.lng,accuracy:userLocation.accuracy} : null)} onClose={() => setLocationSheet(false)} onConfirm={l => { setDropoff(l); setLocationSheet(false); if(l.address && profile.address.trim().length<5) setProfile(old => ({...old,address:l.address!})); }} />}
+    {addressSheet && <AddressSheet apiKey={mapsKey} title={addressSheet.for==='home' ? 'Sizning joylashuvingiz' : addressSheet.for==='checkout' ? 'Yetkazish manzili' : 'Manzilim'} saved={addresses.list} initial={addresses.current} autoLocate={addressSheet.locate} onConfirm={confirmAddress} onRemove={addresses.remove} onClose={() => setAddressSheet(null)} />}
     {quickLogin && <PhoneLoginSheet api={api} config={authConfig} onDone={signIn} onClose={() => setQuickLogin(false)} onOther={() => { setQuickLogin(false); setAuthSheet('login'); }} />}
     {authSheet && <AuthSheet api={api} config={authConfig} initialMode={authSheet} onDone={signIn} onClose={() => setAuthSheet(null)} />}
     {linkPhone && <LinkPhoneSheet api={api} config={authConfig} onClose={() => setLinkPhone(false)} onDone={who => { setCustomer(who); setLinkPhone(false); setToast({message:'Telefon tasdiqlandi'}); }} />}
@@ -417,13 +441,6 @@ function App() {
     </div>}
     {toast && <Toast message={toast.message} action={toast.action} onAction={toast.onAction} onDone={hideToast} />}
   </div>;
-}
-
-function Gallery({ product }: { product: Product }) {
-  const [index,setIndex] = useState(0);
-  const images = product.images;
-  if (!images.length) return <div className="gallery"><div className="slide"><ProductImage alt={product.name} /></div></div>;
-  return <div className="gallery-wrap"><div className="gallery" onScroll={e => { const el=e.currentTarget; setIndex(Math.round(el.scrollLeft/Math.max(1,el.clientWidth))); }}>{images.map((url,i) => <div className="slide" key={i}><ProductImage src={url} alt={`${product.name} ${i+1}`} fit="contain" /></div>)}</div>{images.length>1 && <div className="dots" aria-hidden="true">{images.map((_,i) => <span key={i} className={i===index?'on':''} />)}</div>}</div>;
 }
 
 createRoot(document.getElementById('root')!).render(<App/>);

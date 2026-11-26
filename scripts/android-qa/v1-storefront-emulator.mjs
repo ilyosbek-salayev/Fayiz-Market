@@ -1,4 +1,4 @@
-// Fayz Market V1 storefront on the real 1.2.0 APKs inside an Android 14 EMULATOR (NOT a physical phone).
+// Fayz Market V1 storefront on the real APKs inside an Android 14 EMULATOR (NOT a physical phone).
 // Needs a booted emulator with both APKs installed. Starts its own isolated local Worker (fresh D1) and an
 // OpenRouteService mock; the apps are pointed at it through `adb reverse` + their debug preference and are pointed
 // back to production at the end. Nothing is uninstalled or wiped.
@@ -40,7 +40,8 @@ const call = async (p, method = 'GET', body, token) => { const r = await fetch(A
 try {
   // ---------- Installed build ----------
   const version = JSON.parse((await import('node:fs')).readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
-  for (const pkg of [C, A]) { const v = versionOf(pkg); check(v.name === version && v.code >= 8, `${pkg}: installed DEBUG build ${version} (versionCode ${v.code})`, `${v.name} (${v.code})`); }
+  const code = Number((await import('node:fs')).readFileSync(path.join(ROOT, 'apps/android/customer/build.gradle'), 'utf8').match(/versionCode\s+(\d+)/)[1]);
+  for (const pkg of [C, A]) { const v = versionOf(pkg); check(v.name === version && v.code === code, `${pkg}: installed DEBUG build ${version} (versionCode ${v.code})`, `${v.name} (${v.code})`); }
   // Release builds shorten resource paths (res/BW.xml…), so the icon is checked in the resource table instead.
   const aapt2 = `${process.env.HOME}/.fayz-toolchain/android-sdk/build-tools/${execFileSync('ls', [`${process.env.HOME}/.fayz-toolchain/android-sdk/build-tools`]).toString().trim().split('\n').pop()}/aapt2`;
   const table = execFileSync(aapt2, ['dump', 'resources', path.join(ROOT, `dist/apk/v${version}/fayz-market-customer.apk`)]).toString();
@@ -75,8 +76,12 @@ try {
   await w.evaluate(() => { document.querySelectorAll('.loc-row')[1].click(); return true; });
   const dialog = await tapNode(/^(While using the app|Only this time|Allow|ALLOW)\|/i, 10000);
   check(!!dialog, 'Android location permission dialog shown on "Aniqlash" (only when asked)');
-  const located = await w.waitFor(() => /41\.31\d*, 69\.27\d*/.test(document.body.innerText), 25000);
-  check(located, 'one-shot GPS location shown on home', (await w.text()).slice(0, 200));
+  // 1.2.2: the GPS fix appears in the address sheet; it becomes the home/checkout address only after confirmation.
+  const located = await w.waitFor(() => !!document.querySelector('.address-sheet') && /41\.31\d*, 69\.27\d*/.test(document.body.innerText), 25000);
+  check(located, 'one-shot GPS fix shown in the address sheet (not used until confirmed)', (await w.text()).slice(0, 200));
+  await w.evaluate(() => { const el = document.querySelector('.address-sheet textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, 'Toshkent, Amir Temur xiyoboni, 1'); el.dispatchEvent(new Event('input', { bubbles: true })); return true; });
+  await w.evaluate(() => { [...document.querySelectorAll('.sheet button')].find(b => b.textContent.includes('Shu joyni tasdiqlash')).click(); return true; }); await pause(800);
+  check(await w.waitFor(() => document.body.innerText.includes('Amir Temur xiyoboni') && !document.querySelector('.address-sheet'), 8000), 'confirmed address shown on home');
   await w.evaluate(() => { document.querySelector('.header-go').click(); return true; });
   const routed = await w.waitFor(() => /Yoʻl boʻyicha masofa/.test(document.body.innerText) && !!document.querySelector('.store-screen .map-box[data-provider="openfreemap"]'), 40000);
   check(routed, 'store map (MapLibre in the APK WebView) with road route, distance and time');

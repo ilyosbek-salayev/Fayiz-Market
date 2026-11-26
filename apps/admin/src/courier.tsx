@@ -23,7 +23,7 @@ const actions: Record<string, [string, string, 'navigation' | 'box' | 'pin' | 'c
   picked_up: [['depart', 'Yoʻlga chiqdim', 'courier']], on_the_way: [['arrive', 'Manzilga yetib keldim', 'pin']], arrived: [['handover', 'Mijozga topshirdim', 'check']],
 };
 
-export function CourierApp({ request, me, onLogout, mapsKey, securityPanel }: { request: Request; me: { name: string; email: string }; onLogout: () => void; mapsKey?: string; securityPanel?: React.ReactNode }) {
+export function CourierApp({ request, me, onLogout, onLock, mapsKey, securityPanel }: { request: Request; me: { name: string; email: string }; onLogout: () => void; onLock?: () => void; mapsKey?: string; securityPanel?: React.ReactNode }) {
   const [tab, setTab] = useState<'active' | 'history' | 'profile'>('active');
   const [rows, setRows] = useState<Row[] | null>(null); const [openId, setOpenId] = useState(0); const [error, setError] = useState('');
   const [banner, setBanner] = useState('');
@@ -45,7 +45,7 @@ export function CourierApp({ request, me, onLogout, mapsKey, securityPanel }: { 
       <div className="panel"><div className="courier-me"><span className="avatar-sm"><Icon name="courier" size={20} /></span><div><strong>{me.name || 'Kuryer'}</strong><span className="t-caption">{me.email}</span></div></div></div>
       {securityPanel}
       <PasswordPanel request={request} />
-      <button className="btn btn-quiet btn-block" onClick={onLogout}><Icon name="logout" size={18} />Chiqish</button>
+      {onLock && <button className="btn btn-secondary btn-block" onClick={onLock}><Icon name="lock" size={18} />Ilovani qulflash</button>}<button className="btn btn-quiet btn-block" onClick={onLogout}><Icon name="logout" size={18} />Hisobdan chiqish</button>
     </div> : <div className="courier-list">
       {!rows && [0, 1].map(i => <div key={i} className="m-card"><div className="skeleton" style={{ height: 72 }} /></div>)}
       {rows && !list.length && <EmptyState icon={tab === 'active' ? 'courier' : 'history'} title={tab === 'active' ? 'Hozir yetkazish yoʻq' : 'Tarix boʻsh'} text={tab === 'active' ? 'Administrator buyurtma tayinlaganda shu yerda va bildirishnomada koʻrinadi.' : 'Yakunlangan yetkazishlar shu yerda saqlanadi.'} />}

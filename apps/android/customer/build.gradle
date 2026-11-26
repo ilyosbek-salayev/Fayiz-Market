@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'uz.fayzmarket.customer'
     compileSdk 35
-    defaultConfig { applicationId 'uz.fayzmarket.customer'; minSdk 23; targetSdk 28; versionCode 8; versionName new groovy.json.JsonSlurper().parse(rootProject.file('../../package.json')).version; resValue 'string', 'default_api_url', (project.findProperty('fayzApiUrl') ?: 'https://fayz-market-api.ilyosbeksalayev240.workers.dev').toString() }
+    defaultConfig { applicationId 'uz.fayzmarket.customer'; minSdk 23; targetSdk 28; versionCode 9; versionName new groovy.json.JsonSlurper().parse(rootProject.file('../../package.json')).version; resValue 'string', 'default_api_url', (project.findProperty('fayzApiUrl') ?: 'https://fayz-market-api.ilyosbeksalayev240.workers.dev').toString() }
     // Release = what the shop receives: not debuggable, production API only, no developer settings. It is signed with
     // the same certificate as every earlier build (~/.android/debug.keystore) so it installs over 1.0–1.2.0 in place;
     // move to a dedicated release key only together with a Play Store release (that needs one reinstall).

@@ -49,7 +49,7 @@ export async function detectLocation(): Promise<UserLocation> {
 const shortCoords = (p: LatLng) => `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
 
 /** Two compact rows under the search field: where the store is, and where the customer is. */
-export function LocationStrip({ storefront, user, locating, onStore, onUser }: { storefront: Storefront | null; user: UserLocation | null; locating: boolean; onStore: () => void; onUser: () => void }) {
+export function LocationStrip({ storefront, user, address, locating, onStore, onUser }: { storefront: Storefront | null; user: UserLocation | null; address?: string; locating: boolean; onStore: () => void; onUser: () => void }) {
   const store = storefront?.store;
   const distance = user && store?.lat != null && store.lng != null ? distanceMeters(user, { lat: store.lat, lng: store.lng }) : null;
   return <div className="loc-strip">
@@ -60,7 +60,7 @@ export function LocationStrip({ storefront, user, locating, onStore, onUser }: {
     </button>
     <button type="button" className="loc-row" onClick={onUser} aria-busy={locating}>
       <span className="loc-ic loc-ic-user" aria-hidden="true">{locating ? <span className="spinner" /> : <Icon name="target" size={20} />}</span>
-      <span className="loc-text"><small>Sizning joylashuvingiz</small><b className={user ? 'num' : 'loc-action'}>{locating ? 'Aniqlanmoqda...' : user ? user.address || shortCoords(user) : 'Aniqlash'}</b></span>
+      <span className="loc-text"><small>Sizning joylashuvingiz</small><b className={address || user ? '' : 'loc-action'}>{locating ? 'Aniqlanmoqda...' : address || (user ? user.address || shortCoords(user) : 'Aniqlash')}</b></span>
       {distance != null && !locating ? <span className="loc-dist num" title="Toʻgʻri chiziq boʻyicha">~{formatDistance(distance)}</span> : <Icon name="chevron" size={18} />}
     </button>
   </div>;
@@ -102,6 +102,11 @@ export function StoreScreen({ api, storefront, user, onUser, mapsKey, onClose }:
     setLocating(true); setLocError('');
     try { onUser(await detectLocation()); } catch (e) { setLocError(friendlyError(e)); } finally { setLocating(false); }
   };
+  // The map opens with the route right away when the customer already allowed location (no new prompt).
+  useEffect(() => {
+    if (user || !target) return;
+    navigator.permissions?.query({ name: 'geolocation' as PermissionName }).then(s => { if (s.state === 'granted') void locate(); }).catch(() => undefined);
+  }, []);
   const markers: MapMarker[] = [];
   if (target) markers.push({ ...target, kind: 'store', title: store!.name });
   if (user) markers.push({ lat: user.lat, lng: user.lng, kind: 'user', title: 'Siz' });
@@ -125,7 +130,7 @@ export function StoreScreen({ api, storefront, user, onUser, mapsKey, onClose }:
           <div><span className="t-caption">Taxminan (avtomobilda)</span><strong className="num">{formatDuration(route.durationSeconds)}</strong></div>
         </div>}
         {routeState === 'loading' && <p className="t-caption route-note"><span className="spinner" />Marshrut hisoblanmoqda...</p>}
-        {routeState === 'unavailable' && straight != null && <p className="t-caption route-note">Yoʻl chizigʻi uchun marshrut xizmati hali ulanmagan. Toʻgʻri chiziq boʻyicha: <b className="num">~{formatDistance(straight)}</b>. Aniq yoʻlni «Yoʻlga chiqish» navigatsiya ilovasida koʻrsatadi.</p>}
+        {routeState === 'unavailable' && <div className="route-off"><Icon name="navigation" size={18} /><p className="t-caption">Ilova ichida yoʻl chizigʻi doʻkon marshrut xizmatini ulaganidan keyin koʻrinadi (Admin → Integratsiyalar → Marshrut).{straight != null && <> Hozircha toʻgʻri chiziq boʻyicha: <b className="num">~{formatDistance(straight)}</b>.</>} Aniq yoʻlni «Yoʻlga chiqish» tugmasi Google Maps’da ochadi.</p></div>}
         {routeState === 'error' && <div className="banner banner-warning" role="alert"><Icon name="alert" size={20} /><div>{routeError}. «Yoʻlga chiqish» baribir ishlaydi.</div></div>}
         {!user && !locating && <p className="t-caption route-note">Joylashuvingizni aniqlasangiz, yoʻl va masofa koʻrsatiladi. Ruxsat bermasangiz ham manzil va navigatsiya ishlaydi.</p>}
         {locError && <div className="banner banner-warning" role="alert"><Icon name="alert" size={20} /><div>{locError}</div></div>}

@@ -4,14 +4,17 @@ import { Icon, type IconName } from '../../../packages/ui/src/Icon';
 
 export function Modal({ title, subtitle, onClose, children, footer, size = 'md', as = 'div', onSubmit, badge }: { title: string; subtitle?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' | 'lg'; as?: 'div' | 'form'; onSubmit?: (event: React.FormEvent) => void; badge?: ReactNode }) {
   const ref = useRef<HTMLElement>(null);
+  // The latest onClose is read through a ref: callers often pass an inline arrow, and re-running this effect on
+  // every keystroke used to move focus back to the dialog — the field lost focus after each typed character.
+  const closeRef = useRef(onClose); closeRef.current = onClose;
   useEffect(() => {
-    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') closeRef.current(); };
     window.addEventListener('keydown', key); document.body.style.overflow = 'hidden';
-    ref.current?.focus();
+    if (!ref.current?.contains(document.activeElement)) ref.current?.focus();
     return () => { window.removeEventListener('keydown', key); document.body.style.overflow = ''; };
-  }, [onClose]);
+  }, []);
   const Body = as;
-  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) closeRef.current(); }}>
     <Body className={`modal modal-${size}`} role="dialog" aria-modal="true" aria-label={title} ref={ref as never} tabIndex={-1} onSubmit={onSubmit}>
       <div className="modal-head"><div className="modal-title"><h2>{title}</h2>{badge}{subtitle && <p>{subtitle}</p>}</div><button type="button" className="icon-btn" onClick={onClose} aria-label="Yopish"><Icon name="close" /></button></div>
       <div className="modal-body">{children}</div>

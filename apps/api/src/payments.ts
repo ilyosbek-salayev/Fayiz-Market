@@ -31,11 +31,21 @@ export const onlineReady: Record<'payme' | 'click', (env: Bindings, s: Record<st
 };
 
 const wholeSoum = (v: string | undefined) => { const n = Math.trunc(Number(v)); return Number.isFinite(n) && n > 0 ? n : 0; };
-/** Courier fee added on top of the goods (0 for pickup, or when the goods reach the free-delivery threshold). */
+export const DELIVERY_FEE_MODES = ['fixed', 'free', 'quote'] as const;
+export type DeliveryFeeMode = typeof DELIVERY_FEE_MODES[number];
+/** 'fixed' tariff, 'free' delivery, or 'quote' — no tariff yet: the fee is confirmed by staff, never guessed. */
+export function deliveryFeeMode(s: Record<string, string>): DeliveryFeeMode {
+  const mode = s.delivery_fee_mode as DeliveryFeeMode;
+  if (DELIVERY_FEE_MODES.includes(mode)) return mode;
+  return wholeSoum(s.delivery_fee) > 0 ? 'fixed' : 'quote'; // database without migration 0009
+}
+/** Courier fee added on top of the goods (0 for pickup, free delivery, or above the free-delivery threshold). */
 export function deliveryFeeFor(s: Record<string, string>, itemsTotal: number, fulfillment: 'delivery' | 'pickup') {
-  if (fulfillment === 'pickup') return 0;
-  const fee = wholeSoum(s.delivery_fee), freeFrom = wholeSoum(s.delivery_free_from);
-  return freeFrom > 0 && itemsTotal >= freeFrom ? 0 : fee;
+  if (fulfillment === 'pickup') return { amount: 0, pending: false };
+  const mode = deliveryFeeMode(s), fee = wholeSoum(s.delivery_fee), freeFrom = wholeSoum(s.delivery_free_from);
+  if (mode === 'free' || (freeFrom > 0 && itemsTotal >= freeFrom)) return { amount: 0, pending: false };
+  if (mode === 'quote' || !fee) return { amount: 0, pending: true };
+  return { amount: fee, pending: false };
 }
 
 export function checkoutOptions(env: Bindings, s: Record<string, string>, store: Store) {
@@ -47,7 +57,7 @@ export function checkoutOptions(env: Bindings, s: Record<string, string>, store:
   if (!payments.length) payments.push({ method: 'cash', label: PAYMENT_LABELS.cash, online: false }); // checkout is never left without a way to pay
   const pickup = s.fulfillment_pickup === '1' && store.address.trim().length >= 5;
   return {
-    deliveryFee: wholeSoum(s.delivery_fee), deliveryFreeFrom: wholeSoum(s.delivery_free_from),
+    deliveryFeeMode: deliveryFeeMode(s), deliveryFee: deliveryFeeMode(s) === 'fixed' ? wholeSoum(s.delivery_fee) : 0, deliveryFreeFrom: wholeSoum(s.delivery_free_from),
     fulfillment: pickup ? ['delivery', 'pickup'] as const : ['delivery'] as const,
     payments,
     bankTransferDetails: offline.includes('bank_transfer') ? s.bank_transfer_details || '' : '',
@@ -56,14 +66,14 @@ export function checkoutOptions(env: Bindings, s: Record<string, string>, store:
 }
 
 /** Payment block of an order, as the customer sees it (no ledger internals). */
-export function customerPaymentView(row: OrderPayRow & { fulfillment?: string }, s: Record<string, string>) {
+export function customerPaymentView(row: OrderPayRow & { fulfillment?: string; delivery_fee_pending?: number }, s: Record<string, string>) {
   const open = ['pending', 'failed', 'verifying'].includes(row.payment_status) && row.status !== 'cancelled';
   return {
     method: row.payment_method, status: row.payment_status, paidAt: row.paid_at ?? null,
     note: row.payment_status === 'failed' ? row.payment_note || '' : '',
     bankTransferDetails: row.payment_method === 'bank_transfer' && open ? s.bank_transfer_details || '' : '',
     canClaimTransfer: row.payment_method === 'bank_transfer' && ['pending', 'failed'].includes(row.payment_status) && row.status !== 'cancelled',
-    canPayOnline: (row.payment_method === 'payme' || row.payment_method === 'click') && open,
+    canPayOnline: (row.payment_method === 'payme' || row.payment_method === 'click') && open && !row.delivery_fee_pending,
   };
 }
 
@@ -320,6 +330,7 @@ export function registerPayments(app: App) {
     const row = await authorizedOrder(c, idFrom(c.req.param('id'))) as unknown as OrderPayRow;
     const s = await settingsMap(c.env.DB);
     if (row.status === 'cancelled' || !['pending', 'failed', 'verifying'].includes(row.payment_status)) fail(409, 'PAYMENT_CLOSED', 'Bu buyurtma uchun toʻlov ochiq emas');
+    if ((row as unknown as { delivery_fee_pending?: number }).delivery_fee_pending) fail(409, 'DELIVERY_FEE_PENDING', 'Yetkazish narxi hali tasdiqlanmagan — doʻkon narxni belgilagach toʻlay olasiz');
     if (row.payment_method === 'payme' && onlineReady.payme(c.env, s)) {
       const host = s.payme_mode === 'production' ? 'https://checkout.paycom.uz' : 'https://test.paycom.uz';
       return c.json({ provider: 'payme', url: `${host}/${btoa(`m=${s.payme_merchant_id};ac.order_id=${row.id};a=${row.total * 100};l=uz`)}` });
@@ -334,12 +345,15 @@ export function registerPayments(app: App) {
   // ---------- Owner: which methods checkout offers ----------
   app.put('/admin/payment-settings', async c => {
     ownerOnly(c);
-    const input = await parse(c, z.object({ cash: z.boolean(), cardTerminal: z.boolean(), bankTransfer: z.boolean(), bankTransferDetails: z.string().trim().max(600), pickup: z.boolean(), deliveryFee: z.number().int().min(0).max(10_000_000).optional(), deliveryFreeFrom: z.number().int().min(0).max(1_000_000_000).optional() }).strict());
+    const input = await parse(c, z.object({ cash: z.boolean(), cardTerminal: z.boolean(), bankTransfer: z.boolean(), bankTransferDetails: z.string().trim().max(600), pickup: z.boolean(), deliveryFeeMode: z.enum(DELIVERY_FEE_MODES).optional(), deliveryFee: z.number().int().min(0).max(10_000_000).optional(), deliveryFreeFrom: z.number().int().min(0).max(1_000_000_000).optional() }).strict());
     const s = await settingsMap(c.env.DB);
     if (input.bankTransfer && input.bankTransferDetails.length < 10) fail(400, 'BANK_DETAILS', 'Bank oʻtkazmasi uchun rekvizitlarni toʻliq yozing (oluvchi, bank, hisob raqami)');
+    // An older admin app sends only the amount: a positive fee means a fixed tariff, 0 means "not set" (unless free).
+    const feeMode = input.deliveryFeeMode ?? (input.deliveryFee === undefined ? undefined : input.deliveryFee > 0 ? 'fixed' : deliveryFeeMode(s) === 'free' ? 'free' : 'quote');
+    if (feeMode === 'fixed' && !(input.deliveryFee ?? wholeSoum(s.delivery_fee))) fail(400, 'DELIVERY_FEE', 'Belgilangan tarif uchun yetkazish narxini kiriting (yoki «Bepul» / «Operator aniqlaydi» ni tanlang)');
     if (input.pickup && (s.store_address || '').trim().length < 5) fail(400, 'STORE_ADDRESS', 'Olib ketish uchun avval doʻkon manzilini kiriting');
     if (!input.cash && !input.cardTerminal && !input.bankTransfer && !ONLINE.some(m => onlineReady[m](c.env, s))) fail(400, 'NO_METHOD', 'Kamida bitta toʻlov usuli yoqilgan boʻlishi kerak');
-    await c.env.DB.batch(putSettings(c.env.DB, [['payment_cash', input.cash ? '1' : '0'], ['payment_card_terminal', input.cardTerminal ? '1' : '0'], ['payment_bank_transfer', input.bankTransfer ? '1' : '0'], ['bank_transfer_details', input.bankTransferDetails], ['fulfillment_pickup', input.pickup ? '1' : '0'], ...(input.deliveryFee !== undefined ? [['delivery_fee', String(input.deliveryFee)] as [string, string]] : []), ...(input.deliveryFreeFrom !== undefined ? [['delivery_free_from', String(input.deliveryFreeFrom)] as [string, string]] : [])]));
+    await c.env.DB.batch(putSettings(c.env.DB, [['payment_cash', input.cash ? '1' : '0'], ['payment_card_terminal', input.cardTerminal ? '1' : '0'], ['payment_bank_transfer', input.bankTransfer ? '1' : '0'], ['bank_transfer_details', input.bankTransferDetails], ['fulfillment_pickup', input.pickup ? '1' : '0'], ...(input.deliveryFee !== undefined ? [['delivery_fee', String(input.deliveryFee)] as [string, string]] : []), ...(feeMode ? [['delivery_fee_mode', feeMode] as [string, string]] : []), ...(input.deliveryFreeFrom !== undefined ? [['delivery_free_from', String(input.deliveryFreeFrom)] as [string, string]] : [])]));
     await audit(c.env.DB, c.get('admin').id, 'payment.settings', 'checkout', { ...input, bankTransferDetails: input.bankTransferDetails ? 'set' : '' });
     return c.json({ ok: true });
   });

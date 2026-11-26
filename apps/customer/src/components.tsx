@@ -19,6 +19,8 @@ export function StockLabel({ stock }: { stock: number }) {
 
 export function ProductCard({ product, inCart, onOpen, onAdd, rail }: { product: Product; inCart: number; onOpen: () => void; onAdd: () => void; rail?: boolean }) {
   const soldOut = !product.stock;
+  const multiPrice = !!product.variantCount && !!product.priceTo && product.priceTo !== product.priceFrom;
+  const sale = !!product.comparePrice && product.comparePrice > product.price;
   return <article className={`pcard${rail ? ' pcard-rail' : ''}${soldOut ? ' is-out' : ''}`}>
     <div className="pcard-media">
       <button className="pcard-media-hit" onClick={onOpen} tabIndex={-1} aria-hidden="true"><ProductImage src={product.images[0]} /></button>
@@ -27,10 +29,11 @@ export function ProductCard({ product, inCart, onOpen, onAdd, rail }: { product:
         {inCart > 0 ? <span className="num">{inCart}</span> : <Icon name="plus" size={18} stroke={2.2} />}
       </button>
     </div>
-    <button className="pcard-hit" onClick={onOpen} aria-label={`${product.name}, ${money(product.price)}`}>
+    <button className="pcard-hit" onClick={onOpen} aria-label={`${product.name}, ${money(product.price)}${multiPrice ? ' dan' : ''}`}>
       <span className="pcard-cat">{product.categoryName}</span>
       <span className="pcard-name">{product.name}</span>
-      <span className="pcard-foot"><span className="price num">{money(product.price)}</span>{!soldOut && <StockLabel stock={product.stock} />}</span>
+      <span className="pcard-foot"><span className="price num">{money(product.price)}{multiPrice && <small> dan</small>}{!multiPrice && sale && <s className="old-price"> {money(product.comparePrice!)}</s>}</span>{!soldOut && <StockLabel stock={product.stock} />}</span>
+      {product.variantCount ? <span className="pcard-variants">{product.variantCount} ta variant</span> : null}
     </button>
   </article>;
 }
@@ -58,13 +61,16 @@ export function Toast({ message, action, onAction, onDone }: { message: string; 
 
 export function Sheet({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Focus moves to the sheet once, when it opens. A parent re-render (a typed character) must not steal focus
+  // from the field being edited, so the latest onClose is read through a ref instead of re-running the effect.
+  const closeRef = useRef(onClose); closeRef.current = onClose;
   useEffect(() => {
-    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') closeRef.current(); };
     window.addEventListener('keydown', key); document.body.style.overflow = 'hidden';
-    ref.current?.focus();
+    if (!ref.current?.contains(document.activeElement)) ref.current?.focus();
     return () => { window.removeEventListener('keydown', key); document.body.style.overflow = ''; };
-  }, [onClose]);
-  return <div className="sheet-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+  }, []);
+  return <div className="sheet-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) closeRef.current(); }}>
     <div className="sheet" role="dialog" aria-modal="true" aria-label={title} ref={ref} tabIndex={-1}>
       <div className="sheet-grip" aria-hidden="true" />
       <div className="sheet-head"><h2 className="t-h1">{title}</h2><button className="icon-btn" onClick={onClose} aria-label="Yopish"><Icon name="close" /></button></div>

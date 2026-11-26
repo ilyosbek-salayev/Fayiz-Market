@@ -183,9 +183,10 @@ export function MapView({ apiKey, center, markers = [], route = null, picker, on
 }
 
 /** One-shot device location through the WebView/browser geolocation permission. */
-export function currentPosition(timeout = 15000): Promise<LatLng & { accuracy: number }> {
+/** `maxAge` 0 forces a fresh fix (used when the customer taps "aniqlash" again after an inaccurate one). */
+export function currentPosition(timeout = 15000, maxAge = 30000): Promise<LatLng & { accuracy: number }> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error('Bu qurilmada joylashuvni aniqlab boʻlmaydi')); return; }
-    navigator.geolocation.getCurrentPosition(p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: Math.round(p.coords.accuracy) }), e => reject(new Error(e.code === 1 ? 'Joylashuvga ruxsat berilmadi. Pinni xaritada qoʻlda belgilang.' : e.code === 3 ? 'Joylashuv aniqlanmadi (vaqt tugadi). Qayta urinib koʻring.' : 'Joylashuv aniqlanmadi. GPS yoqilganini tekshiring.')), { enableHighAccuracy: true, timeout, maximumAge: 30000 });
+    navigator.geolocation.getCurrentPosition(p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: Math.round(p.coords.accuracy) }), e => reject(new Error(e.code === 1 ? 'Joylashuvga ruxsat berilmadi. Pinni xaritada qoʻlda belgilang.' : e.code === 3 ? 'Joylashuv aniqlanmadi (vaqt tugadi). Qayta urinib koʻring.' : 'Joylashuv aniqlanmadi. GPS yoqilganini tekshiring.')), { enableHighAccuracy: true, timeout, maximumAge: maxAge });
   });
 }

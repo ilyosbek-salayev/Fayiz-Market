@@ -3,12 +3,14 @@
 // installed over it (adb install -r: no uninstall, no data wipe) and must (1) keep the app data, (2) use the
 // production API regardless of that old setting, and (3) show no server / API control on the login screen or in
 // the Android menu. Production is only read (the apps open; nobody signs in).
-//   node scripts/android-qa/release-apk-check.mjs dist/apk/v1.2.1
-import { mkdirSync, writeFileSync } from 'node:fs';
+//   node scripts/android-qa/release-apk-check.mjs [dist/apk/v<version>]
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, versionOf } from './lib.mjs';
 
-const dir = process.argv[2] || 'dist/apk/v1.2.1';
+const VERSION = JSON.parse(readFileSync('package.json', 'utf8')).version;
+const CODE = Number(readFileSync('apps/android/customer/build.gradle', 'utf8').match(/versionCode\s+(\d+)/)[1]);
+const dir = process.argv[2] || `dist/apk/v${VERSION}`;
 const OUT = process.env.SHOTS || 'docs/v1/screenshots/emulator';
 mkdirSync(OUT, { recursive: true });
 const results = []; const check = (ok, name, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${!ok && detail ? ' — ' + detail : ''}`); console.log(results.at(-1)); };
@@ -24,7 +26,7 @@ try {
     check(before.code > 0, `${pkg}: older build installed${debuggable ? ' (debug, pointed at a test server)' : ''}`, `${before.name} (${before.code})`);
     const out = adb('install', '-r', `${dir}/${file}`);
     const after = versionOf(pkg);
-    check(/Success/.test(out) && after.code === 8 && after.first === before.first, `${pkg}: release ${after.name} installed over it in place (data kept)`, `${out.split('\n').pop()} · ${after.name} (${after.code}) first ${after.first}`);
+    check(/Success/.test(out) && after.code === CODE && after.first === before.first, `${pkg}: release ${after.name} installed over it in place (data kept)`, `${out.split('\n').pop()} · ${after.name} (${after.code}) first ${after.first}`);
     check(!/DEBUGGABLE/.test(sh(`dumpsys package ${pkg} | grep -m1 'flags=' || true`)), `${pkg}: release build is not debuggable`);
   }
 

@@ -407,3 +407,42 @@ body { background: var(--bg); }
 .secret-list li { background: var(--surface-2); }
 @media (max-width: 560px) { .int-row { grid-template-columns: auto minmax(0, 1fr) auto; } .int-side { grid-column: 2 / 4; grid-row: 2; justify-content: flex-start; max-width: none; } .int-row > svg { grid-column: 3; grid-row: 1; } }
 .secret-list .link-btn { justify-self: start; padding-left: 0; }
+
+/* ---------- 1.2.2: product variants and characteristics ---------- */
+.attr-editor, .variant-editor { display: grid; gap: 10px; }
+.attr-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: center; }
+.axis-card { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px; display: grid; gap: 10px; background: var(--surface); }
+.axis-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.axis-head .input { font-weight: 600; }
+.chip-set { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-set:empty { display: none; }
+.value-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 6px 0 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; font-size: 14px; }
+.value-chip button { display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.value-chip button:hover { background: rgba(0, 0, 0, 0.08); }
+.value-adder { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.axis-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.variant-bulk { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.variant-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+/* Row 1: combination name + "Sotuvda"; row 2: price, old price, stock, photo — wide enough for 7-digit prices. */
+.variant-rows li { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 10px; align-items: end; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.variant-rows li .variant-name { grid-column: 1 / 4; grid-row: 1; }
+.variant-rows li .variant-active { grid-column: 4; grid-row: 1; justify-self: end; }
+.variant-rows li.inactive { opacity: 0.62; }
+.variant-name { display: grid; gap: 2px; align-self: center; min-width: 0; }
+.variant-name strong { overflow-wrap: anywhere; }
+.variant-field { display: grid; gap: 4px; min-width: 0; font-size: 12px; color: var(--muted); }
+.variant-field .input { min-height: 40px; }
+.variant-field select.input { padding-right: 28px; }
+.variant-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: var(--r-sm); border: 1px solid var(--line); }
+.variant-active { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-size: 14px; cursor: pointer; }
+.variant-active input { width: 20px; height: 20px; accent-color: var(--accent); }
+@media (max-width: 760px) {
+  .variant-rows li { grid-template-columns: 1fr 1fr; }
+  .variant-rows li .variant-name { grid-column: 1; }
+  .variant-rows li .variant-active { grid-column: 2; }
+  .attr-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .attr-row .input:first-child { grid-column: 1 / -1; }
+}
+/* Order: courier fee still to be confirmed */
+.fee-pending { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-md); background: var(--warning-soft); }
+.fee-pending .fee-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }

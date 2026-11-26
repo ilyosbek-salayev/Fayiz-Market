@@ -164,7 +164,9 @@ try {
   r = await call('/admin/payment-settings', { method: 'PUT', auth: manager, body: { cash: true, cardTerminal: true, bankTransfer: false, bankTransferDetails: '', pickup: false } }); check('payment settings: manager → 403', r.status === 403);
   r = await call('/admin/payment-settings', { method: 'PUT', auth: owner, body: { cash: true, cardTerminal: true, bankTransfer: true, bankTransferDetails: '', pickup: true } }); check('payment settings: bank transfer needs details', r.status === 400);
   r = await call('/admin/payment-settings', { method: 'PUT', auth: owner, body: { cash: false, cardTerminal: false, bankTransfer: false, bankTransferDetails: '', pickup: false } }); check('payment settings: cannot switch every method off', r.status === 400);
-  r = await call('/admin/payment-settings', { method: 'PUT', auth: owner, body: { cash: true, cardTerminal: true, bankTransfer: true, bankTransferDetails: 'Oluvchi: Fayz Market MChJ, Bank: Kapitalbank, H/r 20208000000000000001, MFO 01088', pickup: true } });
+  // 1.2.2: with no tariff the courier fee is "to be confirmed" and online payment waits for it; this suite's
+  // shop delivers for free until the delivery-fee section below sets a tariff.
+  r = await call('/admin/payment-settings', { method: 'PUT', auth: owner, body: { cash: true, cardTerminal: true, bankTransfer: true, bankTransferDetails: 'Oluvchi: Fayz Market MChJ, Bank: Kapitalbank, H/r 20208000000000000001, MFO 01088', pickup: true, deliveryFeeMode: 'free' } });
   check('payment settings: owner enables terminal, bank transfer, pickup', r.status === 200);
   r = await call('/storefront'); check('storefront: checkout offers the enabled methods only', JSON.stringify(r.data.checkout.payments.map(p => p.method)) === '["cash","card_terminal","bank_transfer"]' && r.data.checkout.fulfillment.includes('pickup') && r.data.checkout.bankTransferDetails.includes('Kapitalbank'));
 

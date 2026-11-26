@@ -25,7 +25,12 @@ try {
   await page.waitForSelector('.login-brand img.brand-mark', { timeout: 20000 });
   await new Promise(r => setTimeout(r, 1500));
   const mark = await page.$eval('.login-brand img.brand-mark', el => ({ src: el.getAttribute('src'), w: el.naturalWidth }));
-  check(mark.w > 0 && /mark-light/.test(mark.src), 'packaged login screen shows the new brand symbol', JSON.stringify(mark));
+  // Admin-managed branding: when the owner has uploaded a logo in production, the login shows THAT logo
+  // (cached as a data URI for offline start); otherwise the bundled approved symbol. Read-only GET /settings.
+  const remote = (await (await fetch('https://fayz-market-api.ilyosbeksalayev240.workers.dev/settings')).json()).settings;
+  const custom = remote.brand_logo_light || remote.brand_logo_dark;
+  const ok = mark.w > 0 && (custom ? (mark.src === custom || /^data:image\//.test(mark.src)) : /mark-light/.test(mark.src));
+  check(ok, custom ? 'packaged login screen shows the logo the owner uploaded in production (admin-managed branding)' : 'packaged login screen shows the new brand symbol', JSON.stringify({ ...mark, src: mark.src.slice(0, 60) }));
   check((await page.evaluate(() => document.body.innerText)).includes('Fayz Market V1'), 'login footer reads "Fayz Market V1"');
   const login = await page.evaluate(() => ({ text: document.body.innerText, inputs: document.querySelectorAll('input').length }));
   check(login.inputs === 2 && !/server|API|sinov/i.test(login.text), 'desktop login: only email + password + Kirish (no server/API control)');

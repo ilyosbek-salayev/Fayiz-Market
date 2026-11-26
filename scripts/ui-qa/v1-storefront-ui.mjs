@@ -19,7 +19,7 @@ const sharp = createRequire(path.join(ROOT, 'package.json'))('sharp');
 const CHROME = process.env.CHROME_PATH || `${process.env.HOME}/Desktop/Google Chrome.app/Contents/MacOS/Google Chrome`;
 const PORT = Number(process.env.QA_WORKER_PORT || 8799), MOCK_PORT = Number(process.env.QA_MOCK_PORT || 8800);
 const API = `http://127.0.0.1:${PORT}`, MOCK = `http://127.0.0.1:${MOCK_PORT}`;
-const SHOTS = path.join(ROOT, process.env.SHOTS || 'docs/v1/screenshots');
+const SHOTS = path.resolve(ROOT, process.env.SHOTS || 'docs/v1/screenshots'); // resolve: an absolute SHOTS stays outside the repo
 mkdirSync(SHOTS, { recursive: true });
 // Safety: a bundle built for packaging (VITE_API_URL=production) would send this script's test logins to production.
 for (const app of ['customer', 'admin']) {
@@ -127,10 +127,11 @@ try {
     await page.click('.header-go'); await waitMap(page);
     check(!!await page.$('.store-screen'), 'header icon opens the store map screen');
     let t = await text(page);
-    check(t.includes('Fayz Market — Chilonzor') && t.includes('Yoʻlga chiqish') && t.includes('Joylashuvimni aniqlash'), 'store screen: name, address, navigation and locate actions');
+    check(t.includes('Fayz Market — Chilonzor') && t.includes('Yoʻlga chiqish') && /Joylashuvimni aniqlash|Qayta aniqlash/.test(t), 'store screen: name, address, navigation and locate actions');
     check(await page.$eval('.store-screen .map-box', el => el.dataset.provider || '').catch(() => '') === 'openfreemap', 'store screen: MapLibre/OpenFreeMap map rendered');
     await shot(page, 'customer-store-map-no-location');
-    await click(page, 'Joylashuvimni aniqlash', '.store-actions button'); await pause(2500);
+    if (!(await text(page)).includes('Yoʻl boʻyicha masofa')) await click(page, 'aniqlash', '.store-actions button'); // 1.2.2: already located when permission was granted
+    await pause(2500);
     t = await text(page);
     check(t.includes('Yoʻl boʻyicha masofa') && /6,4 km/.test(t) && /16 daqiqa/.test(t), 'route: real road distance and time from the routing API', t.match(/Yoʻl boʻyicha[^\n]*\n[^\n]*/)?.[0]);
     check(t.includes('openrouteservice'), 'route: provider attribution shown');
@@ -166,7 +167,7 @@ try {
     const { page, ctx } = await open('customer', { storage: { fayz_user_location_v1: JSON.stringify({ lat: 41.3111, lng: 69.2797, accuracy: 20, source: 'gps', at: Date.now() }) } });
     await page.waitForSelector('.header-go'); await page.click('.header-go'); await waitMap(page);
     const t = await text(page);
-    check(t.includes('marshrut xizmati hali ulanmagan') && t.includes('Toʻgʻri chiziq boʻyicha') && t.includes('Yoʻlga chiqish'), 'no routing service: no fake road, straight-line distance labelled, external navigation offered');
+    check(t.includes('marshrut xizmatini ulaganidan keyin') && t.includes('toʻgʻri chiziq boʻyicha') && t.includes('Yoʻlga chiqish') && t.includes('Google Maps'), 'no routing service: no fake road, straight-line distance labelled, external navigation offered');
     check(await page.evaluate(() => !document.querySelector('.store-screen canvas') || true), 'map still drawn');
     await shot(page, 'customer-store-map-no-routing');
     await ctx.close();
@@ -193,7 +194,7 @@ try {
     check(!t.includes('Payme') && !t.includes('Click'), 'checkout: unconfigured online providers are not shown');
     check(t.includes('Buyurtma yuborilgani toʻlov qilingani emas'), 'checkout: states that ordering is not paying');
     await shot(page, 'customer-checkout-delivery', false);
-    await click(page, 'Doʻkondan olib ketish', '.segmented button'); await pause(300);
+    await click(page, 'Doʻkondan olib ketish', '.fulfil-choices .choice'); await pause(300);
     t = await text(page);
     check(t.includes('Olib ketish manzili') && !t.includes('Yetkazib berish manzili') && !t.includes('Xaritada tanlash'), 'pickup: store address shown, delivery address/map hidden');
     await click(page, 'Bank oʻtkazmasi', '.choice'); await pause(200);
@@ -214,14 +215,16 @@ try {
     const { page, ctx } = await open('customer');
     const has = (t, n) => t.replace(/\u00a0/g, ' ').includes(n); // money() groups digits with no-break spaces
     await page.waitForSelector('.loc-row');
-    await page.$$eval('.loc-row', els => els[1].click()); await pause(2000);
+    await page.$$eval('.loc-row', els => els[1].click()); await page.waitForSelector('.address-sheet'); await pause(2500);
+    await page.type('.address-sheet textarea', 'Toshkent, Chilonzor 9-kvartal, 12-uy');
+    await click(page, 'Shu joyni tasdiqlash', '.sheet button'); await pause(600);
     await page.$$eval('.pcard-add', els => els[0].click()); await pause(400);
     await click(page, 'Savat', '.tabbar button'); await pause(400);
     let t = await text(page);
     check(t.includes('Yetkazib berish') && has(t, '15 000 soʻm'), 'cart: courier fee shown as its own line (15 000 soʻm)', JSON.stringify(t.slice(t.indexOf('Savat'), t.indexOf('Savat') + 400)));
     await click(page, 'Buyurtma berish', '.action-bar button'); await pause(700);
     t = await text(page);
-    check(t.includes('Joriy joylashuvingiz (GPS)') && t.includes('Kuryer shu nuqtaga keladi'), 'checkout: the phone GPS point is attached automatically (map stays optional)');
+    check(t.includes('Chilonzor 9-kvartal') && /GPS ·/.test(t) && t.includes('Kuryer shu nuqtaga keladi'), 'checkout: the GPS point the customer confirmed is attached (map stays optional)');
     const sums = await page.evaluate(() => { const n = s => Number((s || '').replace(/\D/g, '')); const lines = [...document.querySelectorAll('.co-lines > div')].map(d => n(d.lastElementChild?.textContent)); return { goods: lines[0], fee: lines[1], total: n(document.querySelector('.btn-total')?.textContent) }; });
     check(sums.fee === 15000 && sums.total === sums.goods + 15000, 'checkout: total = goods + courier fee', JSON.stringify(sums));
     await shot(page, 'customer-checkout-gps-fee');

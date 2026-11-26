@@ -20,7 +20,7 @@ export type OrderView = {
   delivery: null | { status: string; courier: { name: string; phone: string | null } | null; pickedUpAt: string | null; arrivedAt: string | null; handedOverAt: string | null };
   canConfirm: boolean; canReview: boolean; reviewed: { products: number[]; courier: boolean; courierRatable: boolean };
   /** Absent on servers older than V1 (then: delivery, cash, no separate fee). */
-  fulfillment?: 'delivery' | 'pickup'; deliveryFee?: number;
+  fulfillment?: 'delivery' | 'pickup'; deliveryFee?: number; deliveryFeePending?: boolean; discountTotal?: number;
   payment?: { method: string; status: string; paidAt: string | null; note: string; bankTransferDetails: string; canClaimTransfer: boolean; canPayOnline: boolean };
 };
 const PHONE = /^\+998\d{9}$/;
@@ -95,7 +95,7 @@ export function AuthSheet({ api, config, initialMode = 'login', onDone, onClose 
       {devCode && <div className="banner banner-warning" role="status"><Icon name="key" size={20} /><div><strong>Lokal sinov rejimi</strong>{isEmail ? 'Xat' : 'SMS'} yuborilmadi, kod: <span className="num">{devCode}</span>. Productionda bu koʻrinmaydi.</div></div>}
       {mode === 'login' && !usesCode && <>
         {identifierField}
-        <Field label="Parol"><input className="input" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} onFocus={revealOnFocus} /></Field>
+        <Field label="Parol"><input className="input" type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} onFocus={revealOnFocus} /></Field>
         <button className="btn btn-primary btn-lg btn-block" onClick={login} disabled={busy}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : 'Kirish'}</button>
         {isEmail && <button className="btn btn-secondary btn-block" onClick={() => { setCodeLogin(true); reset(); }}><Icon name="key" size={18} />Parolsiz — emailga kod olish</button>}
         <button className="link-btn" onClick={() => switchMode('reset')}>Parolni unutdingizmi?</button>
@@ -110,7 +110,7 @@ export function AuthSheet({ api, config, initialMode = 'login', onDone, onClose 
         <Field label={codeName}><input className="input num otp-single" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} onFocus={revealOnFocus} placeholder="••••••" /></Field>
         <div className="resend"><button className="link-btn plain" onClick={() => { setStep('phone'); setInfo(''); }}>{isEmail ? 'Emailni oʻzgartirish' : 'Raqamni oʻzgartirish'}</button>{wait > 0 ? <span className="num">Qayta yuborish: {wait} s</span> : <button className="link-btn plain" onClick={requestCode} disabled={busy}>Kodni qayta yuborish</button>}</div>
         {mode === 'register' && <Field label="Ismingiz"><input className="input" autoComplete="name" value={name} onChange={e => setName(e.target.value)} onFocus={revealOnFocus} /></Field>}
-        {mode !== 'login' && <Field label={mode === 'register' ? (isEmail ? 'Parol (ixtiyoriy)' : 'Parol') : 'Yangi parol'} hint={mode === 'register' && isEmail ? 'Kamida 10 ta belgi. Boʻsh qoldirsangiz, har safar emailga kelgan kod bilan kirasiz' : 'Kamida 10 ta belgi'}><input className="input" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} onFocus={revealOnFocus} /></Field>}
+        {mode !== 'login' && <Field label={mode === 'register' ? (isEmail ? 'Parol (ixtiyoriy)' : 'Parol') : 'Yangi parol'} hint={mode === 'register' && isEmail ? 'Kamida 10 ta belgi. Boʻsh qoldirsangiz, har safar emailga kelgan kod bilan kirasiz' : 'Kamida 10 ta belgi'}><input className="input" type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} onFocus={revealOnFocus} /></Field>}
         <button className="btn btn-primary btn-lg btn-block" onClick={finish} disabled={busy || (mode === 'register' && name.trim().length < 2)}>{busy ? <><span className="spinner" />Tekshirilmoqda...</> : mode === 'register' ? 'Hisob yaratish' : mode === 'login' ? 'Kirish' : 'Parolni saqlash'}</button>
       </>}
       {mode === 'login' && usesCode && <button className="link-btn" onClick={() => { setCodeLogin(false); reset(); }}>Parol bilan kirish</button>}

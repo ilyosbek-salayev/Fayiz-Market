@@ -173,7 +173,7 @@ const api = async (p, init) => (await fetch(API + p, init)).json();
   check(hiddenNav === 'hidden' && shownNav === 'visible', 'mobile drawer opens from menu button');
   await page.evaluate(() => [...document.querySelectorAll('.side-nav button')].find(b => b.textContent.includes('Boshqaruv')).click()); await pause(900);
   check((await text(page)).includes('Kunlik savdo') && await page.$eval('.sidebar', el => !el.classList.contains('open')), 'drawer navigates and closes');
-  await click(page, 'Menyu', '.menu-btn'); await click(page, 'Chiqish', '.side-foot button'); await pause(900);
+  await click(page, 'Menyu', '.menu-btn'); await click(page, 'Hisobdan chiqish', '.side-foot button'); await pause(900); // 1.2.2: «Chiqish» → «Hisobdan chiqish» (separate from «Ilovani qulflash»)
   check(!!(await page.$('.login-card')), 'logout returns to login');
   await ctx.close();
 }
