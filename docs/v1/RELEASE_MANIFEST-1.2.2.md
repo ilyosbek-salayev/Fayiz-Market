@@ -16,11 +16,9 @@ Joriy release candidate: **Fayz Market V1**, texnik versiya **1.2.2** (Android v
 
 ## Server bilan moslik
 
-**Production hozir 1.2.1 da.** 1.2.2 ilovalar u bilan ishlaydi. Faqat variantlar, tarif rejimi va «olib ketish» kartasi production 0009 + Worker deploy olgunga qadar toʻliq koʻrinmaydi. Bu qadam egasining ruxsatini kutmoqda.
+**Production’da 1.2.2** (2026-11-26, egasining ruxsati bilan): migratsiya 0009 + Worker Version `ae2ae8d6-15bc-46c0-a9a8-591bc42b83e1`, read-only smoke 11/11. Endi `main` push xavfsiz: Git build xuddi shu kodni deploy qiladi.
 
-> ⚠️ **0009 qoʻllanmasdan `main` push qilinmasin.** Git build yangi Worker’ni avtomatik deploy qiladi.
->
-> Teskari tartib xavfsiz: hozirgi production kodi 0009 sxemasida 154/154 oʻtdi.
+> Rollback: `cd apps/api && npx wrangler rollback 31ac4af9-6b12-45ba-b711-938ce320440f --env production` — 1.2.1 kodi 0009 sxemasida 154/154 ishlashi tasdiqlangan.
 
 ## Qolgan fayllar
 

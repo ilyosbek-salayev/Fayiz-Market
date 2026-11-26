@@ -232,6 +232,6 @@ Toʻliq hisobot: `REAL_DEVICE_QA_FIX_REPORT.md`. Barcha natijalar lokal izolyats
 |---|---|
 | Haqiqiy telefon (Samsung A17) | **NOT TESTED** (roʻyxat: `REAL_DEVICE_QA_FIX_REPORT.md` §8) |
 | Windows’da oʻrnatish | **NOT TESTED** |
-| Production’da 1.2.2 (0009 + Worker) | **Deploy qilinmagan** — egasining ruxsatini kutmoqda |
+| Production’da 1.2.2 (0009 + Worker) | **BAJARILDI** 2026-11-26: Worker `ae2ae8d6`, read-only smoke 11/11 (`REAL_DEVICE_QA_FIX_REPORT.md` §11) |
 | Tashqi integratsiyalar haqiqiy kalitlar bilan | **NOT TESTED** / Payme, Click **BLOCKED** |
 

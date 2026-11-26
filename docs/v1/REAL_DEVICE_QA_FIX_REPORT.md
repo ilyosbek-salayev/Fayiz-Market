@@ -6,8 +6,8 @@
 | **Versiya** | 1.2.2 (Android versionCode 9) |
 | **Branch** | `main` (yangi branch ochilmadi) |
 | **Kod commit’i** | `94ac876` |
-| **Production** | **Oʻzgarmagan.** Migratsiya 0009 va Worker deploy egasining alohida ruxsatini kutmoqda (§9) |
-| **GitHub push** | Qilinmagan (ruxsat kerak; push oldidan 0009 qoʻllanishi shart — §9) |
+| **Production** | **Chiqarildi** 2026-11-26 (egasining ruxsati bilan): zaxira → 0009 → Worker `ae2ae8d6` → read-only smoke 11/11 (§9) |
+| **GitHub push** | Qilinmagan. 0009 production’da, shuning uchun endi push xavfsiz: Git build xuddi shu kodni qayta deploy qiladi |
 
 > **Muhim.** Bu hisobotdagi barcha natijalar lokal izolyatsiyalangan muhitda (yangi D1), Chrome’da va Android **emulyatorida** olingan. 1.2.2 hali **haqiqiy telefonda sinalmagan**. Haqiqiy qurilmada qayta tekshirish roʻyxati — §8.
 
@@ -325,15 +325,32 @@ Avval production’ga 0009 + Worker chiqariladi (§9), keyin 1.2.2 APK’lar **e
 
 **Hali tayyor emas:**
 
-- 1.2.2 production’ga chiqmagan: 0009 + deploy ruxsat kutmoqda;
 - haqiqiy A17 da qayta sinov qilinmagan (§8);
 - Windows’da oʻrnatish sinalmagan;
 - tashqi integratsiyalar haqiqiy kalitlar bilan sinalmagan.
 
-**Baho:** mijozga topshirishdan oldin bitta qadam qoladi — production’ga chiqarish va egasining A17 dagi qayta sinovi. Bunda §8 roʻyxati toʻliq PASS boʻlishi kerak.
+**Baho:** 1.2.2 production’da. Mijozga topshirishdan oldin bitta qadam qoladi — egasining A17 dagi qayta sinovi; §8 roʻyxati toʻliq PASS boʻlishi kerak.
 
 **Ataylab qilinmagan:**
 
 - murakkab aksiyalar va promokodlar (faqat «chegirmagacha narx» qoʻshildi);
 - server hisobida saqlanadigan manzillar (manzillar telefonda saqlanadi);
 - variant uchun alohida rasm yuklash (rasm mahsulot rasmlaridan tanlanadi).
+
+## 11. Production’ga chiqarish (2026-11-26, egasining ruxsati bilan: «Ha, chiqaring»)
+
+| Qadam | Natija |
+|---|---|
+| Akkaunt | `wrangler.toml` dagi `account_id` `8c9b943e…82ca`. D1 `89f6ea76…` shu akkauntda (`wrangler d1 list`). `whoami` Cloudflare API nosozligi sababli ishlamadi |
+| D1 zaxira | `dist/backups/fayz-market-before-1.2.2-20261126-210745.sql` (36 595 bayt, 0600, SHA-256 `71405fe7020bd8a3…`) |
+| Migratsiya | `0009_variants_checkout.sql` ✅ (30 buyruq), undan keyin «No migrations to apply». Natija: tarif `fixed` (100 000), `fulfillment_pickup` = 0 (egasining tanlovi saqlandi), 3 mahsulot, 4 buyurtma, 18 trigger |
+| Oraliq holat | Eski Worker 0009 sxemasida: GET’lar 200, `production-get.mjs` 11/11 |
+| Deploy | Birinchi ikki urinish Cloudflare’ning «Dashboard and API service issues» nosozligi (10001) sababli oʻtmadi; production oʻzgarmadi. API tiklangach (16:24Z) → `fayz-market-api` Version **`ae2ae8d6-15bc-46c0-a9a8-591bc42b83e1`**. Bindinglar: D1, R2, `ENVIRONMENT=production`. Secretlar oʻzgarmadi |
+| Read-only smoke | `production-get.mjs` **11/11**; `/storefront` → `deliveryFeeMode: fixed`; `/products` → `variantCount`/`priceFrom`; `/products/:slug` → `variants`; `/products/:slug/related` 200; kirishsiz `PATCH /admin/orders/:id/delivery-fee` va `GET /admin/products/:id` → 401. Dalil: `evidence/production/production-get-after-1.2.2.log` |
+| Rollback (kerak boʻlsa) | `cd apps/api && npx wrangler rollback 31ac4af9-6b12-45ba-b711-938ce320440f --env production` — 1.2.1 kodi 0009 sxemasida 154/154 ishlashi tasdiqlangan |
+
+**Egasi uchun:**
+
+- «Doʻkondan olib ketish» hozir oʻchiq. Yoqish: Admin → Sozlamalar → Toʻlov.
+- Ilova ichidagi marshrut uchun Admin → Integratsiyalar → Marshrut ga OpenRouteService kalitini kiriting.
+

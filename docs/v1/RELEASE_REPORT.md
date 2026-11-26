@@ -4,7 +4,7 @@
 >
 > - Batafsil: `REAL_DEVICE_QA_FIX_REPORT.md`.
 > - Fayllar: `dist/RELEASE_MANIFEST.md` (Git nusxasi `docs/v1/RELEASE_MANIFEST-1.2.2.md`).
-> - Production’ga 0009 + Worker egasining ruxsatini kutmoqda. **0009 dan oldin push qilinmasin.**
+> - Production’da (2026-11-26): zaxira → 0009 → Worker `ae2ae8d6` → read-only smoke 11/11. Rollback: `npx wrangler rollback 31ac4af9-6b12-45ba-b711-938ce320440f --env production`.
 >
 > **1.2.1 (tarix):** Android versionCode 8. Asosiy oʻzgarishlar:
 >

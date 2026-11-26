@@ -62,8 +62,9 @@ Next action: connect an Android phone, install both files from `dist/apk/`, keep
   - production kodi 0009 da 154/154;
   - emulyator 11 + 15; desktop 11 + 5.
 - dist: faqat 1.2.2. 1.2.1 Savatga koʻchirildi.
+- Production (egasining ruxsati bilan, 2026-11-26): zaxira → 0009 ✅ → Worker `ae2ae8d6` → read-only smoke 11/11.
 - Ochiq:
-  - production’ga 0009 + deploy (ruxsat kerak; push undan **keyin**);
+  - push (endi xavfsiz);
   - A17 da qayta sinov;
   - Windows;
   - real credentials;

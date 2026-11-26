@@ -139,7 +139,9 @@ Qoida: «Retry build»ni faqat **eng oxirgi** `main` commit’i build’ida bosi
 
 2026-11-25: ortiqcha Worker `fayz-market-api-production` (2026-11-25 hodisasi, deploy `eb2fd9e9`) egasining tasdigʻi bilan oʻchirildi. Akkauntda endi faqat `fayz-market-api` bor.
 
-## Fayz Market V1 (1.2.2) — production’ga hali chiqmagan
+## Fayz Market V1 (1.2.2) — production’ga chiqarildi (2026-11-26)
+
+Zaxira `dist/backups/fayz-market-before-1.2.2-20261126-210745.sql` → migratsiya 0009 ✅ → deploy Version `ae2ae8d6-15bc-46c0-a9a8-591bc42b83e1` (birinchi urinishlar Cloudflare API nosozligi sababli oʻtmadi) → read-only smoke 11/11. Rollback: `npx wrangler rollback 31ac4af9-6b12-45ba-b711-938ce320440f --env production`.
 
 Migratsiya `0009_variants_checkout.sql`:
 
