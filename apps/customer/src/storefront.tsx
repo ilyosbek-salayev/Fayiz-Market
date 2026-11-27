@@ -5,6 +5,7 @@ import { Icon } from '../../../packages/ui/src/Icon';
 import { friendlyError } from '../../../packages/ui/src/format';
 import { MapView, currentPosition, directionsLink, distanceMeters, formatDistance, formatDuration, type LatLng, type MapMarker, type RouteLine } from '../../../packages/ui/src/maps';
 import { openExternal } from '../../../packages/ui/src/native';
+import { useBackClose } from '../../../packages/ui/src/back';
 import { storefrontFromSettings, type Storefront } from '../../../packages/ui/src/storefront';
 
 type Api = <T>(path: string, init?: RequestInit) => Promise<T>;
@@ -81,6 +82,8 @@ export function StoreScreen({ api, storefront, user, onUser, mapsKey, onClose }:
   const [locating, setLocating] = useState(false); const [locError, setLocError] = useState('');
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const back = () => history.back();
+  // Registered as a layer so Back closes the map even when it was opened above a sheet; it closes via its history entry.
+  useBackClose(true, back);
   useEffect(() => {
     history.pushState({ fayz: 'store-map' }, '');
     const onPop = () => closeRef.current();

@@ -1,0 +1,11 @@
+Real device: Samsung SM-A175F (RFGL70T06GT), Android 17 — 2026-11-26T17:08:37Z
+== uz.fayzmarket.customer
+before: versionName=1.2.1 first=2026-11-25 08:14:40
+apk sha256: 7f9f45d6cc4b20767f2bfb234a585f8ebbbca52d846c250844e23881b42cec36
+install: Success
+after: versionName=1.2.2 versionCode=9 first=2026-11-25 08:14:40 last=2026-11-26 22:08:41 debuggable=0
+== uz.fayzmarket.admin
+before: versionName=1.2.1 first=2026-11-25 08:14:22
+apk sha256: 3799536e76ef7d19f71db98d2a79bb6b3f1aea47a98b071205e1b041fbb4de96
+install: Success
+after: versionName=1.2.2 versionCode=9 first=2026-11-25 08:14:22 last=2026-11-26 22:08:43 debuggable=0

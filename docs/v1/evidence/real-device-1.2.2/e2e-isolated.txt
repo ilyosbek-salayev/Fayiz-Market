@@ -1,0 +1,40 @@
+REAL PHONE — debug apps against an ISOLATED local Worker (fresh D1, local R2); production not contacted
+2026-11-26T17:56:28.084Z
+INFO device — SM-A175F Android 17; installed 1.2.3/10 (customer), 1.2.3/10 (admin)
+PASS customer: home from the isolated Worker (catalogue, banner)
+PASS customer home: no horizontal overflow at 384 CSS px (phone)
+PASS sign-in: phone typed on the phone keyboard, formatted «90 123-45-67»
+PASS sign-in with phone + SMS code (dev echo, local) → account shown in profile
+PASS Back from a tab returns to the home tab (app stays open)
+PASS category tile filters the catalogue
+PASS search with the phone keyboard finds «Fayz Phone X»
+PASS tap «Oq» on the phone: price, photo and stock switch to that variant
+PASS «Batafsil koʻrish» opens the long description on the phone
+PASS Android Back on the product page returns to the list (app stays open)
+PASS cart: one row per variant, courier fee line
+PASS pickup: no courier fee, store address
+PASS Android Back closes the checkout sheet (app stays open)
+PASS keyboard open: the address field stays visible above it
+PASS order placed from the phone
+PASS D1: order lines keep the variants, server total incl. courier fee, typed address
+PASS admin login on the phone keyboard (email with a capital letter and a trailing space) → signed in
+FAIL admin sees the new order from the phone (notice / list)
+FAIL Android Back closes the admin drawer (app stays open)
+PASS admin status → confirmed from the phone
+PASS admin status → preparing from the phone
+PASS admin status → shipped from the phone
+PASS admin status → delivered from the phone
+PASS Android Back closes the order dialog
+PASS U01 on the phone: product name typed in one go, keyboard stays open
+FAIL image upload from the phone WebView (prepare → Worker → local R2)
+PASS admin variant editor on the phone: colour values typed → two variant rows
+FAIL D1/R2: product with 2 variants and the uploaded photo saved — {"v":2,"img":[]}
+PASS courier tariff changed on the phone → storefront «quote»
+PASS admin dark mode on the phone
+PASS integrations list (no credentials → «Sozlanmagan»)
+PASS Android Back from a section returns to «Boshqaruv»
+PASS customer sees the status the admin set («Yetkazildi»)
+PASS customer dark theme on the phone
+PASS server unreachable: clear error with «Qayta urinish» (no crash)
+
+PASS 31 · FAIL 4 · BLOCKED 0

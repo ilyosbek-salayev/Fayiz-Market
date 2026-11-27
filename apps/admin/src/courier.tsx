@@ -7,6 +7,7 @@ import { formatDateTime, friendlyError } from '../../../packages/ui/src/format';
 import { MapView, directionsLink, formatCoords, type LatLng, type MapMarker } from '../../../packages/ui/src/maps';
 import { keepScreenOn, openExternal } from '../../../packages/ui/src/native';
 import { agoText, deliveryNames } from '../../../packages/ui/src/stages';
+import { useBackClose } from '../../../packages/ui/src/back';
 import { EmptyState, Field } from './components';
 import { PasswordPanel, useNotifications, type Request } from './expansion';
 
@@ -34,6 +35,7 @@ export function CourierApp({ request, me, onLogout, onLock, mapsKey, securityPan
   const sharing = (rows || []).filter(r => SHARE.includes(r.status));
   const tracker = useLocationSharing(request, sharing.map(r => r.id));
   const list = (rows || []).filter(r => tab === 'active' ? ACTIVE.includes(r.status) || r.status === 'handed_over' : !ACTIVE.includes(r.status) && r.status !== 'handed_over');
+  useBackClose(!!openId, () => { setOpenId(0); void load(); });
   if (openId) return <CourierDetail id={openId} request={request} mapsKey={mapsKey} tracker={tracker} onChanged={load} onBack={() => { setOpenId(0); void load(); }} />;
   return <div className="courier-shell">
     <header className="courier-top"><BrandMark size={34} /><div><strong>Kuryer paneli</strong><span className="t-caption">{me.name || me.email}</span></div><button className="icon-btn filled" onClick={load} aria-label="Yangilash"><Icon name="refresh" size={20} /></button></header>

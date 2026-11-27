@@ -47,7 +47,7 @@ export async function webview(pkg, port) {
   const ws = new WebSocket(page.webSocketDebuggerUrl); await new Promise((ok, bad) => { ws.addEventListener('open', ok, { once: true }); ws.addEventListener('error', bad, { once: true }); });
   let seq = 0; const waiting = new Map();
   ws.addEventListener('message', event => { const msg = JSON.parse(event.data); if (msg.id && waiting.has(msg.id)) { waiting.get(msg.id)(msg); waiting.delete(msg.id); } });
-  const send = (method, params = {}) => new Promise((resolve, reject) => { const id = ++seq; waiting.set(id, m => m.error ? reject(new Error(`${method}: ${m.error.message}`)) : resolve(m.result)); ws.send(JSON.stringify({ id, method, params })); });
+  const send = (method, params = {}, timeoutMs = 30000) => new Promise((resolve, reject) => { const id = ++seq; const timer = setTimeout(() => { waiting.delete(id); reject(new Error(`${method}: no answer in ${timeoutMs} ms (WebView paused or app in background)`)); }, timeoutMs); waiting.set(id, m => { clearTimeout(timer); m.error ? reject(new Error(`${method}: ${m.error.message}`)) : resolve(m.result); }); ws.send(JSON.stringify({ id, method, params })); });
   const evaluate = async (fn, ...args) => {
     const r = await send('Runtime.evaluate', { expression: `(${fn})(...${JSON.stringify(args)})`, awaitPromise: true, returnByValue: true, userGesture: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);

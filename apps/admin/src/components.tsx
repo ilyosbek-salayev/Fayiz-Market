@@ -1,12 +1,14 @@
 // Presentational building blocks for the admin panel. No API calls or business rules live here.
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Icon, type IconName } from '../../../packages/ui/src/Icon';
+import { useBackClose } from '../../../packages/ui/src/back';
 
 export function Modal({ title, subtitle, onClose, children, footer, size = 'md', as = 'div', onSubmit, badge }: { title: string; subtitle?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' | 'lg'; as?: 'div' | 'form'; onSubmit?: (event: React.FormEvent) => void; badge?: ReactNode }) {
   const ref = useRef<HTMLElement>(null);
   // The latest onClose is read through a ref: callers often pass an inline arrow, and re-running this effect on
   // every keystroke used to move focus back to the dialog — the field lost focus after each typed character.
   const closeRef = useRef(onClose); closeRef.current = onClose;
+  useBackClose(true, () => closeRef.current());
   useEffect(() => {
     const key = (event: KeyboardEvent) => { if (event.key === 'Escape') closeRef.current(); };
     window.addEventListener('keydown', key); document.body.style.overflow = 'hidden';

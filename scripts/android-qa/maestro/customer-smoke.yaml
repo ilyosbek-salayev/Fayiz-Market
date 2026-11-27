@@ -1,0 +1,40 @@
+# Fayz Market Customer — READ-ONLY smoke (Android emulator or phone). It only opens screens: no sign-in, no cart,
+# no order, so it is safe against any build, including the production release.
+#   source ~/.fayz-toolchain/env.sh && maestro --device emulator-5554 test scripts/android-qa/maestro/customer-smoke.yaml
+appId: uz.fayzmarket.customer
+name: Customer read-only smoke
+tags: [readonly, smoke]
+---
+- launchApp:
+    stopApp: true
+# Android 13+ asks once for notifications (the app targets SDK 28, so the OS asks at first launch).
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- extendedWaitUntil:
+    visible: "Mahsulot qidirish"
+    timeout: 40000
+- assertVisible: "Kategoriyalar"
+- assertVisible: "Bosh sahifa"
+- takeScreenshot: maestro-customer-home
+- waitForAnimationToEnd
+# Tab bar = 5 equal tabs at the bottom. Tapped by position: the home page also has off-screen «Katalog» and
+# «Savat» links in the accessibility tree (0 px high), which text selectors pick first.
+- tapOn:
+    point: "30%,93%"
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    notVisible: "Katalogni ochish"
+    timeout: 15000
+- assertVisible: ".*ta mahsulot.*"
+- takeScreenshot: maestro-customer-catalog
+- tapOn:
+    point: "90%,93%"
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible: "Telefon raqam bilan kirish"
+    timeout: 15000
+- tapOn: "Bosh sahifa"
+- assertVisible: "Mahsulot qidirish"

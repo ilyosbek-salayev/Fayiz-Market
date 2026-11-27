@@ -1,0 +1,24 @@
+REAL PHONE (Samsung SM-A175F) — release 1.2.2 on PRODUCTION, read-only
+2026-11-26T17:47:02.683Z
+PASS customer home: store and user location rows
+PASS customer: data kept after the update (cart badge / home state)
+PASS catalog opens with product count
+PASS search field: soft keyboard opens
+PASS search «iph» finds iphone
+PASS Back hides the keyboard, app stays open
+PASS product page opens with price and add-to-cart
+PARTIAL product page: related products section — not visible after 2 swipes (catalogue may have no other in-stock products)
+FAIL Android Back on the product page returns to the list (app stays open) — topResumedActivity=ActivityRecord{93397398 u0 uz.fayzmarket.admin/uz.fayzmarket.app.MainActivity t980} :: 
+PASS cart: goods, courier fee and total lines
+PASS checkout: both choices and the final total (not submitted)
+PASS checkout: pickup shown as switched off by the shop (production setting)
+FAIL Android Back closes the checkout sheet (app stays open) — topResumedActivity=ActivityRecord{93397398 u0 uz.fayzmarket.admin/uz.fayzmarket.app.MainActivity t980} :: 
+PASS profile: address and appearance sections
+PASS dark theme applied and put back to yellow
+PASS store map screen opens
+BLOCKED in-app road route — routing (ORS) not configured in production — honest note shown: true
+PASS Back closes the store map
+FAIL admin: still signed in after the update (session kept) — Fayz Market | Ilova qulflangan. Shu telefonda yoqilgan barmoq izi bilan oching. | Barmoq izi bilan ochish | Parol bilan kirish
+FAIL real-device read-only script completed — Command failed: /Users/ilyosbek/.fayz-toolchain/android-sdk/platform-tools/adb shell uiautomator dump /sdcard/fayz-ui.xml >/dev/null 2>&1 || true
+
+PASS 14 · FAIL 4 · PARTIAL 1 · BLOCKED 1 · NOT TESTED 0

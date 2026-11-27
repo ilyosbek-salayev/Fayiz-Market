@@ -1,0 +1,49 @@
+EMULATOR (qa-android16, Android 16) — NOT a physical phone — debug apps against an ISOLATED local Worker (fresh D1, local R2); production not contacted
+2026-11-27T12:33:17.167Z
+INFO device — EMULATOR (qa-android16, Android 16) — NOT a physical phone; installed 1.2.3/10 (customer), 1.2.3/10 (admin)
+PASS A01: wrong password → «Yana N ta urinish qoldi», not signed in
+PASS A01: email typed with capitals and a trailing space → signed in
+PASS A01: «Hisobdan chiqish» → sign in with the correct password, 3 times in a row
+PASS A01: fingerprint sign-in enabled through the system BiometricPrompt (virtual sensor)
+PASS A01: «Ilovani qulflash» → lock screen, session leaves memory
+PASS A01: fingerprint reopens the same session
+PASS A01: «Hisobdan chiqish» → password form, no fingerprint option
+PASS A01: after sign-out a relaunch still asks for the password (fingerprint sign-in removed)
+PASS A01: sign in again with the password right after sign-out
+PASS U01: staff form — every character lands in name, phone, email and password (keyboard stays open)
+PASS U01: courier saved from the form
+PASS U01: reset-password dialog — whole password typed in one go, field keeps focus
+PASS U01: courier signs in with the password typed in that dialog
+PASS A06: «Qoldiq» on a variant product asks which variant
+PASS §8.11: Android Back closes the stock dialog (app stays open)
+PASS C11: location permission refused → explained; map and written address still offered
+PASS C11: written address saved on this phone without GPS
+PASS C11: the untouched map centre is NOT attached as a delivery point (keyboard resize is not a pick)
+PASS C11: home «Sizning joylashuvingiz» shows the confirmed written address
+PASS C12: second request after a refusal shows the Android dialog again; allowed → GPS fix in the picker
+PASS C12: home «Sizning joylashuvingiz» shows the confirmed address
+PASS C12: profile shows the same address with «Oʻzgartirish»
+PASS map picker: a real finger drag moves the pin → «Xaritada belgilangan nuqta» with new coordinates
+PASS map picker: «Bekor qilish» keeps the confirmed GPS address
+PASS C13: store map drawn; no route key → explained, straight-line distance shown
+PASS C13: «Yoʻlga chiqish» hands the route to another app (emulator: browser / maps)
+PASS C13: returning to Fayz Market keeps the store screen
+PASS §8.11: Android Back closes the store map → home
+PASS tariff: cart shows «Operator aniqlaydi» and «+ yetkazish» (no invented fee)
+PASS C12: checkout uses the same confirmed address automatically
+PASS C15: discount line (300 000 → 245 000) shown in checkout
+PASS tariff: order placed, fee pending, total = goods only, GPS point + address kept
+PASS tariff: admin typed the courier fee on the phone → order total 265 000
+PASS admin: order confirmed and the courier assigned from the order dialog
+PASS tariff: customer app shows the new total (265 000 soʻm) with the courier fee
+PASS K01: courier account opens «Kuryer paneli» only — no products, settings or integrations
+PASS K01: courier token → 403 on admin endpoints
+PASS K04: courier taps «Qabul qilish» → accepted
+PASS K04: courier taps «Doʻkondan oldim» → picked_up
+PASS K04: courier taps «Yoʻlga chiqdim» → on_the_way
+PASS K04: courier taps «Manzilga yetib keldim» → arrived
+PASS K04: courier taps «Mijozga topshirdim» → handed_over
+PASS K04: back in the customer app the «Ha, qabul qildim» card appears at once (0 s, no 30 s wait)
+PASS K04: customer taps «Ha, qabul qildim» → order «Yetkazildi»
+
+PASS 44 · FAIL 0 · BLOCKED 0

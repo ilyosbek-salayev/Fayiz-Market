@@ -13,6 +13,7 @@ import { biometricDisable, biometricEnable, biometricStatus, biometricStored, bi
 import { formatCoords } from '../../../packages/ui/src/maps';
 import { stageBadge, stageNames } from '../../../packages/ui/src/stages';
 import { loadOrderHistory } from './order-history';
+import { useBackClose } from '../../../packages/ui/src/back';
 import { ProductDetail, discountPercent, hasVariants, lineKey } from './product';
 import { AddressSheet, addressTitle, hasPoint, useAddresses, type SavedAddress } from './address';
 import '../../../packages/ui/src/tokens.css';
@@ -205,7 +206,9 @@ function App() {
   },[savedOrders,customer]);
   useEffect(() => { if(tab==='orders' && (savedOrders.length || customer)) void refreshOrders(); },[tab,savedOrders.length,customer]);
   // While the app is open, active orders are re-checked every 30 s (customer notices + confirmation prompt).
-  useEffect(() => { if(!savedOrders.length && !customer) return; void refreshOrders(true); const t=setInterval(() => { if(document.visibilityState==='visible') void refreshOrders(true); },30000); return () => clearInterval(t); },[savedOrders.length,customer]);
+  // Every 30 s while visible, and at once when the customer comes back to the app (the courier at the door has just
+  // marked the hand-over: the confirmation must not wait for the next 30-second tick).
+  useEffect(() => { if(!savedOrders.length && !customer) return; void refreshOrders(true); const t=setInterval(() => { if(document.visibilityState==='visible') void refreshOrders(true); },30000); const back=() => { if(document.visibilityState==='visible') void refreshOrders(true); }; document.addEventListener('visibilitychange',back); return () => { clearInterval(t); document.removeEventListener('visibilitychange',back); }; },[savedOrders.length,customer]);
   useEffect(() => { const open=() => { setSelected(null); setTab('orders'); }; window.addEventListener('fayz-open-order',open); return () => window.removeEventListener('fayz-open-order',open); },[]);
   const orderList = useMemo(() => { const ids=[...new Set([...accountOrders.map(o => o.id),...savedOrders.map(o => o.id)])].sort((a,b) => b-a); return ids.map(id => ({id,order:orders[id],saved:savedOrders.find(o => o.id===id)})); },[accountOrders,savedOrders,orders]);
   const awaiting = orderList.map(x => x.order).filter((o):o is OrderView => !!o && o.canConfirm);
@@ -245,6 +248,9 @@ function App() {
     quantity(product,1,variant); setToast({message:variant ? `Savatga qoʻshildi: ${variant.label}` : 'Savatga qoʻshildi',action:'Savatni ochish',onAction:() => go('cart')});
   };
   const closeCheckout = useCallback(() => setCheckout(false),[]);
+  // Android Back: a non-home tab returns home; the product page returns to the list (sheets handle themselves).
+  useBackClose(tab!=='home', () => go('home'));
+  useBackClose(!!selected, () => setSelected(null));
   const hideToast = useCallback(() => setToast(null),[]);
   // One address everywhere: home ("Sizning joylashuvingiz"), profile and checkout use the confirmed current address.
   const dropoff = addresses.current;
@@ -294,7 +300,7 @@ function App() {
       {awaiting.map(order => <ConfirmDelivery key={order.id} compact busy={orderBusy===order.id} onConfirm={() => confirmOrder(order)} onDispute={reason => disputeOrder(order,reason)} />)}
       <div className="home-top">
         <button className="search-trigger" onClick={openSearch}><Icon name="search" size={20} /><span>Mahsulot qidirish</span></button>
-        <LocationStrip storefront={storefront} user={userLocation} address={addresses.current?.text} locating={locating} onStore={() => setStoreOpen(true)} onUser={locateUser} />
+        <LocationStrip storefront={storefront} user={userLocation} address={hasPoint(addresses.current) || addresses.current?.confirmed ? addresses.current.text : undefined} locating={locating} onStore={() => setStoreOpen(true)} onUser={locateUser} />
       </div>
       <BannerCarousel banners={storefront?.banners || []} fallback={storefront?.defaultBanner || {title:settings.banner_title||'Fayz Market',subtitle:settings.banner_subtitle||'Siz uchun aksessuarlar'}} onCta={bannerAction} dark={dark} />
       {categories.length>0 && <section className="block"><SectionHeader title="Kategoriyalar" /><div className="rail cats">{categories.map(c => <button key={c.id} className="cat-tile" onClick={() => { setCategory(c.slug); go('catalog'); }}><span className="cat-initial" aria-hidden="true">{c.name.slice(0,1)}</span><span>{c.name}</span></button>)}</div></section>}

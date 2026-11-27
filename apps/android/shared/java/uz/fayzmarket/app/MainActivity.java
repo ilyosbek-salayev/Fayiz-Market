@@ -243,7 +243,13 @@ public final class MainActivity extends Activity {
       getPreferences(MODE_PRIVATE).edit().putString("api_url", value).apply(); openApp();
     }).setNegativeButton("Bekor qilish", null).show();
   }
-  @Override public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
+  /** Back closes the top in-page layer first (window.fayzBack), then WebView history (store map), then leaves. */
+  @Override public void onBackPressed() {
+    web.evaluateJavascript("(function(){try{return !!(window.fayzBack&&window.fayzBack());}catch(e){return false;}})()", handled -> {
+      if ("true".equals(handled)) return;
+      if (web.canGoBack()) web.goBack(); else MainActivity.super.onBackPressed();
+    });
+  }
   private boolean debuggable() { return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0; }
   private void applySystemBars(String color, boolean light) {
     try {

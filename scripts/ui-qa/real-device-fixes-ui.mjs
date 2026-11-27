@@ -29,7 +29,7 @@ const CHROME = process.env.CHROME_PATH || `${process.env.HOME}/Desktop/Google Ch
 const PORT = Number(process.env.QA_WORKER_PORT || 8809), MOCK_PORT = Number(process.env.QA_MOCK_PORT || 8810);
 const API = `http://127.0.0.1:${PORT}`, MOCK = `http://127.0.0.1:${MOCK_PORT}`;
 const SHOTS = path.resolve(ROOT, process.env.SHOTS || 'docs/v1/screenshots/real-device-fixes');
-const EVIDENCE = path.join(ROOT, 'docs/v1/evidence/real-device-fixes');
+const EVIDENCE = path.resolve(ROOT, process.env.EVIDENCE || 'docs/v1/evidence/real-device-fixes');
 mkdirSync(SHOTS, { recursive: true }); mkdirSync(EVIDENCE, { recursive: true });
 for (const app of ['customer', 'admin']) {
   const assets = path.join(ROOT, 'apps', app, 'dist', 'assets');

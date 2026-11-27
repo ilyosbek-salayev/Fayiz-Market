@@ -1,0 +1,6 @@
+== uz.fayzmarket.customer before versionName=1.2.2 first=2026-11-25 08:14:40
+install debug: Success
+after versionName=1.2.3 versionCode=10 first=2026-11-25 08:14:40 debuggable=1
+== uz.fayzmarket.admin before versionName=1.2.2 first=2026-11-25 08:14:22
+install debug: Success
+after versionName=1.2.3 versionCode=10 first=2026-11-25 08:14:22 debuggable=1

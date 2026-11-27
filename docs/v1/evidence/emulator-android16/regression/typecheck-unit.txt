@@ -1,0 +1,8 @@
+> tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/admin/tsconfig.json --noEmit && tsc -p apps/customer/tsconfig.json --noEmit
+
+
+ Test Files  10 passed (10)
+      Tests  73 passed (73)
+   Start at  17:33:52
+   Duration  548ms (import 62%, tests 19%, transform 16%, worker 2%)
+

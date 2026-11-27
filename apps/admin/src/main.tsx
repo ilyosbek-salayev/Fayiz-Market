@@ -10,6 +10,7 @@ import { BannersView, BrandPanel, OrderPayment, PaymentSettingsPanel, StorePanel
 import { NETWORK_MESSAGE, formatDateTime, formatDay, friendlyError, nativeDebug, openApiSettings, paintSystemBars } from '../../../packages/ui/src/format';
 import { ConfirmDialog, EmptyState, Field, IconAction, MetricCard, Modal, Panel, Thumb, Toggle } from './components';
 import { CourierApp } from './courier';
+import { useBackClose } from '../../../packages/ui/src/back';
 import { CharacteristicsEditor, VariantsEditor, emptyExtras, syncVariants, type VariantDraft } from './variants';
 import { ImagePicker, IntegrationsView, OrderDelivery, PasswordPanel, ReviewsView, StaffPanel, roleNames as staffRoles, useNotifications, type Notice, type OrderExtras } from './expansion';
 import { biometricDisable, biometricEnable, biometricStatus, biometricStored, biometricUnlock, desktopSession } from '../../../packages/ui/src/native';
@@ -177,6 +178,9 @@ function App() {
   const closeOrder = useCallback(() => { setSelectedOrder(null); setExtras(null); }, []);
   const closeConfirm = useCallback(() => setConfirmBox(null), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  // Android Back: drawer first, then from any section back to «Boshqaruv».
+  useBackClose(menuOpen, () => setMenuOpen(false));
+  useBackClose(!!me && me.role !== 'courier' && view !== 'dashboard', () => changeView('dashboard'));
   useEffect(() => { if (!menuOpen) return; const key = (e: KeyboardEvent) => { if (e.key === 'Escape') closeMenu(); }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key); }, [menuOpen, closeMenu]);
 
   if (!token && locked) return <main className="login-page"><div className="login-card">

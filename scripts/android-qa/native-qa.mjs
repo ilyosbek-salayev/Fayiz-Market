@@ -7,7 +7,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, tapNode, webview } from './lib.mjs';
 
-const PORT = 8791, API = `http://127.0.0.1:${PORT}`, OUT = 'scripts/android-qa/shots';
+const PORT = 8791, API = `http://127.0.0.1:${PORT}`, OUT = process.env.SHOTS || 'scripts/android-qa/shots';
 mkdirSync(OUT, { recursive: true });
 const results = []; const check = (ok, name, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
 const shot = name => writeFileSync(`${OUT}/${name}.png`, screenshot());
@@ -28,7 +28,8 @@ try {
   r = await call('/admin/categories', { method: 'POST', auth: owner, body: { name: 'Soatlar', slug: `soat-${stamp}` } }); const categoryId = r.data.id;
   r = await call('/admin/products', { method: 'POST', auth: owner, body: { name: 'Emulyator soati', slug: `soat-${stamp}`, description: '', categoryId, price: 150000, stock: 20, active: true, featured: true, images: [] } }); const productId = r.data.id;
   await call('/admin/users', { method: 'POST', auth: owner, body: { email: 'kuryer@emu.example', password: 'CourierPass-123', role: 'courier', name: 'Emu Kuryer', phone: '+998901234500' } });
-  await call('/admin/integrations/store_location', { method: 'PUT', auth: owner, body: { store_address: 'Toshkent, Chorsu', store_lat: '41.3264', store_lng: '69.2286' } });
+  await call('/admin/payment-settings', { method: 'PUT', auth: owner, body: { cash: true, cardTerminal: true, bankTransfer: false, bankTransferDetails: '', pickup: true, deliveryFeeMode: 'fixed', deliveryFee: 15000, deliveryFreeFrom: 0 } });
+  await call('/admin/store', { method: 'PUT', auth: owner, body: { placeName: 'Fayz Market — Emulyator', address: 'Toshkent, Chorsu', lat: 41.3264, lng: 69.2286 } });
   setApiUrl(C, API); setApiUrl(A, API);
 
   // ================= Customer app =================
@@ -36,6 +37,8 @@ try {
   launch(C); let c = await webview(C, 9411);
   // Android 13+ asks a targetSdk<33 app for notifications on its first launch (a fresh phone shows the same dialog).
   if (await waitNode(/permission_message/, 5000)) await allowPermission();
+  // Start clean under the LOCAL test origin only: an earlier run on this emulator leaves its cart and saved address there.
+  await c.waitFor(() => document.readyState === 'complete', 30000); await c.evaluate(() => { localStorage.clear(); sessionStorage.clear(); location.reload(); return true; }); await pause(2500);
   await c.waitFor(() => document.body.innerText.includes('Emulyator soati') || document.body.innerText.includes('Katalog'), 40000);
   check((await c.evaluate(() => location.origin)) === API, 'customer: bundled UI served under the configured API origin', await c.evaluate(() => location.href));
   check((await c.evaluate(() => FayzNative.biometricStatus())) === 'available', 'customer: BiometricManager reports an enrolled fingerprint');
@@ -73,22 +76,25 @@ try {
   await c.click('Katalog', '.tabbar button'); await pause(1000);
   await c.evaluate(() => [...document.querySelectorAll('.pcard-hit')].find(x => x.textContent.includes('Emulyator soati')).click()); await pause(1200);
   await c.click('Savatga qoʻshish', '.action-bar button'); await pause(600);
-  await c.click('Savat', '.tabbar button'); await pause(800); await c.click('Buyurtma berish', '.action-bar button'); await pause(1200);
-  await c.click('Xaritada tanlash', '.sheet button');
-  const drawn = await c.waitFor(() => { const cv = document.querySelector('.map-box[data-provider=openfreemap] canvas.maplibregl-canvas'); return !!cv && cv.getBoundingClientRect().height > 200; }, 40000);
+  await c.click('Savat', '.tabbar button'); await pause(800); await c.evaluate(() => document.querySelector('.action-bar .btn-primary').click()); await pause(1200);
+  await c.waitFor(() => !!document.querySelector('.fulfil-choices'), 10000);
+  await c.evaluate(() => [...document.querySelectorAll('.fulfil-choices .choice')].find(b => b.textContent.includes('Kuryer orqali'))?.click()); await pause(500);
+  // 1.2.x: one address picker. «Joylashuvimni aniqlash (GPS)» opens it and starts GPS at once.
+  try { await c.click('Joylashuvimni aniqlash', '.loc-choice button'); } catch (e) { shot('c-checkout-no-gps'); throw new Error(`${e.message} — screen: ${(await c.evaluate(() => (document.querySelector('.sheet') || document.body).innerText)).replace(/\s+/g, ' ').slice(0, 600)}`); }
+  const dialog = await allowPermission();
+  check(!!dialog, 'customer: Android runtime location permission requested by the shell', dialog?.label);
+  const drawn = await c.waitFor(() => { const cv = document.querySelector('.address-sheet .map-box[data-provider=openfreemap] canvas.maplibregl-canvas'); return !!cv && cv.getBoundingClientRect().height > 200; }, 40000);
   await pause(4000);
   check(drawn, 'customer: MapLibre + OpenFreeMap draws in the Android WebView (WebGL, no API key)');
   shot('c-map-openfreemap');
-  await c.click('Joylashuvimni aniqlash', '.sheet button');
-  const dialog = await allowPermission();
-  check(!!dialog, 'customer: Android runtime location permission requested by the shell', dialog?.label);
   // The emulator reports the fix in float precision (41.365498…), so compare to ~1 m.
-  check(await c.waitFor(() => /41\.3654(9\d|5\d), 69\.2848(9\d)|41\.3655\d\d, 69\.2849\d\d/.test(document.body.innerText), 20000), 'customer: emulator GPS fix reaches the WebView and centres the map pin');
+  check(await c.waitFor(() => /41\.3654(9\d|5\d), 69\.2848(9\d)|41\.3655\d\d, 69\.2849\d\d/.test(document.querySelector('.address-sheet')?.innerText || ''), 20000), 'customer: emulator GPS fix reaches the WebView and centres the map pin', await c.evaluate(() => document.querySelector('.address-sheet .loc-summary')?.innerText || document.querySelector('.address-sheet [role=alert]')?.innerText || ''));
   shot('c-gps-located');
-  await c.click('Shu joyni tasdiqlash', '.sheet button'); await pause(600);
+  await c.setValue('.address-sheet textarea', 'Toshkent, Yunusobod 4-mavze, 12-uy');
+  await c.click('Shu joyni tasdiqlash', '.sheet button'); await pause(800);
   await c.setValue('.sheet input[autocomplete=name]', 'Emu Mijoz'); await c.setValue('.sheet input[autocomplete=tel]', phone);
-  await c.setValue('.sheet textarea[autocomplete=street-address]', 'Toshkent, Yunusobod 4-mavze, 12-uy');
-  await c.click('Buyurtmani yuborish', '.sheet-foot button'); await pause(2500);
+  if (await c.evaluate(() => !!document.querySelector('.sheet textarea[autocomplete=street-address]'))) await c.setValue('.sheet textarea[autocomplete=street-address]', 'Toshkent, Yunusobod 4-mavze, 12-uy');
+  await c.click('Buyurtmani yuborish', '.sheet-foot button, .sheet button'); await pause(2500);
   shot('c-after-submit');
   const placed = (await c.text()).match(/FM-[A-Z0-9-]+/)?.[0];
   if (!placed) console.log('  checkout state:', JSON.stringify(await c.evaluate(() => ({ alerts: [...document.querySelectorAll('.banner, [role=alert], .field-error')].map(b => b.textContent), inputs: [...document.querySelectorAll('.sheet input, .sheet textarea')].map(i => (i.getAttribute('autocomplete') || i.placeholder) + '=' + i.value) }))));
@@ -97,6 +103,8 @@ try {
 
   // ================= Admin app: notification + tap-to-open, camera =================
   launch(A); let a = await webview(A, 9412);
+  // Clean local-origin storage: the notification feed keeps its last-seen id per origin, and a fresh test DB starts ids at 1 again.
+  await a.waitFor(() => document.readyState === 'complete', 30000); await a.evaluate(() => { localStorage.clear(); sessionStorage.clear(); location.reload(); return true; }); await pause(2500);
   await a.waitFor(() => !!document.querySelector('input[type=email]'), 30000);
   await allowPermission(); // Android 13+: notification permission for targetSdk < 33 apps on first launch
   sh(`pm grant ${A} android.permission.POST_NOTIFICATIONS`);
@@ -170,5 +178,5 @@ try {
   // Back to production defaults on the emulator; nothing is uninstalled or wiped.
   try { setApiUrl(C, ''); setApiUrl(A, ''); adb('reverse', '--remove', `tcp:${PORT}`); } catch { /* emulator gone */ }
 }
-console.log(`\n${results.filter(Boolean).length}/${results.length} passed (Android 14 emulator — not a physical device)`);
+console.log(`\n${results.filter(Boolean).length}/${results.length} passed (Android ${sh('getprop ro.build.version.release')} emulator — not a physical device)`);
 process.exit(results.every(Boolean) ? 0 : 1);

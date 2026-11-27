@@ -1,0 +1,5 @@
+Mac (MacBook Air M5, 10 cores, 16 GB) while the Android 16 emulator ran the QA suites — sampled every 10 s by ~/.fayz-toolchain/bin/qa-resources
+window: 16:54:59 – 17:58:43 (Asia/Tashkent)
+samples 381 · qemu RSS avg 2867 MB, max 3787 MB · qemu CPU avg 28%, max 269% (100% = 1 core of 10) · Mac free memory min 43% · swap max 0 MB · disk free 166Gi
+right after a cold boot: qemu RSS ~5.3–5.5 GB, falls to ~2.9 GB as macOS compresses idle guest memory
+cold boot 16 s · clean stop 3–4 s · AVD on disk 2.3 GB · toolchain 15 GB · Mac SSD free 170 GB

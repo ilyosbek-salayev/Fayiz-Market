@@ -63,12 +63,13 @@ export const formatDuration = (s: number) => s < 3600 ? `${Math.max(1, Math.roun
 /** Common surface both providers implement, so markers/fit/picker logic is written once. */
 type Engine = { setMarkers(m: MapMarker[], fit: boolean, picker: boolean, route: RouteLine | null): void; panTo(p: LatLng): void; destroy(): void };
 
-async function googleEngine(el: HTMLElement, key: string, center: LatLng | null | undefined, picker: boolean, onIdle: (p: LatLng) => void, onAddress?: (a: string) => void): Promise<Engine> {
+async function googleEngine(el: HTMLElement, key: string, center: LatLng | null | undefined, picker: boolean, onIdle: (p: LatLng) => boolean, onAddress?: (a: string) => void): Promise<Engine> {
   const google = await loadGoogleMaps(key);
   const map = new google.maps.Map(el, { center: center || DEFAULT_CENTER, zoom: center ? 16 : 12, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy', clickableIcons: false });
   let drawn: any[] = []; let timer: number | undefined; let line: any = null;
   if (picker) map.addListener('idle', () => {
-    const c = map.getCenter(); const p = { lat: c.lat(), lng: c.lng() }; onIdle(p);
+    const c = map.getCenter(); const p = { lat: c.lat(), lng: c.lng() };
+    if (!onIdle(p)) return; // not a pick (first load, resize): no point and no guessed address
     if (onAddress) { window.clearTimeout(timer); timer = window.setTimeout(() => new google.maps.Geocoder().geocode({ location: p }).then((r: any) => onAddress(r.results?.[0]?.formatted_address || '')).catch(() => onAddress('')), 700); }
   });
   return {
@@ -85,7 +86,7 @@ async function googleEngine(el: HTMLElement, key: string, center: LatLng | null 
   };
 }
 
-async function openFreeMapEngine(el: HTMLElement, center: LatLng | null | undefined, picker: boolean, onIdle: (p: LatLng) => void): Promise<Engine> {
+async function openFreeMapEngine(el: HTMLElement, center: LatLng | null | undefined, picker: boolean, onIdle: (p: LatLng) => boolean): Promise<Engine> {
   if (!webglAvailable()) throw new Error('Bu qurilmada WebGL yoʻq — xarita chizilmaydi');
   const ml = await loadMapLibre();
   const start = center || DEFAULT_CENTER;
@@ -136,11 +137,15 @@ async function openFreeMapEngine(el: HTMLElement, center: LatLng | null | undefi
 /**
  * Map with markers. In picker mode the map moves under a fixed centre pin and `onPick` receives the centre
  * after each pan; `onAddress` receives a reverse-geocoded address only on Google (OpenFreeMap has no geocoder).
+ * A pick is only reported after a person touched the map (drag, pinch, zoom buttons, wheel) or after `center`
+ * moved it (GPS, a saved point). A map that merely resized — the Android keyboard opening shrinks the WebView —
+ * or Google's first «idle» used to report the untouched default centre as if the customer had chosen it.
  */
 export function MapView({ apiKey, center, markers = [], route = null, picker, onPick, onAddress, fit, className = '' }: { apiKey?: string; center?: LatLng | null; markers?: MapMarker[]; route?: RouteLine | null; picker?: boolean; onPick?: (p: LatLng) => void; onAddress?: (address: string) => void; fit?: boolean; className?: string }) {
   const box = useRef<HTMLDivElement>(null);
   const engine = useRef<Engine | null>(null);
   const callbacks = useRef({ onPick, onAddress }); callbacks.current = { onPick, onAddress };
+  const touched = useRef(false), panned = useRef(false);
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [provider, setProvider] = useState<MapProvider>(apiKey ? 'google' : 'openfreemap');
   const [error, setError] = useState('');
@@ -148,7 +153,14 @@ export function MapView({ apiKey, center, markers = [], route = null, picker, on
   useEffect(() => {
     let cancelled = false; setState('loading'); setError('');
     const el = box.current; if (!el) return;
-    const idle = (p: LatLng) => callbacks.current.onPick?.(p);
+    const touch = () => { touched.current = true; };
+    const opts = { capture: true, passive: true };
+    const kinds = ['pointerdown', 'touchstart', 'wheel', 'keydown'] as const;
+    kinds.forEach(k => el.addEventListener(k, touch, opts));
+    const idle = (p: LatLng) => {
+      if (!touched.current && !panned.current) return false;
+      panned.current = false; callbacks.current.onPick?.(p); return true;
+    };
     const start = async () => {
       if (apiKey) {
         try { const e = await googleEngine(el, apiKey, center, !!picker, idle, a => callbacks.current.onAddress?.(a)); if (!cancelled) setProvider('google'); return e; }
@@ -158,10 +170,10 @@ export function MapView({ apiKey, center, markers = [], route = null, picker, on
     };
     start().then(e => { if (cancelled) { e.destroy(); return; } engine.current = e; setState('ready'); })
       .catch(e => { if (!cancelled) { setState('failed'); setError(e?.message || 'Xarita yuklanmadi'); } });
-    return () => { cancelled = true; engine.current?.destroy(); engine.current = null; };
+    return () => { cancelled = true; kinds.forEach(k => el.removeEventListener(k, touch, opts)); engine.current?.destroy(); engine.current = null; };
   }, [apiKey]);
 
-  useEffect(() => { if (state === 'ready' && center && picker) engine.current?.panTo(center); }, [state, center?.lat, center?.lng]);
+  useEffect(() => { if (state === 'ready' && center && picker) { panned.current = true; engine.current?.panTo(center); } }, [state, center?.lat, center?.lng]);
   useEffect(() => { if (state === 'ready') engine.current?.setMarkers(markers, !!fit, !!picker, route); }, [state, JSON.stringify(markers), route]);
 
   if (state === 'failed') {

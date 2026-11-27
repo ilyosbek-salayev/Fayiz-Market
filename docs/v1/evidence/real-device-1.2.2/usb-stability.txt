@@ -1,0 +1,21 @@
+17:07:20 state=device uptime=862845.00
+17:07:25 state=device uptime=862850.13
+17:07:30 state=device uptime=862855.23
+17:07:35 state=device uptime=862860.33
+17:07:40 state=device uptime=862865.43
+17:07:45 state=device uptime=862870.53
+17:07:50 state=device uptime=862875.66
+17:07:55 state=device uptime=862880.75
+17:08:01 state=device uptime=862885.85
+17:08:06 state=device uptime=862890.95
+17:08:11 state=device uptime=862896.06
+17:08:16 state=device uptime=862901.17
+17:08:21 state=device uptime=862906.27
+ok 13/13 over ~65s
+17:10:31 DISCONNECTED: phone missing from 'adb devices' (after install + relaunch); scrcpy closed
+17:13:56 RECONNECTED (user confirmed)
+17:34:23 RECONNECTED over wireless ADB (TLS) — user re-connected; scrcpy --select-tcpip running
+17:39:11 wireless ADB 'device offline' during admin read-only walkthrough
+17:44:29 reconnected (wireless ADB)
+17:47:27 wireless ADB dropped again (end of release-1.2.2 read-only run)
+17:51:53 reconnected (wireless ADB, transport 86)

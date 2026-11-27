@@ -1,0 +1,36 @@
+# Android Back inside the Customer app (1.2.3+ shell asks window.fayzBack first): a tab returns to «Bosh sahifa»,
+# the app stays open; on «Bosh sahifa» Back leaves the app. READ-ONLY (only opens screens).
+#   maestro --device emulator-5554 test scripts/android-qa/maestro/back-navigation.yaml
+appId: uz.fayzmarket.customer
+name: Customer Android Back
+tags: [readonly, back]
+---
+- launchApp:
+    stopApp: true
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- extendedWaitUntil:
+    visible: "Mahsulot qidirish"
+    timeout: 40000
+- waitForAnimationToEnd
+# Tab bar = 5 equal tabs at the bottom. Tapped by position: the home page also has off-screen «Katalog» and
+# «Savat» links in the accessibility tree (0 px high), which text selectors pick first.
+- tapOn:
+    point: "30%,93%"
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    notVisible: "Katalogni ochish"
+    timeout: 15000
+- assertVisible: ".*ta mahsulot.*"
+- back
+- assertVisible: "Mahsulot qidirish"   # Katalog → Back → home, still inside the app
+- tapOn:
+    point: "90%,93%"
+    retryTapIfNoChange: true
+- back
+- assertVisible: "Kategoriyalar"
+- back                                  # home → Back → the app closes (launcher)
+- assertNotVisible: "Mahsulot qidirish"

@@ -1,0 +1,12 @@
+EMULATOR (qa-android16, Android 16 / API 36, arm64) — NOT a physical phone. Production read-only: apps opened, nobody signed in.
+2026-11-27T11:52:30.219Z
+PASS uz.fayzmarket.customer: release 1.2.2 (9) installed, not debuggable — 1.2.2 (9)
+PASS uz.fayzmarket.admin: release 1.2.2 (9) installed, not debuggable — 1.2.2 (9)
+PASS customer release opens the production store on Android 16 (10.3s) — Fayz Market | Fayz Market | Aksessuarlar doʻkoni | Doʻkonga yoʻl — xaritada | Mahsulot qidirish | Doʻkon manzili Jizzah kochasi | Sizning joylashuvingiz Aniqlas
+PASS customer release: no developer/server controls
+PASS Android 16: no «built for an older Android» warning dialog (targetSdk 28)
+INFO Android 16 asked on first launch (targetSdk 28 → OS-level prompt): Allow Fayz Market to send you notifications? → «Allow» tapped
+PASS admin release: login screen (email, parol, Kirish) on Android 16 — Fayz Market — Admin | Fayz Market | Boshqaruv paneliga kirish | Email | Parol | Parolni koʻrsatish | Kirish | Fayz Market V1 · versiya 1.2.2
+PASS admin release: no server / API / test control
+
+7/7 passed (+1 INFO)

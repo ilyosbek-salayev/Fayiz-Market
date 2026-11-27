@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { money } from '@fayz/shared';
 import type { Product } from '@fayz/shared';
 import { Icon, type IconName } from '../../../packages/ui/src/Icon';
+import { useBackClose } from '../../../packages/ui/src/back';
 
 export function ProductImage({ src, alt = '', fit = 'cover' }: { src?: string; alt?: string; fit?: 'cover' | 'contain' }) {
   const [failed, setFailed] = useState(false);
@@ -64,6 +65,7 @@ export function Sheet({ title, onClose, children, footer }: { title: string; onC
   // Focus moves to the sheet once, when it opens. A parent re-render (a typed character) must not steal focus
   // from the field being edited, so the latest onClose is read through a ref instead of re-running the effect.
   const closeRef = useRef(onClose); closeRef.current = onClose;
+  useBackClose(true, () => closeRef.current());
   useEffect(() => {
     const key = (event: KeyboardEvent) => { if (event.key === 'Escape') closeRef.current(); };
     window.addEventListener('keydown', key); document.body.style.overflow = 'hidden';

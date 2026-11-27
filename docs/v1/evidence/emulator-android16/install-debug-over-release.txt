@@ -1,0 +1,7 @@
+EMULATOR (qa-android16, Android 16) — NOT a physical phone. adb install -r (no uninstall, no data wipe)
+== uz.fayzmarket.customer before: versionName=1.2.2 firstInstallTime=2026-11-2716:50:05 
+install debug: Success
+after:  versionCode=10 minSdk=23 targetSdk=28  versionName=1.2.3  flags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ]  firstInstallTime=2026-11-27 16:50:05 
+== uz.fayzmarket.admin before: versionName=1.2.2 firstInstallTime=2026-11-2716:50:05 
+install debug: Success
+after:  versionCode=10 minSdk=23 targetSdk=28  versionName=1.2.3  flags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ]  firstInstallTime=2026-11-27 16:50:05 

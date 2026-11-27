@@ -8,7 +8,9 @@ import { friendlyError } from '../../../packages/ui/src/format';
 import { MapView, currentPosition, distanceMeters, formatCoords, type LatLng } from '../../../packages/ui/src/maps';
 import { Field, Sheet, revealOnFocus } from './components';
 
-export type SavedAddress = { id: string; text: string; details: string; lat?: number; lng?: number; accuracy?: number; source: 'gps' | 'map' | 'text'; at: number };
+// `confirmed`: a written-only address the customer confirmed in the picker (1.2.3+). The 1.2.2 build promoted the old
+// profile text automatically and without it; such an entry is not shown as the home «location».
+export type SavedAddress = { id: string; text: string; details: string; lat?: number; lng?: number; accuracy?: number; source: 'gps' | 'map' | 'text'; at: number; confirmed?: boolean };
 type Store = { list: SavedAddress[]; currentId: string | null };
 const KEY = 'fayz_addresses_v1';
 /** GPS fixes worse than this (metres) must be corrected on the map before they can be confirmed. */
@@ -21,12 +23,10 @@ export const hasPoint = (a: SavedAddress | null | undefined): a is SavedAddress 
 
 /** Addresses kept only on this phone; `current` is the one checkout and the home screen use. */
 export function useAddresses(legacyText = '') {
-  const [store, setStore] = useState<Store>(() => {
-    const s = load();
-    // First run after the update: the address the customer typed earlier becomes a saved (text-only) address.
-    if (!s.list.length && legacyText.trim().length >= 5) { const a: SavedAddress = { id: 'a' + Date.now().toString(36), text: legacyText.trim(), details: '', source: 'text', at: Date.now() }; return { list: [a], currentId: a.id }; }
-    return s;
-  });
+  // The 1.2.1 profile text is NOT promoted to a saved address: on a real phone it surfaced as the home «location»
+  // («Data,»). It stays the checkout text, as before; addresses appear here only when the customer confirms one.
+  void legacyText;
+  const [store, setStore] = useState<Store>(() => load());
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch { /* storage full */ } }, [store]);
   const save = useCallback((address: SavedAddress) => setStore(old => {
     const rest = old.list.filter(a => a.id !== address.id && !sameSpot(a, address));
@@ -75,7 +75,7 @@ export function AddressSheet({ apiKey, title = 'Manzil', saved, initial, autoLoc
   const canConfirm = textOk && !lowAccuracy && (point != null || text.trim().length >= 5);
   const confirm = () => {
     if (!canConfirm) return;
-    onConfirm({ id: initial?.id && sameSpot(initial, { ...initial, text, lat: point?.lat, lng: point?.lng }) ? initial.id : 'a' + Date.now().toString(36), text: text.trim(), details: details.trim(), ...(point ? { lat: point.lat, lng: point.lng, ...(source === 'gps' && point.accuracy ? { accuracy: point.accuracy } : {}) } : {}), source: point ? source : 'text', at: Date.now() });
+    onConfirm({ id: initial?.id && sameSpot(initial, { ...initial, text, lat: point?.lat, lng: point?.lng }) ? initial.id : 'a' + Date.now().toString(36), text: text.trim(), details: details.trim(), ...(point ? { lat: point.lat, lng: point.lng, ...(source === 'gps' && point.accuracy ? { accuracy: point.accuracy } : {}) } : {}), source: point ? source : 'text', ...(point ? {} : { confirmed: true }), at: Date.now() });
   };
   const others = saved.filter(a => a.id !== initial?.id);
   return <Sheet title={title} onClose={onClose} footer={<>

@@ -1,0 +1,22 @@
+# Fayz Market Admin — READ-ONLY: the login screen opens with email, password and «Kirish», nothing else.
+# Nobody signs in, so it is safe against the production release.
+#   maestro --device emulator-5554 test scripts/android-qa/maestro/admin-login-screen.yaml
+appId: uz.fayzmarket.admin
+name: Admin login screen (read-only)
+tags: [readonly, smoke]
+---
+- launchApp:
+    stopApp: true
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- extendedWaitUntil:
+    visible: "Boshqaruv paneliga kirish"
+    timeout: 40000
+- assertVisible: "Email"
+- assertVisible: "Parol"
+- assertVisible: "Kirish"
+- assertNotVisible: "Server manzili"
+- takeScreenshot: maestro-admin-login
