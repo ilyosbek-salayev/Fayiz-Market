@@ -1,4 +1,4 @@
-Real device: Samsung SM-A175F (RFGL70T06GT), Android 17 — 2026-11-26T17:08:37Z
+Real device: Samsung SM-A175F (serial redacted), Android 17 — 2026-11-26T17:08:37Z
 == uz.fayzmarket.customer
 before: versionName=1.2.1 first=2026-11-25 08:14:40
 apk sha256: 7f9f45d6cc4b20767f2bfb234a585f8ebbbca52d846c250844e23881b42cec36

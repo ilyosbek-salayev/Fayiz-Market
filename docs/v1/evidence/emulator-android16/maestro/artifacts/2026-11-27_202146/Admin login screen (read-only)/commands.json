@@ -4,7 +4,7 @@
       "env" : {
         "MAESTRO_CLI_NO_ANALYTICS" : "1",
         "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED" : "true",
-        "MAESTRO_FILENAME" : "back-navigation",
+        "MAESTRO_FILENAME" : "admin-login-screen",
         "MAESTRO_DEVICE_UDID" : "emulator-5554",
         "MAESTRO_SHARD_ID" : "1",
         "MAESTRO_SHARD_INDEX" : "0"
@@ -14,8 +14,8 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784645087,
-    "duration" : 1,
+    "timestamp" : 1795792935313,
+    "duration" : 0,
     "sequenceNumber" : 0,
     "depth" : 0,
     "evaluatedCommand" : {
@@ -23,7 +23,7 @@
         "env" : {
           "MAESTRO_CLI_NO_ANALYTICS" : "1",
           "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED" : "true",
-          "MAESTRO_FILENAME" : "back-navigation",
+          "MAESTRO_FILENAME" : "admin-login-screen",
           "MAESTRO_DEVICE_UDID" : "emulator-5554",
           "MAESTRO_SHARD_ID" : "1",
           "MAESTRO_SHARD_INDEX" : "0"
@@ -36,25 +36,25 @@
   "command" : {
     "applyConfigurationCommand" : {
       "config" : {
-        "appId" : "uz.fayzmarket.customer",
-        "name" : "Customer Android Back",
-        "tags" : [ "readonly", "back" ]
+        "appId" : "uz.fayzmarket.admin",
+        "name" : "Admin login screen (read-only)",
+        "tags" : [ "readonly", "smoke" ]
       },
       "optional" : false
     }
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784645088,
+    "timestamp" : 1795792935314,
     "duration" : 0,
     "sequenceNumber" : 1,
     "depth" : 0,
     "evaluatedCommand" : {
       "applyConfigurationCommand" : {
         "config" : {
-          "appId" : "uz.fayzmarket.customer",
-          "name" : "Customer Android Back",
-          "tags" : [ "readonly", "back" ]
+          "appId" : "uz.fayzmarket.admin",
+          "name" : "Admin login screen (read-only)",
+          "tags" : [ "readonly", "smoke" ]
         },
         "optional" : false
       }
@@ -63,20 +63,20 @@
 }, {
   "command" : {
     "launchAppCommand" : {
-      "appId" : "uz.fayzmarket.customer",
+      "appId" : "uz.fayzmarket.admin",
       "stopApp" : true,
       "optional" : false
     }
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784645088,
-    "duration" : 96,
+    "timestamp" : 1795792935314,
+    "duration" : 77,
     "sequenceNumber" : 2,
     "depth" : 0,
     "evaluatedCommand" : {
       "launchAppCommand" : {
-        "appId" : "uz.fayzmarket.customer",
+        "appId" : "uz.fayzmarket.admin",
         "stopApp" : true,
         "optional" : false
       }
@@ -108,8 +108,8 @@
   },
   "metadata" : {
     "status" : "SKIPPED",
-    "timestamp" : 1795784645184,
-    "duration" : 7140,
+    "timestamp" : 1795792935391,
+    "duration" : 7090,
     "sequenceNumber" : 3,
     "depth" : 0,
     "evaluatedCommand" : {
@@ -141,7 +141,7 @@
     "assertConditionCommand" : {
       "condition" : {
         "visible" : {
-          "textRegex" : "Mahsulot qidirish",
+          "textRegex" : "Boshqaruv paneliga kirish",
           "optional" : false
         }
       },
@@ -151,15 +151,15 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784652325,
-    "duration" : 57,
+    "timestamp" : 1795792942482,
+    "duration" : 58,
     "sequenceNumber" : 4,
     "depth" : 0,
     "evaluatedCommand" : {
       "assertConditionCommand" : {
         "condition" : {
           "visible" : {
-            "textRegex" : "Mahsulot qidirish",
+            "textRegex" : "Boshqaruv paneliga kirish",
             "optional" : false
           }
         },
@@ -170,42 +170,30 @@
   }
 }, {
   "command" : {
-    "waitForAnimationToEndCommand" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "Email",
+          "optional" : false
+        }
+      },
       "optional" : false
     }
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784652382,
-    "duration" : 275,
+    "timestamp" : 1795792942540,
+    "duration" : 61,
     "sequenceNumber" : 5,
     "depth" : 0,
     "evaluatedCommand" : {
-      "waitForAnimationToEndCommand" : {
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "tapOnPointV2Command" : {
-      "point" : "30%,93%",
-      "retryIfNoChange" : true,
-      "longPress" : false,
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784652657,
-    "duration" : 990,
-    "sequenceNumber" : 6,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "tapOnPointV2Command" : {
-        "point" : "30%,93%",
-        "retryIfNoChange" : true,
-        "longPress" : false,
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "Email",
+            "optional" : false
+          }
+        },
         "optional" : false
       }
     }
@@ -214,198 +202,58 @@
   "command" : {
     "assertConditionCommand" : {
       "condition" : {
-        "notVisible" : {
-          "textRegex" : "Katalogni ochish",
+        "visible" : {
+          "textRegex" : "Parol",
           "optional" : false
         }
       },
-      "timeout" : "15000",
       "optional" : false
     }
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784653647,
-    "duration" : 574,
+    "timestamp" : 1795792942601,
+    "duration" : 61,
+    "sequenceNumber" : 6,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "Parol",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "Kirish",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1795792942662,
+    "duration" : 105,
     "sequenceNumber" : 7,
     "depth" : 0,
     "evaluatedCommand" : {
       "assertConditionCommand" : {
         "condition" : {
-          "notVisible" : {
-            "textRegex" : "Katalogni ochish",
-            "optional" : false
-          }
-        },
-        "timeout" : "15000",
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "assertConditionCommand" : {
-      "condition" : {
-        "visible" : {
-          "textRegex" : ".*ta mahsulot.*",
-          "optional" : false
-        }
-      },
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784654222,
-    "duration" : 58,
-    "sequenceNumber" : 8,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "assertConditionCommand" : {
-        "condition" : {
           "visible" : {
-            "textRegex" : ".*ta mahsulot.*",
+            "textRegex" : "Kirish",
             "optional" : false
           }
         },
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "backPressCommand" : {
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784654280,
-    "duration" : 835,
-    "sequenceNumber" : 9,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "backPressCommand" : {
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "assertConditionCommand" : {
-      "condition" : {
-        "visible" : {
-          "textRegex" : "Mahsulot qidirish",
-          "optional" : false
-        }
-      },
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784655116,
-    "duration" : 60,
-    "sequenceNumber" : 10,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "assertConditionCommand" : {
-        "condition" : {
-          "visible" : {
-            "textRegex" : "Mahsulot qidirish",
-            "optional" : false
-          }
-        },
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "tapOnPointV2Command" : {
-      "point" : "90%,93%",
-      "retryIfNoChange" : true,
-      "longPress" : false,
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784655177,
-    "duration" : 369,
-    "sequenceNumber" : 11,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "tapOnPointV2Command" : {
-        "point" : "90%,93%",
-        "retryIfNoChange" : true,
-        "longPress" : false,
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "backPressCommand" : {
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784655546,
-    "duration" : 618,
-    "sequenceNumber" : 12,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "backPressCommand" : {
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "assertConditionCommand" : {
-      "condition" : {
-        "visible" : {
-          "textRegex" : "Kategoriyalar",
-          "optional" : false
-        }
-      },
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784656165,
-    "duration" : 63,
-    "sequenceNumber" : 13,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "assertConditionCommand" : {
-        "condition" : {
-          "visible" : {
-            "textRegex" : "Kategoriyalar",
-            "optional" : false
-          }
-        },
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "backPressCommand" : {
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784656228,
-    "duration" : 705,
-    "sequenceNumber" : 14,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "backPressCommand" : {
         "optional" : false
       }
     }
@@ -415,7 +263,7 @@
     "assertConditionCommand" : {
       "condition" : {
         "notVisible" : {
-          "textRegex" : "Mahsulot qidirish",
+          "textRegex" : "Server manzili",
           "optional" : false
         }
       },
@@ -424,20 +272,44 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784656933,
-    "duration" : 576,
-    "sequenceNumber" : 15,
+    "timestamp" : 1795792942768,
+    "duration" : 558,
+    "sequenceNumber" : 8,
     "depth" : 0,
     "evaluatedCommand" : {
       "assertConditionCommand" : {
         "condition" : {
           "notVisible" : {
-            "textRegex" : "Mahsulot qidirish",
+            "textRegex" : "Server manzili",
             "optional" : false
           }
         },
         "optional" : false
       }
     }
+  }
+}, {
+  "command" : {
+    "takeScreenshotCommand" : {
+      "path" : "maestro-admin-login",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1795792943326,
+    "duration" : 87,
+    "sequenceNumber" : 9,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "takeScreenshotCommand" : {
+        "path" : "maestro-admin-login",
+        "optional" : false
+      }
+    },
+    "artifacts" : [ {
+      "type" : "TAKE_SCREENSHOT",
+      "path" : "takeScreenshot/maestro-admin-login.png"
+    } ]
   }
 } ]

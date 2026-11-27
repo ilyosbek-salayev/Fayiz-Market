@@ -1,7 +1,8 @@
 // Prepares a FRESH Android emulator for native-qa.mjs: device PIN 1111 and one enrolled virtual fingerprint (id 1).
 // Run once after creating/booting the AVD (see docs/v1-expansion/PROGRESS.md). Safe to re-run: it skips what exists.
 //   node scripts/android-qa/setup-emulator.mjs
-import { adb, findNode, pause, sh, tapNode } from './lib.mjs';
+import { adb, findNode, pause, sh, tapNode, requireEmulator } from './lib.mjs';
+requireEmulator(import.meta.url.split('/').pop());
 const touch = async id => { adb('emu', 'finger', 'touch', String(id)); await pause(800); try { adb('emu', 'finger', 'remove', String(id)); } catch { /* older emulator */ } await pause(500); };
 
 for (let i = 0; i < 120 && sh('getprop sys.boot_completed') !== '1'; i++) await pause(1000);

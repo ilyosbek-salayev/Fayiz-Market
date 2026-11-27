@@ -1,5 +1,5 @@
 Fayz Market V1 1.2.2 — real-device fixes, Chrome UI (built bundles, isolated local Worker)
-2026-11-27T12:36:09.115Z
+2026-11-27T15:20:48.840Z
 
 ## U01 — typing keeps focus in admin forms and dialogs (390 px, real key presses)
 PASS staff form «Ism»: every character lands, field keeps focus

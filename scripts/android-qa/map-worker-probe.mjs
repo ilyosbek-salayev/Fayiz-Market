@@ -6,7 +6,8 @@
 // Nothing is signed in and nothing is written to the API.
 //   node scripts/android-qa/map-worker-probe.mjs
 import { readdirSync } from 'node:fs';
-import { launch, pause, sh, webview } from './lib.mjs';
+import { launch, pause, sh, webview, requireDevice } from './lib.mjs';
+requireDevice(import.meta.url.split('/').pop());
 
 const results = []; const check = (ok, name, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
 for (const [pkg, app, port] of [['uz.fayzmarket.customer', 'customer', 9461], ['uz.fayzmarket.admin', 'admin', 9462]]) {

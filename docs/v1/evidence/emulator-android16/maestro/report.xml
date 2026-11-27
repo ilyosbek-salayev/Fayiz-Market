@@ -1,17 +1,17 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <testsuites>
-  <testsuite name="Test Suite" device="qa-android16" tests="3" failures="0" time="32.622" timestamp="2026-11-27T18:03:53">
-    <testcase id="Customer read-only smoke" name="Customer read-only smoke" classname="Customer read-only smoke" file="/Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/android-qa/maestro/customer-smoke.yaml" time="11.888" timestamp="2026-11-27T18:03:53" status="SUCCESS">
+  <testsuite name="Test Suite" device="qa-android16" tests="3" failures="0" time="34.326" timestamp="2026-11-27T20:21:49">
+    <testcase id="Customer read-only smoke" name="Customer read-only smoke" classname="Customer read-only smoke" file="/Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/android-qa/maestro/customer-smoke.yaml" time="13.387" timestamp="2026-11-27T20:21:49" status="SUCCESS">
       <properties>
         <property name="tags" value="readonly, smoke"/>
       </properties>
     </testcase>
-    <testcase id="Customer Android Back" name="Customer Android Back" classname="Customer Android Back" file="/Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/android-qa/maestro/back-navigation.yaml" time="12.542" timestamp="2026-11-27T18:04:04" status="SUCCESS">
+    <testcase id="Customer Android Back" name="Customer Android Back" classname="Customer Android Back" file="/Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/android-qa/maestro/back-navigation.yaml" time="12.717" timestamp="2026-11-27T20:22:02" status="SUCCESS">
       <properties>
         <property name="tags" value="readonly, back"/>
       </properties>
     </testcase>
-    <testcase id="Admin login screen (read-only)" name="Admin login screen (read-only)" classname="Admin login screen (read-only)" file="/Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/android-qa/maestro/admin-login-screen.yaml" time="8.181" timestamp="2026-11-27T18:04:17" status="SUCCESS">
+    <testcase id="Admin login screen (read-only)" name="Admin login screen (read-only)" classname="Admin login screen (read-only)" file="/Users/ilyosbek/Documents/GitHub/Fayiz-Market/scripts/android-qa/maestro/admin-login-screen.yaml" time="8.212" timestamp="2026-11-27T20:22:15" status="SUCCESS">
       <properties>
         <property name="tags" value="readonly, smoke"/>
       </properties>

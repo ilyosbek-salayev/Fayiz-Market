@@ -235,3 +235,26 @@ Toʻliq hisobot: `REAL_DEVICE_QA_FIX_REPORT.md`. Barcha natijalar lokal izolyats
 | Production’da 1.2.2 (0009 + Worker) | **BAJARILDI** 2026-11-26: Worker `ae2ae8d6`, read-only smoke 11/11 (`REAL_DEVICE_QA_FIX_REPORT.md` §11) |
 | Tashqi integratsiyalar haqiqiy kalitlar bilan | **NOT TESTED** / Payme, Click **BLOCKED** |
 
+
+## 9. 1.2.3 — Android 16 emulator QA va yakuniy regressiya (2026-11-27)
+
+Hisobot: `EMULATOR_QA_ANDROID16.md`, manifest: `RELEASE_MANIFEST-1.2.3.md`, qoʻllanma: `QA_ANDROID.md`. Hamma Android natijasi **EMULATOR** (`qa-android16`, Android 16 arm64), lokal izolyatsiyalangan Worker’larda.
+
+| Toʻplam | Natija | Qayerda |
+|---|---|---|
+| E2E (mijoz → admin → mijoz) | **35/35** | EMULATOR |
+| Real Device QA §8 rejasi + admin doʻkon joylashuvi | **47/47** | EMULATOR |
+| Native: barmoq izi, GPS, xarita, bildirishnoma, kamera, kuryer GPS | **25/25** | EMULATOR |
+| Maestro | **3/3** | EMULATOR |
+| UIAutomator (accessibility daraxti) | **14 PASS · 2 WARN** (touch target 43/46 dp) | EMULATOR |
+| Chrome UI; typecheck; unit | **100/100**; OK; **73/73** | Chrome / Node |
+| Release 1.2.3 debug ustidan (prod faqat oʻqildi) | **11/11** | EMULATOR |
+| Desktop macOS packaged login | **5/5** | macOS |
+
+Tuzatilgan: xarita nuqtasini oʻz-oʻzidan yozish (F1, production 1.2.2 da ham bor), ilovaga qaytganda buyurtma holatining 30 s kechikishi (F2).
+
+| 1.2.3 da sinalmagan | Holat |
+|---|---|
+| Haqiqiy telefon (Samsung A17) | **NOT TESTED** — `REAL_DEVICE_CHECKLIST-1.2.3.md` |
+| Windows’da oʻrnatish va ishga tushirish | **BLOCKED** — MacBook’da Windows yoʻq |
+| Production’da 1.2.3 | Tarqatilmagan; API oʻzgarmagan, Worker deploy kerak emas |

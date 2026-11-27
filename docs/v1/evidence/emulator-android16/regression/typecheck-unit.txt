@@ -1,8 +1,11 @@
+typecheck exit 0
+> fayz-market@1.2.3 typecheck
 > tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/admin/tsconfig.json --noEmit && tsc -p apps/customer/tsconfig.json --noEmit
 
+unit (vitest) exit 0
 
  Test Files  10 passed (10)
       Tests  73 passed (73)
-   Start at  17:33:52
-   Duration  548ms (import 62%, tests 19%, transform 16%, worker 2%)
+   Start at  20:18:39
+   Duration  407ms (import 59%, tests 24%, transform 13%, worker 3%)
 

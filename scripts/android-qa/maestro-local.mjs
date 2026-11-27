@@ -2,14 +2,15 @@
 // a small seed). Production is never contacted. Both apps are pointed back to their default API at the end.
 //   source ~/.fayz-toolchain/env.sh && ANDROID_SERIAL=emulator-5554 node scripts/android-qa/maestro-local.mjs [flow.yaml ...]
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { adb, pause, setApiUrl, sh } from './lib.mjs';
+import { adb, pause, setApiUrl, sh, requireEmulator } from './lib.mjs';
+requireEmulator(import.meta.url.split('/').pop());
 
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const PORT = Number(process.env.QA_PORT || 8795), API = `http://127.0.0.1:${PORT}`;
-const SERIAL = process.env.ANDROID_SERIAL || 'emulator-5554';
+const SERIAL = process.env.ANDROID_SERIAL; // set by requireEmulator()
 const OUT = path.join(ROOT, process.env.MAESTRO_OUT || 'docs/v1/evidence/emulator-android16/maestro');
 const flows = process.argv.slice(2).length ? process.argv.slice(2) : ['customer-smoke.yaml', 'back-navigation.yaml', 'admin-login-screen.yaml'].map(f => path.join(ROOT, 'scripts/android-qa/maestro', f));
 const C = 'uz.fayzmarket.customer', A = 'uz.fayzmarket.admin';
@@ -29,7 +30,7 @@ let code = 1;
 try {
   adb('reverse', `tcp:${PORT}`, `tcp:${PORT}`);
   setApiUrl(C, API); setApiUrl(A, API);
-  mkdirSync(OUT, { recursive: true });
+  rmSync(OUT, { recursive: true, force: true }); mkdirSync(OUT, { recursive: true }); // evidence of this run only
   // Screenshots from takeScreenshot land in the working directory → run inside OUT.
   execFileSync('maestro', ['--device', SERIAL, 'test', '--format', 'junit', '--output', path.join(OUT, 'report.xml'), '--test-output-dir', path.join(OUT, 'artifacts'), ...flows], { cwd: OUT, stdio: 'inherit', env: { ...process.env, MAESTRO_CLI_NO_ANALYTICS: '1' } });
   code = 0;
@@ -37,7 +38,11 @@ try {
 finally {
   for (const p of [C, A]) { try { setApiUrl(p, null); } catch { /* device gone */ } }
   try { adb('reverse', '--remove', `tcp:${PORT}`); } catch { /* none */ }
+  // Maestro's driver keeps the device's single UiAutomation connection; stop it so `uiautomator dump` works afterwards.
+  for (const p of ['dev.mobile.maestro', 'dev.mobile.maestro.test']) { try { sh(`am force-stop ${p}`); } catch { /* not installed */ } }
   try { process.kill(-worker.pid, 'SIGTERM'); } catch { /* gone */ }
   rmSync(dir, { recursive: true, force: true });
+  // Raw device logcat (~1 MB per flow, emulator noise) stays out of the committed evidence.
+  for (const f of readdirSync(OUT, { recursive: true })) if (String(f).endsWith('device-logcat.txt')) rmSync(path.join(OUT, String(f)), { force: true });
 }
 process.exit(code);

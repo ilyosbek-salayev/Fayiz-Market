@@ -14,7 +14,7 @@
     "kind" : "DEVICE_LOG",
     "format" : "TXT",
     "relativePath" : "logs/device-logcat.txt",
-    "sizeBytes" : 455059,
+    "sizeBytes" : 411491,
     "metadata" : {
       "source" : "emulator"
     }

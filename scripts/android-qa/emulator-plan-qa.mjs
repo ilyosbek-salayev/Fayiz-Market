@@ -14,11 +14,12 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, tapNode, versionOf, webview } from './lib.mjs';
+import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, tapNode, versionOf, webview, requireEmulator } from './lib.mjs';
+
 
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const PORT = Number(process.env.QA_PORT || 8792), API = `http://127.0.0.1:${PORT}`;
-if (sh('getprop ro.kernel.qemu') !== '1') { console.error('emulator-plan-qa.mjs runs on an EMULATOR only (it sets fingerprints and GPS through the emulator console).'); process.exit(2); }
+requireEmulator('emulator-plan-qa.mjs'); // sets fingerprints, GPS and permissions through the emulator
 const KIND = `EMULATOR (${sh('getprop ro.boot.qemu.avd_name') || 'AVD'}, Android ${sh('getprop ro.build.version.release')}) — NOT a physical phone`;
 const OUT = path.join(ROOT, process.env.SHOTS || 'docs/v1/screenshots/emulator-android16/plan');
 const RESULTS = path.join(ROOT, process.env.RESULTS || 'docs/v1/evidence/emulator-android16/plan-qa.txt');
@@ -171,6 +172,29 @@ try {
   shot('a06-stock-variant');
   await backKey();
   ok(await w.evaluate(() => !document.querySelector('.modal')) && resumed().includes(A), '§8.11: Android Back closes the stock dialog (app stays open)');
+  // Admin «Doʻkon joylashuvi»: typing the address on the phone keyboard must not write the map centre as the store
+  // point (the same picker bug as C11); a real finger drag sets it; «Saqlash» stores exactly what the form shows.
+  await nav(w, 'Sozlamalar'); await pause(800);
+  const STORE = '.panel:has(input[placeholder="41.311081"])';
+  await w.waitFor(s => !!document.querySelector(s + ' .map-box[data-provider] canvas'), 30000, STORE); await pause(2500);
+  await w.setValue(`${STORE} input[placeholder="41.311081"]`, ''); await w.setValue(`${STORE} input[placeholder="69.240562"]`, '');
+  await w.evaluate(s => { document.querySelector(s + ' input[placeholder^="Shahar"]').scrollIntoView({ block: 'center' }); return true; }, STORE);
+  await tapEl(w, A, `${STORE} input[placeholder^="Shahar"]`); await pause(400);
+  sh('input keyevent KEYCODE_MOVE_END'); await typeNative(' 2-uy'); await pause(2500);
+  const kbStore = keyboardShown();
+  const coordsAfterTyping = await w.evaluate(s => [document.querySelector(s + ' input[placeholder="41.311081"]').value, document.querySelector(s + ' input[placeholder="69.240562"]').value], STORE);
+  ok(kbStore && coordsAfterTyping.join('') === '', 'admin store location: typing the address on the phone keyboard does not write the map centre as the store point', JSON.stringify({ keyboard: kbStore, coordsAfterTyping }));
+  shot('store-typed-no-point');
+  await backKey();
+  const sm = await w.evaluate(s => { const el = document.querySelector(s + ' .map-box'); el.scrollIntoView({ block: 'center' }); const b = el.getBoundingClientRect(); return { x: (b.left + b.width / 2) * devicePixelRatio, y: (b.top + b.height / 2) * devicePixelRatio }; }, STORE);
+  await pause(600); const so = webviewOrigin(A); guard();
+  sh(`input swipe ${Math.round(sm.x + so.x)} ${Math.round(sm.y + so.y)} ${Math.round(sm.x + so.x + 180)} ${Math.round(sm.y + so.y + 140)} 600`); await pause(2500);
+  const picked = await w.evaluate(s => [document.querySelector(s + ' input[placeholder="41.311081"]').value, document.querySelector(s + ' input[placeholder="69.240562"]').value], STORE);
+  ok(/^4\d\.\d{6}$/.test(picked[0]) && /^6\d\.\d{6}$/.test(picked[1]), 'admin store location: a real finger drag on the map sets the store point', JSON.stringify(picked));
+  await w.evaluate(s => { [...document.querySelectorAll(s + ' .form-actions .btn-primary')].pop().click(); return true; }, STORE); await pause(2000);
+  const sfStore = (await (await fetch(API + '/storefront')).json()).store;
+  ok(sfStore.configured && sfStore.lat.toFixed(6) === picked[0] && sfStore.lng.toFixed(6) === picked[1] && sfStore.address.endsWith('2-uy'), 'admin store location: «Saqlash» stores the dragged point and the typed address (storefront)', JSON.stringify({ picked, saved: [sfStore.lat, sfStore.lng], address: sfStore.address }));
+  shot('store-dragged-saved');
   w.close();
 
   // ================================================================ CUSTOMER — C11/C12, C13, tariff «Operator aniqlaydi»
@@ -343,4 +367,5 @@ try {
   const n = s => results.filter(r => r.startsWith(s)).length;
   writeFileSync(RESULTS, `${KIND} — debug apps against an ISOLATED local Worker (fresh D1, local R2); production not contacted\n${new Date().toISOString()}\n${results.join('\n')}\n\nPASS ${n('PASS')} · FAIL ${n('FAIL')} · BLOCKED ${n('BLOCKED')}\n`);
   console.log(`\nPASS ${n('PASS')} · FAIL ${n('FAIL')} · BLOCKED ${n('BLOCKED')}`);
+  process.exitCode = n('FAIL') || n('BLOCKED') ? 1 : 0;
 }

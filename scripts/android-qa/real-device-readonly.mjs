@@ -6,10 +6,14 @@
 //   ANDROID_SERIAL=<phone> node scripts/android-qa/real-device-readonly.mjs <screenshots dir> <results file>
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { launch, pause, screenshot, sh } from './lib.mjs';
+import { launch, pause, screenshot, sh, requireDevice } from './lib.mjs';
+requireDevice(import.meta.url.split('/').pop());
 
-const OUT = process.argv[2] || 'docs/v1/screenshots/real-device-1.2.2';
-const RESULTS = process.argv[3] || 'docs/v1/evidence/real-device-1.2.2/readonly-production.txt';
+// Production screens on the owner's phone show real names, phone numbers, location and sales: both outputs stay in the
+// git-ignored .local-qa/ folder. Copy a reviewed, redacted summary into docs/ by hand.
+const OUT = process.argv[2] || '.local-qa/private-screenshots/real-device/release';
+const RESULTS = process.argv[3] || '.local-qa/private-evidence/real-device/readonly-production.txt';
+mkdirSync(path.dirname(RESULTS), { recursive: true });
 mkdirSync(OUT, { recursive: true });
 const C = 'uz.fayzmarket.customer', A = 'uz.fayzmarket.admin';
 const results = []; const check = (status, name, detail = '') => { results.push(`${status} ${name}${detail ? ' — ' + String(detail).slice(0, 240) : ''}`); console.log(results.at(-1)); };

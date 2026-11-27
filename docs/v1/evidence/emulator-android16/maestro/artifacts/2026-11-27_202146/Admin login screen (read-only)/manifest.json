@@ -4,22 +4,22 @@
     "kind" : "MAESTRO_LOG",
     "format" : "TXT",
     "relativePath" : "logs/maestro.log",
-    "sizeBytes" : 6617
+    "sizeBytes" : 2837
   }, {
     "kind" : "TAKE_SCREENSHOT",
     "format" : "PNG",
     "relativePath" : "takeScreenshot",
-    "count" : 2
+    "count" : 1
   }, {
     "kind" : "COMMAND_METADATA",
     "format" : "JSON",
     "relativePath" : "commands.json",
-    "sizeBytes" : 11040
+    "sizeBytes" : 6983
   }, {
     "kind" : "DEVICE_LOG",
     "format" : "TXT",
     "relativePath" : "logs/device-logcat.txt",
-    "sizeBytes" : 382381,
+    "sizeBytes" : 340931,
     "metadata" : {
       "source" : "emulator"
     }

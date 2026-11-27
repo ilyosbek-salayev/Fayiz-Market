@@ -6,7 +6,8 @@
 //   node scripts/android-qa/release-apk-check.mjs [dist/apk/v<version>]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, versionOf } from './lib.mjs';
+import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, versionOf, requireEmulator } from './lib.mjs';
+requireEmulator(import.meta.url.split('/').pop());
 
 const VERSION = JSON.parse(readFileSync('package.json', 'utf8')).version;
 const CODE = Number(readFileSync('apps/android/customer/build.gradle', 'utf8').match(/versionCode\s+(\d+)/)[1]);

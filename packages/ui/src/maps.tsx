@@ -173,7 +173,14 @@ export function MapView({ apiKey, center, markers = [], route = null, picker, on
     return () => { cancelled = true; kinds.forEach(k => el.removeEventListener(k, touch, opts)); engine.current?.destroy(); engine.current = null; };
   }, [apiKey]);
 
-  useEffect(() => { if (state === 'ready' && center && picker) { panned.current = true; engine.current?.panTo(center); } }, [state, center?.lat, center?.lng]);
+  // The move the app starts counts as a pick for ~2 s only: if the map was already there and reports no move, the flag
+  // must not survive until a later resize (keyboard) and turn that into a pick.
+  useEffect(() => {
+    if (!(state === 'ready' && center && picker)) return;
+    panned.current = true; engine.current?.panTo(center);
+    const t = window.setTimeout(() => { panned.current = false; }, 2000);
+    return () => window.clearTimeout(t);
+  }, [state, center?.lat, center?.lng]);
   useEffect(() => { if (state === 'ready') engine.current?.setMarkers(markers, !!fit, !!picker, route); }, [state, JSON.stringify(markers), route]);
 
   if (state === 'failed') {

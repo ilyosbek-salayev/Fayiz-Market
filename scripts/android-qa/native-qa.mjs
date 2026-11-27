@@ -5,7 +5,8 @@
 // pointed back to production at the end. No uninstall, no data wipe.
 //   node scripts/android-qa/native-qa.mjs
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, tapNode, webview } from './lib.mjs';
+import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, tapNode, webview, requireEmulator } from './lib.mjs';
+requireEmulator(import.meta.url.split('/').pop());
 
 const PORT = 8791, API = `http://127.0.0.1:${PORT}`, OUT = process.env.SHOTS || 'scripts/android-qa/shots';
 mkdirSync(OUT, { recursive: true });

@@ -3,7 +3,8 @@
 // not loop on a lock screen that can never open. Run after native-qa.mjs (which leaves fingerprint login on).
 // Enrols virtual finger 2 through Settings (device PIN 1111).
 //   node scripts/android-qa/biometric-invalidation.mjs
-import { adb, findNode, launch, pause, setApiUrl, sh, tapNode, webview } from './lib.mjs';
+import { adb, findNode, launch, pause, setApiUrl, sh, tapNode, webview, requireEmulator } from './lib.mjs';
+requireEmulator(import.meta.url.split('/').pop());
 const results = []; const check = (ok, name, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
 const C = 'uz.fayzmarket.customer';
 const touch = async id => { adb('emu', 'finger', 'touch', String(id)); await pause(800); try { adb('emu', 'finger', 'remove', String(id)); } catch { /* older emulator */ } await pause(500); };

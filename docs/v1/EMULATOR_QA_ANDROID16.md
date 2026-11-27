@@ -6,7 +6,8 @@
 | **Qurilma** | **EMULATOR** `qa-android16` (Android 16 / API 36, arm64) — MacBook Air M5 ichida. Bu haqiqiy Samsung Galaxy A17 sinovi **emas**. |
 | **Ilovalar** | Customer va Admin release **1.2.2** (vc 9, production’dagi) va joriy kod **1.2.3** (vc 10, debug + release) |
 | **Maʼlumotlar** | Har bir sinov alohida lokal Worker’da: yangi D1 + lokal R2, `adb reverse` orqali. Production’ga faqat oʻqish uchun 3 marta ulanildi: release 1.2.2 va 1.2.3 ni ochish, bir marta debug ilovani diagnostika uchun ochish (hech kim kirmadi, hech narsa yozilmadi). |
-| **Holat** | Kod oʻzgarishlari **commit qilinmagan**, push/deploy qilinmagan. |
+| **Holat** | 1.2.3 kodi `main` da (722d968 + yakuniy commit). GitHub’ga push va production deploy qilinmagan. |
+| **Yakuniy regressiya** | 2026-11-27 20:08–20:21, `scripts/android-qa/qa.sh regression` — 8/8 toʻplam PASS (`evidence/emulator-android16/regression-1.2.3.txt`) |
 
 ## 1. Muhit
 
@@ -33,17 +34,22 @@
 
 ## 2. Natijalar (EMULATOR)
 
-| Toʻplam | Natija | Dalil |
-|---|---|---|
-| Release 1.2.2 oʻrnatish va ochish (prod, faqat oʻqish) | **7/7** (+1 INFO) | `evidence/emulator-android16/release-1.2.2-open.txt` |
-| Debug 1.2.3 → 1.2.2 release ustidan joyida (maʼlumot saqlanadi) | Success, firstInstallTime saqlandi | `install-debug-over-release.txt` |
-| E2E: mijoz → buyurtma → admin → holatlar → mijoz, Orqaga, klaviatura, tema, oflayn | **35/35** (tuzatishdan oldin ham, keyin ham) | `e2e-isolated.txt` |
-| Native: barmoq izi (Keystore), GPS, MapLibre/WebGL, bildirishnoma, kamera, kuryer GPS | **25/25** | `native-qa.txt` |
-| Real Device QA rejasi §8 (U01, A01, A06, C11–C15, tarif, K01–K04, Orqaga) | **44/44** (birinchi ishda 2 ta haqiqiy xato topildi, §3) | `plan-qa.txt` |
-| Maestro (mijoz smoke, Orqaga, admin kirish oynasi) | **3/3** | `maestro/report.xml` |
-| Chrome UI regressiyasi (360/390/412/1280 px) | **100/100** | `regression/ui-verify.txt` |
-| Typecheck + unit | OK, **73/73** | `regression/typecheck-unit.txt` |
-| Release 1.2.3 test-serverga qaratilgan debug ustidan (prod, faqat oʻqish) | **11/11** | `release-1.2.3-over-debug.txt` |
+Yakuniy regressiya (bitta buyruq, har toʻplam oʻz lokal Worker’ida):
+
+| Toʻplam | Natija | Qamrov | Dalil |
+|---|---|---|---|
+| `install` | PASS | debug 1.2.3 joyida | — |
+| `e2e` | **35/35** | kirish, katalog, variantlar, savat, checkout, buyurtma → admin holatlari → mijoz, rasm yuklash, tarif, tema, oflayn, Orqaga | `e2e-isolated.txt` |
+| `plan` (§8) | **47/47** | U01, A01 + barmoq izi, A06, **admin doʻkon joylashuvi**, C11–C15, GPS, matnli manzil, xaritani surish, C13, tarif «Operator aniqlaydi», kuryer K01–K04, darhol yangilanish | `plan-qa.txt` |
+| `native` | **25/25** | Keystore/BiometricPrompt, GPS ruxsati, MapLibre/WebGL, fondagi bildirishnoma, kamera → yuklash, kuryer GPS | `native-qa.txt` |
+| `maestro` | **3/3** | mijoz smoke, Orqaga, admin kirish oynasi | `maestro/report.xml` |
+| `uiautomator` | **14 PASS · 2 WARN** | Android accessibility daraxti, tablar, nomlar, touch target, EditText/parol, klaviatura, crash/ANR | `uiautomator-qa.txt` |
+| `web` | **100/100**, typecheck 0, unit **73/73** | Chrome UI 360/390/412/1280 px | `regression/` |
+| `release-check` | **11/11** | release 1.2.3 debug ustidan, prod faqat oʻqildi | `release-1.2.3-over-debug.txt` |
+
+Avvalgi bosqichdagi natijalar: release 1.2.2 ochish 7/7 (`release-1.2.2-open.txt`), debug 1.2.3 → release 1.2.2 ustidan (`install-debug-over-release.txt`). Uzilishdan keyin davom ettirish (`regression --resume`) sinaldi: 7 ta PASS oʻtkazib yuborildi, faqat qolgani qayta ishladi.
+
+Desktop Admin 1.2.3: packaged macOS ilova login ekrani **5/5**; Windows oʻrnatish **BLOCKED** (Windows yoʻq) — `RELEASE_MANIFEST-1.2.3.md`.
 
 ## 3. Topilgan xatolar va tuzatishlar
 
@@ -62,6 +68,10 @@
 - `apps/customer/src/main.tsx`: ilova qayta koʻringanda (`visibilitychange`) buyurtmalar darhol yangilanadi. Tekshiruv: karta **0 s** da chiqdi (K04).
 
 ### Maʼlumot uchun (xato emas)
+
+- **UIAutomator WARN:** mijoz bosh sahifasidagi «Katalogni ochish» tugmasi 43 dp, admin «Menyu» tugmasi 46×46 dp — Android tavsiyasi 48 dp (44 dp dan katta, ishlatsa boʻladi). Keyingi dizayn yangilanishida 48 dp ga chiqarish tavsiya etiladi.
+- **Parol va accessibility:** Android 16 WebView parol belgilarini UiAutomation / accessibility xizmatlariga beradi («Show passwords» oʻchiq boʻlsa ham). Faqat foydalanuvchi yoqqan imtiyozli xizmatlar koʻradi; maydon `password=true` va ekranda yashirin. Ilova kodida tuzatib boʻlmaydi.
+- **Admin doʻkon joylashuvi:** F1 tuzatishi u yerda ham tasdiqlandi — telefon klaviaturasi bilan manzil yozilganda koordinatalar boʻsh qoladi, haqiqiy surish nuqta qoʻyadi, «Saqlash» aynan shuni saqlaydi.
 
 - **Bildirishnoma ruxsati.** Android 13+ targetSdk 28 ilovadan birinchi ochilishda ruxsat soʻraydi (OS oynasi) — Samsung’da ham shunday. Kelajakda targetSdk ≥ 33 qilinsa, ilova soʻrash vaqtini oʻzi tanlaydi.
 - **GPS ikki marta rad etilsa** Android qayta soʻramaydi; ilova aniq xabar beradi, lekin Sozlamalarga oʻtish tugmasi yoʻq (tavsiya).
@@ -86,24 +96,15 @@ Emulator bularni almashtirmaydi:
 
 ## 5. Qayta ishga tushirish
 
+Hammasi repo ichidagi bitta skript orqali — batafsil: [QA_ANDROID.md](QA_ANDROID.md).
+
 ```bash
-source ~/.fayz-toolchain/env.sh && qa-emulator start && export ANDROID_SERIAL=emulator-5554
-adb install -r apps/android/customer/build/outputs/apk/debug/customer-debug.apk
-adb install -r apps/android/admin/build/outputs/apk/debug/admin-debug.apk
-node scripts/android-qa/real-device-e2e.mjs        # 35 ta, izolyatsiya qilingan Worker
-node scripts/android-qa/emulator-plan-qa.mjs       # §8 rejasi, 44 ta
-node scripts/android-qa/maestro-local.mjs          # Maestro flow’lari
-# native-qa.mjs: avval QA_PORT=8791 scripts/deploy-qa/local-worker.sh <yangi-papka>
-qa-emulator stop
+scripts/android-qa/qa.sh emulator start
+scripts/android-qa/qa.sh build
+scripts/android-qa/qa.sh regression            # uzilsa: scripts/android-qa/qa.sh regression --resume
+scripts/android-qa/qa.sh emulator stop
 ```
 
-Yangi fayllar: `scripts/android-qa/emulator-plan-qa.mjs`, `scripts/android-qa/maestro-local.mjs`, `scripts/android-qa/maestro/*.yaml`. Skrinshotlar: `docs/v1/screenshots/emulator-android16/`.
+## 6. Distributivlar
 
-## 6. Distributivlar (commit qilinmagan)
-
-| Fayl | Hajm | SHA-256 |
-|---|---|---|
-| `dist/apk/v1.2.3/fayz-market-customer.apk` | 1 040 286 | `c195485f373b85cf89e569190fb76c4f7eaf3bfc17cc7e77d87e4b3100c22c4b` |
-| `dist/apk/v1.2.3/fayz-market-admin.apk` | 1 087 312 | `03b1d2e3438d9400a4d29f1afc60d3ddc071108dc2bfca51c0de4a12c5782f6c` |
-
-Release, debuggable emas, production’ga qulflangan, sertifikat `93f0f845…f89851` (1.2.2 bilan bir xil). Oldingi 1.2.3 build (26-noyabr, 22:41) oʻchirilmadi: `dist/archive/apk-v1.2.3-build-20261126-2241/`. API oʻzgarmadi — Worker deploy kerak emas. Desktop admin (DMG/EXE) F1 tuzatishi uchun keyinroq qayta yigʻilishi kerak.
+Toʻliq maʼlumot (hajm, SHA-256, manifest, imzo, desktop): [RELEASE_MANIFEST-1.2.3.md](RELEASE_MANIFEST-1.2.3.md). Haqiqiy telefonda qolgan bandlar: [REAL_DEVICE_CHECKLIST-1.2.3.md](REAL_DEVICE_CHECKLIST-1.2.3.md).

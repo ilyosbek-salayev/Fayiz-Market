@@ -4,7 +4,7 @@
       "env" : {
         "MAESTRO_CLI_NO_ANALYTICS" : "1",
         "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED" : "true",
-        "MAESTRO_FILENAME" : "customer-smoke",
+        "MAESTRO_FILENAME" : "back-navigation",
         "MAESTRO_DEVICE_UDID" : "emulator-5554",
         "MAESTRO_SHARD_ID" : "1",
         "MAESTRO_SHARD_INDEX" : "0"
@@ -14,8 +14,8 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784633333,
-    "duration" : 2,
+    "timestamp" : 1795792922590,
+    "duration" : 1,
     "sequenceNumber" : 0,
     "depth" : 0,
     "evaluatedCommand" : {
@@ -23,7 +23,7 @@
         "env" : {
           "MAESTRO_CLI_NO_ANALYTICS" : "1",
           "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED" : "true",
-          "MAESTRO_FILENAME" : "customer-smoke",
+          "MAESTRO_FILENAME" : "back-navigation",
           "MAESTRO_DEVICE_UDID" : "emulator-5554",
           "MAESTRO_SHARD_ID" : "1",
           "MAESTRO_SHARD_INDEX" : "0"
@@ -37,15 +37,15 @@
     "applyConfigurationCommand" : {
       "config" : {
         "appId" : "uz.fayzmarket.customer",
-        "name" : "Customer read-only smoke",
-        "tags" : [ "readonly", "smoke" ]
+        "name" : "Customer Android Back",
+        "tags" : [ "readonly", "back" ]
       },
       "optional" : false
     }
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784633335,
+    "timestamp" : 1795792922591,
     "duration" : 0,
     "sequenceNumber" : 1,
     "depth" : 0,
@@ -53,8 +53,8 @@
       "applyConfigurationCommand" : {
         "config" : {
           "appId" : "uz.fayzmarket.customer",
-          "name" : "Customer read-only smoke",
-          "tags" : [ "readonly", "smoke" ]
+          "name" : "Customer Android Back",
+          "tags" : [ "readonly", "back" ]
         },
         "optional" : false
       }
@@ -70,8 +70,8 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784633336,
-    "duration" : 85,
+    "timestamp" : 1795792922591,
+    "duration" : 91,
     "sequenceNumber" : 2,
     "depth" : 0,
     "evaluatedCommand" : {
@@ -108,8 +108,8 @@
   },
   "metadata" : {
     "status" : "SKIPPED",
-    "timestamp" : 1795784633421,
-    "duration" : 7430,
+    "timestamp" : 1795792922682,
+    "duration" : 7105,
     "sequenceNumber" : 3,
     "depth" : 0,
     "evaluatedCommand" : {
@@ -151,8 +151,8 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784640851,
-    "duration" : 65,
+    "timestamp" : 1795792929787,
+    "duration" : 59,
     "sequenceNumber" : 4,
     "depth" : 0,
     "evaluatedCommand" : {
@@ -170,99 +170,15 @@
   }
 }, {
   "command" : {
-    "assertConditionCommand" : {
-      "condition" : {
-        "visible" : {
-          "textRegex" : "Kategoriyalar",
-          "optional" : false
-        }
-      },
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784640917,
-    "duration" : 61,
-    "sequenceNumber" : 5,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "assertConditionCommand" : {
-        "condition" : {
-          "visible" : {
-            "textRegex" : "Kategoriyalar",
-            "optional" : false
-          }
-        },
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "assertConditionCommand" : {
-      "condition" : {
-        "visible" : {
-          "textRegex" : "Bosh sahifa",
-          "optional" : false
-        }
-      },
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784640978,
-    "duration" : 54,
-    "sequenceNumber" : 6,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "assertConditionCommand" : {
-        "condition" : {
-          "visible" : {
-            "textRegex" : "Bosh sahifa",
-            "optional" : false
-          }
-        },
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "takeScreenshotCommand" : {
-      "path" : "maestro-customer-home",
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784641032,
-    "duration" : 106,
-    "sequenceNumber" : 7,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "takeScreenshotCommand" : {
-        "path" : "maestro-customer-home",
-        "optional" : false
-      }
-    },
-    "artifacts" : [ {
-      "type" : "TAKE_SCREENSHOT",
-      "path" : "takeScreenshot/maestro-customer-home.png"
-    } ]
-  }
-}, {
-  "command" : {
     "waitForAnimationToEndCommand" : {
       "optional" : false
     }
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784641138,
-    "duration" : 420,
-    "sequenceNumber" : 8,
+    "timestamp" : 1795792929847,
+    "duration" : 282,
+    "sequenceNumber" : 5,
     "depth" : 0,
     "evaluatedCommand" : {
       "waitForAnimationToEndCommand" : {
@@ -281,9 +197,9 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784641558,
-    "duration" : 318,
-    "sequenceNumber" : 9,
+    "timestamp" : 1795792930129,
+    "duration" : 978,
+    "sequenceNumber" : 6,
     "depth" : 0,
     "evaluatedCommand" : {
       "tapOnPointV2Command" : {
@@ -309,9 +225,9 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784641876,
-    "duration" : 689,
-    "sequenceNumber" : 10,
+    "timestamp" : 1795792931108,
+    "duration" : 597,
+    "sequenceNumber" : 7,
     "depth" : 0,
     "evaluatedCommand" : {
       "assertConditionCommand" : {
@@ -340,9 +256,9 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784642566,
-    "duration" : 65,
-    "sequenceNumber" : 11,
+    "timestamp" : 1795792931705,
+    "duration" : 59,
+    "sequenceNumber" : 8,
     "depth" : 0,
     "evaluatedCommand" : {
       "assertConditionCommand" : {
@@ -358,112 +274,18 @@
   }
 }, {
   "command" : {
-    "takeScreenshotCommand" : {
-      "path" : "maestro-customer-catalog",
+    "backPressCommand" : {
       "optional" : false
     }
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784642631,
-    "duration" : 64,
-    "sequenceNumber" : 12,
+    "timestamp" : 1795792931764,
+    "duration" : 839,
+    "sequenceNumber" : 9,
     "depth" : 0,
     "evaluatedCommand" : {
-      "takeScreenshotCommand" : {
-        "path" : "maestro-customer-catalog",
-        "optional" : false
-      }
-    },
-    "artifacts" : [ {
-      "type" : "TAKE_SCREENSHOT",
-      "path" : "takeScreenshot/maestro-customer-catalog.png"
-    } ]
-  }
-}, {
-  "command" : {
-    "tapOnPointV2Command" : {
-      "point" : "90%,93%",
-      "retryIfNoChange" : true,
-      "longPress" : false,
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784642695,
-    "duration" : 266,
-    "sequenceNumber" : 13,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "tapOnPointV2Command" : {
-        "point" : "90%,93%",
-        "retryIfNoChange" : true,
-        "longPress" : false,
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "assertConditionCommand" : {
-      "condition" : {
-        "visible" : {
-          "textRegex" : "Telefon raqam bilan kirish",
-          "optional" : false
-        }
-      },
-      "timeout" : "15000",
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784642961,
-    "duration" : 54,
-    "sequenceNumber" : 14,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "assertConditionCommand" : {
-        "condition" : {
-          "visible" : {
-            "textRegex" : "Telefon raqam bilan kirish",
-            "optional" : false
-          }
-        },
-        "timeout" : "15000",
-        "optional" : false
-      }
-    }
-  }
-}, {
-  "command" : {
-    "tapOnElement" : {
-      "selector" : {
-        "textRegex" : "Bosh sahifa",
-        "optional" : false
-      },
-      "retryIfNoChange" : false,
-      "waitUntilVisible" : false,
-      "longPress" : false,
-      "optional" : false
-    }
-  },
-  "metadata" : {
-    "status" : "COMPLETED",
-    "timestamp" : 1795784643016,
-    "duration" : 1731,
-    "sequenceNumber" : 15,
-    "depth" : 0,
-    "evaluatedCommand" : {
-      "tapOnElement" : {
-        "selector" : {
-          "textRegex" : "Bosh sahifa",
-          "optional" : false
-        },
-        "retryIfNoChange" : false,
-        "waitUntilVisible" : false,
-        "longPress" : false,
+      "backPressCommand" : {
         "optional" : false
       }
     }
@@ -482,14 +304,134 @@
   },
   "metadata" : {
     "status" : "COMPLETED",
-    "timestamp" : 1795784644747,
-    "duration" : 57,
-    "sequenceNumber" : 16,
+    "timestamp" : 1795792932604,
+    "duration" : 67,
+    "sequenceNumber" : 10,
     "depth" : 0,
     "evaluatedCommand" : {
       "assertConditionCommand" : {
         "condition" : {
           "visible" : {
+            "textRegex" : "Mahsulot qidirish",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnPointV2Command" : {
+      "point" : "90%,93%",
+      "retryIfNoChange" : true,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1795792932671,
+    "duration" : 339,
+    "sequenceNumber" : 11,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnPointV2Command" : {
+        "point" : "90%,93%",
+        "retryIfNoChange" : true,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "backPressCommand" : {
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1795792933010,
+    "duration" : 827,
+    "sequenceNumber" : 12,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "backPressCommand" : {
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "Kategoriyalar",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1795792933837,
+    "duration" : 64,
+    "sequenceNumber" : 13,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "Kategoriyalar",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "backPressCommand" : {
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1795792933901,
+    "duration" : 703,
+    "sequenceNumber" : 14,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "backPressCommand" : {
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "textRegex" : "Mahsulot qidirish",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1795792934604,
+    "duration" : 586,
+    "sequenceNumber" : 15,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
             "textRegex" : "Mahsulot qidirish",
             "optional" : false
           }

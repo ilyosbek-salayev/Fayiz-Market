@@ -3,7 +3,8 @@
 // It only reads (catalog, settings, login screen) — it never signs in or writes to production.
 //   node scripts/android-qa/install-open-check.mjs dist/apk/v1.1.1
 import { execFileSync } from 'node:child_process';
-import { ADB, adb, launch, pause, sh, versionOf, webview } from './lib.mjs';
+import { ADB, adb, launch, pause, sh, versionOf, webview, requireDevice } from './lib.mjs';
+requireDevice(import.meta.url.split('/').pop());
 const dir = process.argv[2] || 'dist/apk/v1.1.1';
 const PROD = 'https://fayz-market-api.ilyosbeksalayev240.workers.dev';
 const results = []; const check = (ok, name, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };

@@ -12,6 +12,44 @@ export const pause = ms => new Promise(r => setTimeout(r, ms));
 export const adb = (...args) => execFileSync(ADB, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();
 export const sh = cmd => adb('shell', cmd);
 
+// ---------- Target device ----------
+// Every run names its device before touching it. Scripts that change device state (PIN, permissions, API address,
+// installs) run on an EMULATOR only; scripts meant for a phone need REAL_DEVICE_CONFIRM=<serial> of that phone, so
+// nothing reaches the owner's Samsung by accident (e.g. when it is plugged in next to the emulator).
+const die = message => { console.error(`\nTARGET REFUSED — ${message}\n`); process.exit(2); };
+export function connectedDevices() {
+  return execFileSync(ADB, ['devices', '-l'], { encoding: 'utf8' }).split('\n').slice(1).map(l => l.trim()).filter(Boolean)
+    .map(l => ({ serial: l.split(/\s+/)[0], state: l.split(/\s+/)[1], model: l.match(/model:(\S+)/)?.[1] || '' }));
+}
+/** Resolves ANDROID_SERIAL (the one given, or the only connected device) and describes that device. */
+export function target() {
+  const ready = connectedDevices().filter(d => d.state === 'device');
+  const list = ready.map(d => `${d.serial}${d.model ? ` (${d.model})` : ''}`).join(', ') || 'none';
+  if (process.env.ANDROID_SERIAL) { if (!ready.some(d => d.serial === process.env.ANDROID_SERIAL)) die(`ANDROID_SERIAL=${process.env.ANDROID_SERIAL} is not connected (ready: ${list})`); }
+  else if (ready.length === 1) process.env.ANDROID_SERIAL = ready[0].serial;
+  else die(ready.length ? `several devices are connected (${list}) — choose one with ANDROID_SERIAL=<serial>` : 'no device is connected (start the emulator: scripts/android-qa/qa.sh emulator start)');
+  const prop = k => sh(`getprop ${k}`);
+  const emulator = prop('ro.kernel.qemu') === '1' || prop('ro.boot.qemu') === '1';
+  return { serial: process.env.ANDROID_SERIAL, emulator, avd: emulator ? prop('ro.boot.qemu.avd_name') : '', model: prop('ro.product.model'), android: prop('ro.build.version.release'), api: prop('ro.build.version.sdk') };
+}
+const describe = t => `${t.serial} · ${t.emulator ? `EMULATOR ${t.avd || '?'}` : `PHYSICAL ${t.model}`} · Android ${t.android} (API ${t.api})`;
+/** For scripts that change device state: an emulator only, never a physical phone. */
+export function requireEmulator(script) {
+  const t = target();
+  if (!t.emulator) die(`${script} changes device state and runs on the QA emulator only; ${describe(t)} is a physical phone.`);
+  const want = process.env.QA_AVD || 'qa-android16';
+  if (t.avd !== want) console.warn(`note: AVD «${t.avd}», the default QA AVD is «${want}»`);
+  console.log(`TARGET ${describe(t)}`);
+  return t;
+}
+/** For scripts that may run on a phone: a physical device needs REAL_DEVICE_CONFIRM=<its serial>. */
+export function requireDevice(script) {
+  const t = target();
+  if (!t.emulator && process.env.REAL_DEVICE_CONFIRM !== t.serial) die(`${script}: ${describe(t)} is a PHYSICAL phone. To run on it on purpose: REAL_DEVICE_CONFIRM=${t.serial} ANDROID_SERIAL=${t.serial} node ${script}`);
+  console.log(`TARGET ${describe(t)}`);
+  return t;
+}
+
 /** Bounds of the first node whose text or content-desc matches, from a UI Automator dump. */
 export function findNode(pattern) {
   sh('uiautomator dump /sdcard/fayz-ui.xml >/dev/null 2>&1 || true');

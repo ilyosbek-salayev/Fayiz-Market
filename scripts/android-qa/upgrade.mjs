@@ -2,7 +2,8 @@
 // Writes a marker into the app's WebView storage, installs the new APK with `adb install -r` (no uninstall, no data
 // wipe) and verifies package id, signer, versionCode, first-install time and the stored data all survive.
 //   node scripts/android-qa/upgrade.mjs dist/apk/v1.1.1
-import { adb, launch, pause, sh, versionOf, webview } from './lib.mjs';
+import { adb, launch, pause, sh, versionOf, webview, requireEmulator } from './lib.mjs';
+requireEmulator(import.meta.url.split('/').pop());
 const dir = process.argv[2] || 'dist/apk/v1.1.1';
 const results = []; const check = (ok, name, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); };
 for (const [pkg, file, port] of [['uz.fayzmarket.customer', 'fayz-market-customer-debug.apk', 9401], ['uz.fayzmarket.admin', 'fayz-market-admin-debug.apk', 9402]]) {

@@ -1,0 +1,22 @@
+EMULATOR (qa-android16, Android 16) — NOT a physical phone. UIAutomator (Android accessibility tree), debug apps, isolated local Worker.
+2026-11-27T15:18:31.663Z
+INFO device — emulator-5554 EMULATOR qa-android16 · Android 16 · 1080x2340 @ 450 dpi
+PASS customer: in the foreground, no crash / ANR dialog
+PASS customer: the WebView fills the screen width and ≥85 % of its height
+PASS customer: the 5 tabs are exposed to Android as labelled buttons
+PASS customer: every tab is at least 48 × 48 dp
+PASS customer home: every visible control has a name for TalkBack
+WARN customer home: touch targets ≥ 48 dp — «Katalogni ochish» 163×43dp
+PASS customer: search opens an EditText with the soft keyboard
+PASS customer: text typed through Android input reaches the app (result «Klassik soat» in the tree)
+PASS customer: Back hides the keyboard, the app stays open
+PASS admin: in the foreground, no crash / ANR dialog
+PASS admin login: email and password are real EditTexts; the password field is flagged password=true for Android
+PASS admin login: «Kirish» is a button at least 48 dp tall
+PASS admin login: email and password typed through Android input land in the right fields
+INFO admin login: password characters visible to accessibility services (Chromium WebView behaviour) — yes
+PASS admin: signed in by Android touches and typing only → dashboard
+WARN admin: the «Menyu» icon button has a name and a ≥ 48 dp touch target — 46×46dp
+PASS admin dashboard: every visible control has a name for TalkBack
+
+PASS 14 · WARN 2 · FAIL 0

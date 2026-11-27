@@ -1,0 +1,19 @@
+Fayz Market 1.2.3 — Android QA regression on the EMULATOR (qa-android16; NOT a physical phone). Local Workers only.
+code 722d968+dirty · finished 2026-11-27 20:22:23
+
+install        PASS  2s
+e2e            PASS  139s
+plan           PASS  264s
+native         PASS  116s
+uiautomator    PASS  36s
+web            PASS  137s
+release-check  PASS  20s
+maestro        PASS  44s
+
+APKs (sha256):
+  bf3d07a4dce0a1f3a04452343492eabe6d9cc31464bcf8386719509d7c0e08a6  dist/apk/v1.2.3/fayz-market-admin.apk
+  3eda0c64f18350ef3b6e35d9436a9e0a6a2264d3497d5e10e79ef77697e99410  dist/apk/v1.2.3/fayz-market-customer.apk
+  544c8867584439caf34c953cb6487210d5738c694bf504b4d0700bbca148b0b7  apps/android/admin/build/outputs/apk/debug/admin-debug.apk
+  e7b7951d64267523d795f9d6910d5b942689f010aea1cfe61f7b67be997768db  apps/android/customer/build/outputs/apk/debug/customer-debug.apk
+
+Mac resources during this run: samples 5 · qemu RSS avg 3081 MB, max 3180 MB · qemu CPU avg 80%, max 240% (100% = 1 core of 10) · Mac free memory min 57% · swap max 0 MB · disk free 170Gi

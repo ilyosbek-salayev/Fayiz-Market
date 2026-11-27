@@ -35,3 +35,7 @@ scripts/android-qa/shots/
 scripts/deploy-qa/created.json
 # Isolated audit desktop build output
 apps/desktop/release-audit-*/
+
+# Private local QA data: real-phone screenshots (names, phone numbers, GPS, sales), run state, resource logs.
+# Never commit; see docs/v1/QA_ANDROID.md
+.local-qa/

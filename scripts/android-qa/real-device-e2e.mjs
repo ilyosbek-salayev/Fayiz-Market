@@ -13,15 +13,17 @@ import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { adb, launch, pause, screenshot, setApiUrl, sh, versionOf, webview } from './lib.mjs';
+import { adb, launch, pause, screenshot, setApiUrl, sh, versionOf, webview, requireDevice } from './lib.mjs';
+
 
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const sharp = createRequire(path.join(ROOT, 'package.json'))('sharp');
 const PORT = 8791, API = `http://127.0.0.1:${PORT}`;
 // An emulator run is labelled EMULATOR everywhere (results header, default folders) — never as a real phone.
-const EMULATOR = sh('getprop ro.kernel.qemu') === '1' || sh('getprop ro.boot.qemu') === '1';
+const TARGET = requireDevice('real-device-e2e.mjs'), EMULATOR = TARGET.emulator;
 const KIND = EMULATOR ? `EMULATOR (${sh('getprop ro.boot.qemu.avd_name') || 'AVD'}) — NOT a physical phone` : 'REAL PHONE';
-const OUT = path.join(ROOT, process.env.SHOTS || (EMULATOR ? 'docs/v1/screenshots/emulator-android16' : 'docs/v1/screenshots/real-device-1.2.2'));
+// Phone screenshots stay private (git-ignored .local-qa/): they can show the owner's own notifications and data.
+const OUT = path.join(ROOT, process.env.SHOTS || (EMULATOR ? 'docs/v1/screenshots/emulator-android16' : '.local-qa/private-screenshots/real-device/e2e'));
 const RESULTS = path.join(ROOT, process.env.RESULTS || (EMULATOR ? 'docs/v1/evidence/emulator-android16/e2e-isolated.txt' : 'docs/v1/evidence/real-device-1.2.2/e2e-isolated.txt'));
 mkdirSync(OUT, { recursive: true });
 const C = 'uz.fayzmarket.customer', A = 'uz.fayzmarket.admin';
@@ -267,4 +269,5 @@ try {
   const n = s => results.filter(r => r.startsWith(s)).length;
   writeFileSync(RESULTS, `${KIND} — debug apps against an ISOLATED local Worker (fresh D1, local R2); production not contacted\n${new Date().toISOString()}\n${results.join('\n')}\n\nPASS ${n('PASS')} · FAIL ${n('FAIL')} · BLOCKED ${n('BLOCKED')}\n`);
   console.log(`\nPASS ${n('PASS')} · FAIL ${n('FAIL')} · BLOCKED ${n('BLOCKED')}`);
+  process.exitCode = n('FAIL') || n('BLOCKED') ? 1 : 0;
 }

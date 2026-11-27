@@ -1,5 +1,5 @@
 EMULATOR (qa-android16) — NOT a physical phone — debug apps against an ISOLATED local Worker (fresh D1, local R2); production not contacted
-2026-11-27T12:36:15.798Z
+2026-11-27T15:10:50.290Z
 INFO device — sdk_gphone64_arm64 Android 16; installed 1.2.3/10 (customer), 1.2.3/10 (admin)
 PASS customer: home from the isolated Worker (catalogue, banner)
 PASS customer home: no horizontal overflow at 384 CSS px (phone)

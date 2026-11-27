@@ -9,7 +9,8 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, tapNode, versionOf, webview } from './lib.mjs';
+import { adb, findNode, launch, pause, screenshot, setApiUrl, sh, tapNode, versionOf, webview, requireEmulator } from './lib.mjs';
+requireEmulator(import.meta.url.split('/').pop());
 
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const PORT = 8791, MOCK_PORT = 8802, API = `http://127.0.0.1:${PORT}`;

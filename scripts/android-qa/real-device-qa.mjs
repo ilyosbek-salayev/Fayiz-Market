@@ -12,7 +12,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
-import { ADB, adb, findNode, launch, pause, screenshot, sh, tapNode, versionOf, webview } from './lib.mjs';
+import { ADB, adb, findNode, launch, pause, screenshot, sh, tapNode, versionOf, webview, requireDevice } from './lib.mjs';
+requireDevice(import.meta.url.split('/').pop());
 
 const PHASE = process.argv[2] || 'preflight';
 const PORT = Number(process.env.QA_PORT || 8791), API = `http://127.0.0.1:${PORT}`;

@@ -1,5 +1,5 @@
 EMULATOR (qa-android16, Android 16) — NOT a physical phone — debug apps against an ISOLATED local Worker (fresh D1, local R2); production not contacted
-2026-11-27T12:33:17.167Z
+2026-11-27T15:15:14.322Z
 INFO device — EMULATOR (qa-android16, Android 16) — NOT a physical phone; installed 1.2.3/10 (customer), 1.2.3/10 (admin)
 PASS A01: wrong password → «Yana N ta urinish qoldi», not signed in
 PASS A01: email typed with capitals and a trailing space → signed in
@@ -16,6 +16,9 @@ PASS U01: reset-password dialog — whole password typed in one go, field keeps 
 PASS U01: courier signs in with the password typed in that dialog
 PASS A06: «Qoldiq» on a variant product asks which variant
 PASS §8.11: Android Back closes the stock dialog (app stays open)
+PASS admin store location: typing the address on the phone keyboard does not write the map centre as the store point
+PASS admin store location: a real finger drag on the map sets the store point
+PASS admin store location: «Saqlash» stores the dragged point and the typed address (storefront)
 PASS C11: location permission refused → explained; map and written address still offered
 PASS C11: written address saved on this phone without GPS
 PASS C11: the untouched map centre is NOT attached as a delivery point (keyboard resize is not a pick)
@@ -46,4 +49,4 @@ PASS K04: courier taps «Mijozga topshirdim» → handed_over
 PASS K04: back in the customer app the «Ha, qabul qildim» card appears at once (0 s, no 30 s wait)
 PASS K04: customer taps «Ha, qabul qildim» → order «Yetkazildi»
 
-PASS 44 · FAIL 0 · BLOCKED 0
+PASS 47 · FAIL 0 · BLOCKED 0
